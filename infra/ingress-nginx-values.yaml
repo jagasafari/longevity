@@ -1,0 +1,9 @@
+USER-SUPPLIED VALUES:
+controller:
+  podAnnotations:
+    kubectl.kubernetes.io/restartedAt: 1769874737
+  service:
+    annotations:
+      service.beta.kubernetes.io/azure-load-balancer-health-probe-request-path: /healthz
+    enableHttp: false
+    enableHttps: true

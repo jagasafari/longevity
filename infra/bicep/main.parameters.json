@@ -1,0 +1,21 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "rgName": {
+      "value": "kubernetes-resources"
+    },
+    "location": {
+      "value": "eastus2"
+    },
+    "aksConfig": {
+      "value": {
+        "clusterName": "cluster",
+        "dnsPrefix": "longevity",
+        "osDiskSizeGB": 30,
+        "agentCount": 2,
+        "agentVMSize": "Standard_D2s_v3"
+      }
+    }
+  }
+}
