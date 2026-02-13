@@ -16,6 +16,9 @@
         "agentCount": 2,
         "agentVMSize": "Standard_D2s_v3"
       }
+    },
+    "keyVaultName": {
+      "value": "longevity-kv-001"
     }
   }
 }

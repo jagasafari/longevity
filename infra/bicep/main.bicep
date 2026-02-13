@@ -9,6 +9,9 @@ param location string = 'eastus2'
 @description('AKS cluster configuration object.')
 param aksConfig object
 
+@description('Key Vault name')
+param keyVaultName string
+
 resource rg 'Microsoft.Resources/resourceGroups@2021-04-01' = {
   name: rgName
   location: location
@@ -22,3 +25,16 @@ module aks './modules/aks.bicep' = {
     location: location
   }
 }
+
+module kv './modules/keyvault.bicep' = {
+  name: 'keyvault-deployment'
+  scope: rg
+  params: {
+    kvName: keyVaultName
+    location: location
+    aksPrincipalId: aks.outputs.principalId
+  }
+}
+
+output keyVaultName string = kv.outputs.keyVaultName
+output aksClusterName string = aksConfig.clusterName

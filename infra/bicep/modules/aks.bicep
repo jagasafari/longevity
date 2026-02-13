@@ -26,5 +26,17 @@ resource aks 'Microsoft.ContainerService/managedClusters@2024-02-01' = {
       networkPlugin: 'azure'
       loadBalancerSku: 'standard'
     }
+    addonProfiles: {
+      azureKeyvaultSecretsProvider: {
+        enabled: true
+        config: {
+          enableSecretRotation: 'true'
+          rotationPollInterval: '2m'
+        }
+      }
+    }
   }
 }
+
+output principalId string = aks.identity.principalId
+output kubeletIdentityObjectId string = aks.properties.identityProfile.kubeletidentity.objectId

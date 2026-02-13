@@ -2,11 +2,8 @@
 set -e
 
 SUBSCRIPTION_ID="<your-subscription-id>"
-RG_NAME="kubernetes-resources"
-CLUSTER_NAME="cluster"
 BICEP_FILE="./bicep/main.bicep"
 PARAMS_FILE="./bicep/main.parameters.json"
-
 echo "==> Deploying infrastructure with Bicep..."
 az deployment sub create \
   --name "longevity-$(date +%Y%m%d-%H%M%S)" \
@@ -15,7 +12,13 @@ az deployment sub create \
   --parameters "$PARAMS_FILE" \
   --subscription "$SUBSCRIPTION_ID"
 
+echo "==> Generating and uploading self-signed TLS certificate to Key Vault..."
+KV_NAME=$(jq -r '.parameters.keyVaultName.value' "$PARAMS_FILE")
+bash ./generate-tls.sh
+
 echo "==> Getting AKS credentials..."
+RG_NAME=$(jq -r '.parameters.rgName.value' "$PARAMS_FILE")
+CLUSTER_NAME=$(jq -r '.parameters.aksConfig.value.clusterName' "$PARAMS_FILE")
 az aks get-credentials \
   --resource-group "$RG_NAME" \
   --name "$CLUSTER_NAME" \
@@ -31,5 +34,13 @@ helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
   --create-namespace \
   -f ./ingress-nginx-values.yaml \
   --wait
+
+echo "==> Deploying application resources..."
+kubectl apply -f ../web-tls-secret-provider.yaml
+kubectl apply -f ../web-content-pvc.yaml
+kubectl apply -f ../nginx-config.yaml
+kubectl apply -f ../web-deployment.yaml
+kubectl apply -f ../web-svc.yaml
+kubectl apply -f ../web-ingress.yaml
 
 echo "Get external IP with: kubectl get svc -n ingress-nginx"
