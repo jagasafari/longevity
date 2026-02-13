@@ -4,12 +4,12 @@ metadata:
   labels:
     app: web
   name: web-svc
-  namespace: default
+  namespace: {{ .Values.namespace }}
 spec:
   ports:
-  - port: 80
+  - port: {{ .Values.service.port }}
     protocol: TCP
-    targetPort: 80
+    targetPort: {{ .Values.service.targetPort }}
   selector:
     app: web
   type: ClusterIP

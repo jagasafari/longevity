@@ -2,9 +2,9 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: web-deployment
-  namespace: default
+  namespace: {{ .Values.namespace }}
 spec:
-  replicas: 1
+  replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
       app: web
@@ -14,10 +14,10 @@ spec:
         app: web
     spec:
       containers:
-      - image: nginx:alpine
+      - image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
         name: nginx
         ports:
-        - containerPort: 80
+        - containerPort: {{ .Values.service.targetPort }}
         volumeMounts:
         - mountPath: /etc/nginx/conf.d/default.conf
           name: nginx-config

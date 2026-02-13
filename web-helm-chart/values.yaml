@@ -1,0 +1,22 @@
+namespace: default
+replicaCount: 1
+
+image:
+  repository: nginx
+  tag: alpine
+
+service:
+  port: 80
+  targetPort: 80
+
+pvc:
+  size: 1Gi
+  storageClass: managed-csi
+
+ingress:
+  name: web-ingress
+  enabled: true
+  className: nginx
+  path: /web
+  pathType: Exact
+  tlsSecretName: web-tls

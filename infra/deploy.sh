@@ -35,12 +35,11 @@ helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
   -f ./ingress-nginx-values.yaml \
   --wait
 
-echo "==> Deploying application resources..."
-kubectl apply -f ../web-tls-secret-provider.yaml
-kubectl apply -f ../web-content-pvc.yaml
-kubectl apply -f ../nginx-config.yaml
-kubectl apply -f ../web-deployment.yaml
-kubectl apply -f ../web-svc.yaml
-kubectl apply -f ../web-ingress.yaml
+echo "==> Deploying application resources with Helm..."
+helm upgrade --install web-app ../web-helm-chart \
+  --namespace default \
+  --create-namespace \
+  --wait
 
-echo "Get external IP with: kubectl get svc -n ingress-nginx"
+echo "==> Deployment complete!"
+echo "Get external IP with: kubectl get svc -n default"
