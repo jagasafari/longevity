@@ -6,28 +6,45 @@ obj/
 *.user
 *.swp
 .DS_Store
+
 # Ignore publish output
-LongevityApp/bin/
-LongevityApp/obj/
-LongevityApp/wwwroot/lib/
+**/bin/
+**/obj/
+**/wwwroot/lib/
+
+# User-specific launch settings
+**/Properties/launchSettings.json
+
+# Environment-specific appsettings
+appsettings.Development.json
+appsettings.*.json
+!appsettings.json
+
 # Ignore temporary files
-LongevityApp/**/*.tmp
-LongevityApp/**/*.cache
+**/*.tmp
+**/*.cache
+
 # Ignore logs
 *.log
+
 # Ignore OS files
 Thumbs.db
+
 # Ignore compressed files
 *.zip
 *.tar.gz
 *.tgz
 *.7z
+
 # Ignore Rider/JetBrains IDE files
 .idea/
+
 # Ignore static web assets cache
-LongevityApp/obj/**/staticwebassets/
+**/staticwebassets/
+
 # Ignore scopedcss bundles
-LongevityApp/obj/**/scopedcss/
+**/scopedcss/
+
 # Ignore webcil and tmp-webcil
-LongevityApp/obj/**/webcil/
-LongevityApp/obj/**/tmp-webcil/
+**/webcil/
+**/tmp-webcil/
