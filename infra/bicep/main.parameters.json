@@ -5,16 +5,19 @@
     "rgName": {
       "value": "kubernetes-resources"
     },
-    "location": {
+    "rgLocation": {
+      "value": "westeurope"
+    },
+    "resourceLocation": {
       "value": "eastus2"
     },
     "aksConfig": {
       "value": {
         "clusterName": "cluster",
-        "dnsPrefix": "longevity",
-        "osDiskSizeGB": 30,
-        "agentCount": 2,
-        "agentVMSize": "Standard_D2s_v3"
+        "dnsPrefix": "cluster-kubernetes-resou-91b69f",
+        "osDiskSizeGB": 128,
+        "agentCount": 1,
+        "agentVMSize": "Standard_B2s"
       }
     },
     "keyVaultName": {

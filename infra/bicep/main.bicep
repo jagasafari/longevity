@@ -3,8 +3,11 @@ targetScope = 'subscription'
 @description('Name of the resource group to create.')
 param rgName string
 
-@description('Location for the resource group and all resources.')
-param location string = 'eastus2'
+@description('Location for the resource group.')
+param rgLocation string
+
+@description('Location for the resources (AKS, Key Vault, etc.).')
+param resourceLocation string
 
 @description('AKS cluster configuration object.')
 param aksConfig object
@@ -14,7 +17,7 @@ param keyVaultName string
 
 resource rg 'Microsoft.Resources/resourceGroups@2021-04-01' = {
   name: rgName
-  location: location
+  location: rgLocation
 }
 
 module aks './modules/aks.bicep' = {
@@ -22,7 +25,7 @@ module aks './modules/aks.bicep' = {
   scope: rg
   params: {
     config: aksConfig
-    location: location
+    location: resourceLocation
   }
 }
 
@@ -31,7 +34,7 @@ module kv './modules/keyvault.bicep' = {
   scope: rg
   params: {
     kvName: keyVaultName
-    location: location
+    location: resourceLocation
     aksPrincipalId: aks.outputs.principalId
   }
 }

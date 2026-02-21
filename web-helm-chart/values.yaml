@@ -18,5 +18,5 @@ ingress:
   enabled: true
   className: nginx
   path: /web
-  pathType: Exact
+  pathType: Prefix
   tlsSecretName: web-tls

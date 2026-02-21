@@ -1,16 +1,18 @@
 #!/bin/bash
 set -e
 
-SUBSCRIPTION_ID="<your-subscription-id>"
+SUBSCRIPTION_ID="91b69f0b-43fb-41ca-aa83-f71f2db5ea20"
 BICEP_FILE="./bicep/main.bicep"
 PARAMS_FILE="./bicep/main.parameters.json"
 echo "==> Deploying infrastructure with Bicep..."
-az deployment sub create \
+#az deployment sub create \
+az deployment sub what-if \
   --name "longevity-$(date +%Y%m%d-%H%M%S)" \
-  --location eastus2 \
+  --location westeurope \
   --template-file "$BICEP_FILE" \
   --parameters "$PARAMS_FILE" \
-  --subscription "$SUBSCRIPTION_ID"
+  --subscription "$SUBSCRIPTION_ID" \
+  --verbose
 
 echo "==> Generating and uploading self-signed TLS certificate to Key Vault..."
 KV_NAME=$(jq -r '.parameters.keyVaultName.value' "$PARAMS_FILE")
