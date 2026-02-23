@@ -15,6 +15,9 @@ param aksConfig object
 @description('Key Vault name')
 param keyVaultName string
 
+@description('Principal ID of the user deploying (for Key Vault access)')
+param deployerPrincipalId string
+
 resource rg 'Microsoft.Resources/resourceGroups@2021-04-01' = {
   name: rgName
   location: rgLocation
@@ -36,6 +39,7 @@ module kv './modules/keyvault.bicep' = {
     kvName: keyVaultName
     location: resourceLocation
     aksPrincipalId: aks.outputs.principalId
+    deployerPrincipalId: deployerPrincipalId
   }
 }
 
