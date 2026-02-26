@@ -5,8 +5,8 @@
 ```bash
 cd /Users/mika/dev/projects/longevity/longevity-app/infra
 # Update the SUBSCRIPTION_ID in the script first
-chmod +x deploy.sh
-./deploy.sh
+chmod +x scripts/deploy.sh
+./scripts/deploy.sh
 ```
 
 ## What it does
@@ -14,6 +14,7 @@ chmod +x deploy.sh
 1. Deploys AKS cluster and resource group via Bicep
 2. Configures kubectl credentials
 3. Installs NGINX Ingress Controller with custom values
+4. Applies cluster-level manifests from `k8s/`
 
 ## Prerequisites
 

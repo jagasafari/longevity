@@ -1,6 +1,12 @@
 #!/bin/bash
 set -e
 
+KV_NAME="$1"
+if [ -z "$KV_NAME" ]; then
+  echo "Usage: $0 <key-vault-name>"
+  exit 1
+fi
+
 CERT_DIR="/tmp/tls-certs"
 mkdir -p "$CERT_DIR"
 

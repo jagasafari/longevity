@@ -1,9 +1,13 @@
 #!/bin/bash
 set -e
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+INFRA_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+APP_DIR="$(cd "$INFRA_DIR/.." && pwd)"
+
 SUBSCRIPTION_ID="91b69f0b-43fb-41ca-aa83-f71f2db5ea20"
-BICEP_FILE="./bicep/main.bicep"
-PARAMS_FILE="./bicep/main.parameters.json"
+BICEP_FILE="$INFRA_DIR/bicep/main.bicep"
+PARAMS_FILE="$INFRA_DIR/bicep/main.parameters.json"
 FORCE_CERT_UPLOAD=false  # Set to true to force regenerate and upload TLS certificate
 
 echo "==> Getting deploying user principal ID..."
@@ -16,8 +20,7 @@ az deployment sub create \
   --template-file "$BICEP_FILE" \
   --parameters "$PARAMS_FILE" \
   --parameters deployerPrincipalId="$DEPLOYER_PRINCIPAL_ID" \
-  --subscription "$SUBSCRIPTION_ID" \
-  --debug
+  --subscription "$SUBSCRIPTION_ID"
 
 echo "==> Checking TLS certificate in Key Vault..."
 KV_NAME=$(jq -r '.parameters.keyVaultName.value' "$PARAMS_FILE")
@@ -28,7 +31,7 @@ CERT_EXISTS=$(az keyvault secret show \
 
 if [ -z "$CERT_EXISTS" ] || [ "$FORCE_CERT_UPLOAD" = "true" ]; then
   echo "==> Generating and uploading TLS certificate..."
-  bash ./generate-tls.sh
+  bash "$SCRIPT_DIR/generate-tls.sh" "$KV_NAME"
 else
   echo "==> TLS certificate already exists in Key Vault, skipping..."
 fi
@@ -51,7 +54,7 @@ helm upgrade --install external-secrets external-secrets/external-secrets \
   --wait
 
 echo "==> Creating ClusterSecretStore for Azure Key Vault..."
-kubectl apply -f ./cluster-secret-store.yaml
+kubectl apply -f "$INFRA_DIR/k8s/cluster-secret-store.yaml"
 
 echo "==> Adding ingress-nginx Helm repo..."
 helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
@@ -61,11 +64,11 @@ echo "==> Installing NGINX Ingress Controller..."
 helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
   --namespace ingress-nginx \
   --create-namespace \
-  -f ./ingress-nginx-values.yaml \
+  -f "$INFRA_DIR/k8s/ingress-nginx-values.yaml" \
   --wait
 
 echo "==> Deploying application resources with Helm..."
-helm upgrade --install web-app ../web-helm-chart \
+helm upgrade --install web-app "$APP_DIR/web-helm-chart" \
   --namespace longevity \
   --create-namespace \
   --wait
