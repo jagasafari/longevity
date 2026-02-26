@@ -1,0 +1,9 @@
+services:
+  web:
+    container_name: longevity-frontend
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: longevity-frontend:local
+    ports:
+      - "8080:80"
