@@ -1,4 +1,4 @@
-namespace: default
+namespace: longevity
 replicaCount: 1
 
 image:
@@ -10,6 +10,7 @@ service:
   targetPort: 80
 
 pvc:
+  name: web-content-pvc
   size: 1Gi
   storageClass: managed-csi
 

@@ -47,7 +47,11 @@ helm repo update
 helm upgrade --install external-secrets external-secrets/external-secrets \
   --namespace external-secrets \
   --create-namespace \
+  --set installCRDs=true \
   --wait
+
+echo "==> Creating ClusterSecretStore for Azure Key Vault..."
+kubectl apply -f ./cluster-secret-store.yaml
 
 echo "==> Adding ingress-nginx Helm repo..."
 helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
@@ -62,9 +66,9 @@ helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
 
 echo "==> Deploying application resources with Helm..."
 helm upgrade --install web-app ../web-helm-chart \
-  --namespace default \
+  --namespace longevity \
   --create-namespace \
   --wait
 
 echo "==> Deployment complete!"
-echo "Get external IP with: kubectl get svc -n default"
+echo "Get external IP with: kubectl get svc -n longevity"

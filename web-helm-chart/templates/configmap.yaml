@@ -15,7 +15,7 @@ data:
         gzip_types text/css application/javascript application/json application/wasm;
 
         location /web {
-            rewrite ^/web(.*)$ $1 last;
+          rewrite ^/web/?(.*)$ /$1 last;
         }
 
         location ~* \.(js|css|wasm|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {

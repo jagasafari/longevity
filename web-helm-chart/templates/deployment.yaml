@@ -30,4 +30,4 @@ spec:
         name: nginx-config
       - name: web-content
         persistentVolumeClaim:
-          claimName: web-content-pvc
+          claimName: {{ .Values.pvc.name }}
