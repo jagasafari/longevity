@@ -18,6 +18,9 @@ param keyVaultName string
 @description('Principal ID of the user deploying (for Key Vault access)')
 param deployerPrincipalId string
 
+@description('Storage account name for photo uploads (must be globally unique, lowercase, 3-24 chars)')
+param storageAccountName string
+
 resource rg 'Microsoft.Resources/resourceGroups@2021-04-01' = {
   name: rgName
   location: rgLocation
@@ -61,6 +64,16 @@ module acrPull './modules/acr-pull-assignment.bicep' = {
   }
 }
 
+module storage './modules/storage.bicep' = {
+  name: 'storage-deployment'
+  scope: rg
+  params: {
+    storageAccountName: storageAccountName
+    location: rgLocation
+  }
+}
+
 output keyVaultName string = kv.outputs.keyVaultName
 output aksClusterName string = aksConfig.clusterName
 output acrLoginServer string = acr.outputs.acrLoginServer
+output storageAccountName string = storage.outputs.storageAccountName

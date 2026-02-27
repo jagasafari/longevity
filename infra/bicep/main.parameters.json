@@ -22,6 +22,9 @@
     },
     "keyVaultName": {
       "value": "longevity-kv-001"
+    },
+    "storageAccountName": {
+      "value": "longevityphotos"
     }
   }
 }
