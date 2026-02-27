@@ -55,6 +55,9 @@ helm upgrade --install external-secrets external-secrets/external-secrets \
 
 echo "==> Creating ClusterSecretStore for Azure Key Vault..."
 kubectl apply -f "$INFRA_DIR/k8s/cluster-secret-store.yaml"
+kubectl wait clustersecretstore/azure-keyvault \
+  --for=condition=Ready \
+  --timeout=180s
 
 echo "==> Adding ingress-nginx Helm repo..."
 helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
@@ -70,8 +73,16 @@ helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
 echo "==> Deploying application resources with Helm..."
 helm upgrade --install web-app "$APP_DIR/web-helm-chart" \
   --namespace longevity \
-  --create-namespace \
-  --wait
+  --create-namespace
+
+echo "==> Waiting for TLS secret to sync from Key Vault..."
+kubectl wait externalsecret/web-tls-secret \
+  -n longevity \
+  --for=condition=Ready \
+  --timeout=300s
+
+echo "==> Waiting for web deployment rollout..."
+kubectl rollout status deployment/web-deployment -n longevity --timeout=300s
 
 echo "==> Deployment complete!"
 echo "Get external IP with: kubectl get svc -n longevity"

@@ -23,6 +23,15 @@ resource rg 'Microsoft.Resources/resourceGroups@2021-04-01' = {
   location: rgLocation
 }
 
+module acr './modules/acr.bicep' = {
+  name: 'acr-deployment'
+  scope: rg
+  params: {
+    acrName: 'longevityacr'
+    location: resourceLocation
+  }
+}
+
 module aks './modules/aks.bicep' = {
   name: 'aks-deployment'
   scope: rg
@@ -43,5 +52,15 @@ module kv './modules/keyvault.bicep' = {
   }
 }
 
+module acrPull './modules/acr-pull-assignment.bicep' = {
+  name: 'acr-pull-assignment'
+  scope: rg
+  params: {
+    acrName: acr.outputs.acrName
+    kubeletIdentityObjectId: aks.outputs.kubeletIdentityObjectId
+  }
+}
+
 output keyVaultName string = kv.outputs.keyVaultName
 output aksClusterName string = aksConfig.clusterName
+output acrLoginServer string = acr.outputs.acrLoginServer
