@@ -4,8 +4,8 @@ param kvName string
 @description('Location for resources')
 param location string
 
-@description('AKS cluster managed identity principal ID')
-param aksPrincipalId string
+@description('AKS kubelet managed identity principal ID (used by ESO to access secrets)')
+param kubeletPrincipalId string
 
 @description('Deploying user principal ID (for uploading secrets)')
 param deployerPrincipalId string
@@ -25,13 +25,13 @@ resource kv 'Microsoft.KeyVault/vaults@2023-07-01' = {
 
 var roleAssignments = [
   {
-    principalId: aksPrincipalId
+    principalId: kubeletPrincipalId
     roleId: '4633458b-17de-408a-b874-0445c86b69e6' // Key Vault Secrets User
     principalType: 'ServicePrincipal'
   }
   {
     principalId: deployerPrincipalId
-    roleId: 'b86a8fe4-44ce-4948-aee5-eccb2c155cd7' // Key Vault Secrets Off
+    roleId: 'b86a8fe4-44ce-4948-aee5-eccb2c155cd7' // Key Vault Secrets Officer
     principalType: 'User'
   }
 ]

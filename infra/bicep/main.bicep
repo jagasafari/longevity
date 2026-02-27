@@ -47,7 +47,7 @@ module kv './modules/keyvault.bicep' = {
   params: {
     kvName: keyVaultName
     location: resourceLocation
-    aksPrincipalId: aks.outputs.principalId
+    kubeletPrincipalId: aks.outputs.kubeletIdentityObjectId
     deployerPrincipalId: deployerPrincipalId
   }
 }

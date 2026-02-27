@@ -70,6 +70,14 @@ helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
   -f "$INFRA_DIR/k8s/ingress-nginx-values.yaml" \
   --wait
 
+az acr login --name longevityacr
+
+TAG=$(git rev-parse --short HEAD)
+docker build -t longevityacr.azurecr.io/longevity-frontend:$TAG \
+  /Users/mika/dev/projects/longevity/longevity-app/longevity-frontend
+
+docker push longevityacr.azurecr.io/longevity-frontend:$TAG
+
 echo "==> Deploying application resources with Helm..."
 helm upgrade --install web-app "$APP_DIR/web-helm-chart" \
   --namespace longevity \
