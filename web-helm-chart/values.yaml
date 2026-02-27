@@ -3,7 +3,7 @@ replicaCount: 1
 
 image:
   repository: longevityacr.azurecr.io/longevity-frontend
-  tag: a9ca507
+  tag: 5258fe7
 
 service:
   port: 80
@@ -13,6 +13,6 @@ ingress:
   name: web-ingress
   enabled: true
   className: nginx
-  path: /web
+  path: /
   pathType: Prefix
   tlsSecretName: web-tls

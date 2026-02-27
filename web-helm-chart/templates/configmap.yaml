@@ -14,17 +14,7 @@ data:
         gzip on;
         gzip_types text/css application/javascript application/json application/wasm;
 
-        location /web {
-          rewrite ^/web/?(.*)$ /$1 last;
-        }
-
-        location ~* \.(js|css|wasm|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
-            expires 1y;
-            add_header Cache-Control "public, immutable";
-        }
-
-        # SPA fallback - route all requests to index.html
         location / {
-            try_files $uri $uri/ /index.html =404;
+            try_files $uri $uri/ /index.html;
         }
     }

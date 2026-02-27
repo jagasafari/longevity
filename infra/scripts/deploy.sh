@@ -73,8 +73,8 @@ helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
 az acr login --name longevityacr
 
 TAG=$(git rev-parse --short HEAD)
-docker build -t longevityacr.azurecr.io/longevity-frontend:$TAG \
-  /Users/mika/dev/projects/longevity/longevity-app/longevity-frontend
+docker build --platform linux/amd64 -t longevityacr.azurecr.io/longevity-frontend:$TAG \
+  "$APP_DIR/longevity-frontend"
 
 docker push longevityacr.azurecr.io/longevity-frontend:$TAG
 
