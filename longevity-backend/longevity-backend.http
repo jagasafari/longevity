@@ -1,6 +1,0 @@
-@longevity_backend_HostAddress = http://localhost:5001
-
-GET {{longevity_backend_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###

@@ -16,19 +16,28 @@ if (!$BaseUrl) {
       "",
       "  # With auth endpoint checks",
       "  $script -BaseUrl http://localhost:8080 -IncludeAuthChecks"
-    ) | ForEach-Object { Write-Host $_ } parallel parallel
+    ) | ForEach-Object { Write-Host $_ }
     exit 1
 }
 
 $BaseUrl = $BaseUrl.TrimEnd('/')
 
-function Test-Endpoint($Name, $Url, [int[]]$Expected = @(200)) {
+$handler = [System.Net.Http.HttpClientHandler]::new()
+$handler.AllowAutoRedirect = $false
+$http    = [System.Net.Http.HttpClient]::new($handler)
+
+function Test-Endpoint(
+    $Name, $Url, [int[]]$Expected = @(200)
+) {
     $label = $Name.PadRight(42)
     try {
-        $status = [int](Invoke-WebRequest $Url -Method Get -MaximumRedirection 0 -SkipHttpErrorCheck).StatusCode
-    } catch {
-        if ($_.Exception.Response) { $status = [int]$_.Exception.Response.StatusCode }
-        else { Write-Host "  $label ❌ FAIL ($($_.Exception.Message))" -ForegroundColor Red; return $false }
+        $resp   = $http.GetAsync($Url).Result
+        $status = [int]$resp.StatusCode
+    }
+    catch {
+        Write-Host "  $label ❌ FAIL ($($_.Exception.Message))" `
+            -ForegroundColor Red
+        return $false
     }
     $ok    = $Expected -contains $status
     $msg   = if ($ok) { "✅ OK ($status)" } else { "❌ FAIL (expected: $($Expected -join ', '), got: $status)" }
@@ -40,7 +49,7 @@ function Test-Endpoint($Name, $Url, [int[]]$Expected = @(200)) {
 Write-Host "`n==> Running local smoke test against: $BaseUrl`n" -ForegroundColor Cyan
 
 $results = @(
-    Test-Endpoint "GET /weatherforecast" "$BaseUrl/weatherforecast"
+    Test-Endpoint "GET /api/weatherforecast" "$BaseUrl/api/weatherforecast"
 )
 
 if ($IncludeAuthChecks) {

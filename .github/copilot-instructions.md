@@ -16,6 +16,7 @@ When responding:
 - Prefer immutable data structures (records, discriminated unions)
 - Keep functions small, composable, and testable in isolation
 - Minimize lines of code — concise > verbose
+- No code comments — code should be self-documenting via clear naming
 - Inject side effects (randomness, IO, time) as function parameters
 - Make illegal states unrepresentable: encode domain rules in types, not runtime checks
   - Use discriminated unions / sum types instead of booleans or string flags
