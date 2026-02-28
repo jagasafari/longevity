@@ -5,8 +5,7 @@ open Expecto
 open Swensen.Unquote
 open Microsoft.Extensions.Configuration
 
-let private buildConfig
-    (values: (string * string) list) =
+let private buildConfig (values: (string * string) list) =
     ConfigurationBuilder()
         .AddInMemoryCollection(
             values
@@ -19,15 +18,13 @@ let private validConfig overrides =
     let defaults = [
         "GoogleOAuth:ClientId",     "client-123"
         "GoogleOAuth:ClientSecret", "secret-456"
-        "GoogleOAuth:RedirectUri",
-            "https://example.com/auth/callback"
+        "GoogleOAuth:RedirectUri",  "https://example.com/auth/callback"
         "GoogleOAuth:AllowedEmail", "user@example.com"
     ]
     let merged =
         defaults
         |> List.map (fun (k, v) ->
-            match overrides
-                  |> List.tryFind (fst >> (=) k) with
+            match overrides |> List.tryFind (fst >> (=) k) with
             | Some (_, ov) -> (k, ov)
             | None         -> (k, v))
     buildConfig merged
@@ -38,86 +35,56 @@ let tests = testList "Config" [
     testList "loadGoogleOAuth" [
 
         testCase "loads valid config" <| fun () ->
-            let oauth =
-                validConfig [] |> Config.loadGoogleOAuth
-            test <@ oauth.ClientId =
-                Auth.ClientId "client-123" @>
-            test <@ oauth.ClientSecret =
-                Auth.ClientSecret "secret-456" @>
-            test <@ oauth.RedirectUri =
-                Auth.HttpsUri
-                    "https://example.com/auth/callback" @>
-            test <@ oauth.AllowedEmail =
-                Auth.Email "user@example.com" @>
+            let oauth = validConfig [] |> Config.loadGoogleOAuth
+            test <@ oauth.ClientId     = Auth.ClientId "client-123" @>
+            test <@ oauth.ClientSecret = Auth.ClientSecret "secret-456" @>
+            test <@ oauth.RedirectUri  = Auth.HttpsUri "https://example.com/auth/callback" @>
+            test <@ oauth.AllowedEmail = Auth.Email "user@example.com" @>
 
         testCase "fails on missing ClientId" <| fun () ->
             let cfg = buildConfig [
                 "GoogleOAuth:ClientSecret", "secret"
-                "GoogleOAuth:RedirectUri",
-                    "https://x.com/cb"
+                "GoogleOAuth:RedirectUri",  "https://x.com/cb"
                 "GoogleOAuth:AllowedEmail", "a@b.com"
             ]
             Expect.throws
-                (fun () ->
-                    Config.loadGoogleOAuth cfg |> ignore)
+                (fun () -> Config.loadGoogleOAuth cfg |> ignore)
                 "Missing ClientId"
 
         testCase "fails on empty ClientSecret" <| fun () ->
-            let cfg =
-                validConfig [
-                    "GoogleOAuth:ClientSecret", "" ]
+            let cfg = validConfig [ "GoogleOAuth:ClientSecret", "" ]
             Expect.throws
-                (fun () ->
-                    Config.loadGoogleOAuth cfg |> ignore)
+                (fun () -> Config.loadGoogleOAuth cfg |> ignore)
                 "Empty ClientSecret"
 
         testCase "fails on HTTP redirect URI" <| fun () ->
-            let cfg =
-                validConfig [
-                    "GoogleOAuth:RedirectUri",
-                    "http://example.com/cb" ]
+            let cfg = validConfig [ "GoogleOAuth:RedirectUri", "http://example.com/cb" ]
             Expect.throws
-                (fun () ->
-                    Config.loadGoogleOAuth cfg |> ignore)
+                (fun () -> Config.loadGoogleOAuth cfg |> ignore)
                 "HTTP not allowed"
 
         testCase "fails on invalid URI" <| fun () ->
-            let cfg =
-                validConfig [
-                    "GoogleOAuth:RedirectUri",
-                    "not-a-url" ]
+            let cfg = validConfig [ "GoogleOAuth:RedirectUri", "not-a-url" ]
             Expect.throws
-                (fun () ->
-                    Config.loadGoogleOAuth cfg |> ignore)
+                (fun () -> Config.loadGoogleOAuth cfg |> ignore)
                 "Invalid URI"
 
         testCase "fails on invalid email" <| fun () ->
-            let cfg =
-                validConfig [
-                    "GoogleOAuth:AllowedEmail",
-                    "not-an-email" ]
+            let cfg = validConfig [ "GoogleOAuth:AllowedEmail", "not-an-email" ]
             Expect.throws
-                (fun () ->
-                    Config.loadGoogleOAuth cfg |> ignore)
+                (fun () -> Config.loadGoogleOAuth cfg |> ignore)
                 "Invalid email"
 
         testCase "accepts valid HTTPS URI" <| fun () ->
             let oauth =
-                validConfig [
-                    "GoogleOAuth:RedirectUri",
-                    "https://myapp.com/cb" ]
+                validConfig [ "GoogleOAuth:RedirectUri", "https://myapp.com/cb" ]
                 |> Config.loadGoogleOAuth
-            test <@ oauth.RedirectUri =
-                Auth.HttpsUri
-                    "https://myapp.com/cb" @>
+            test <@ oauth.RedirectUri = Auth.HttpsUri "https://myapp.com/cb" @>
 
         testCase "accepts valid email" <| fun () ->
             let oauth =
-                validConfig [
-                    "GoogleOAuth:AllowedEmail",
-                    "test@domain.org" ]
+                validConfig [ "GoogleOAuth:AllowedEmail", "test@domain.org" ]
                 |> Config.loadGoogleOAuth
-            test <@ oauth.AllowedEmail =
-                Auth.Email "test@domain.org" @>
+            test <@ oauth.AllowedEmail = Auth.Email "test@domain.org" @>
     ]
 ]
