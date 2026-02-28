@@ -11,6 +11,8 @@
   <ItemGroup>
     <Compile Include="Weather.fs" />
     <Compile Include="Auth.fs" />
+    <Compile Include="AuthLogin.fs" />
+    <Compile Include="AuthCallback.fs" />
     <Compile Include="Config.fs" />
     <Compile Include="Routes.fs" />
     <Compile Include="Program.fs" />

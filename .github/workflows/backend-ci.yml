@@ -1,0 +1,37 @@
+name: Backend CI
+
+on:
+  push:
+    paths:
+      - "longevity-backend/**"
+      - "longevity-backend.tests/**"
+      - ".github/workflows/backend-ci.yml"
+  pull_request:
+    paths:
+      - "longevity-backend/**"
+      - "longevity-backend.tests/**"
+  schedule:
+    - cron: "0 0 * * *"
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore
+        run: dotnet restore longevity-backend.tests/longevity-backend.tests.fsproj
+
+      - name: Build backend
+        run: dotnet build longevity-backend/longevity-backend.fsproj --no-restore -c Release
+
+      - name: Build tests
+        run: dotnet build longevity-backend.tests/longevity-backend.tests.fsproj --no-restore -c Release
+
+      - name: Run tests
+        run: dotnet run --project longevity-backend.tests/longevity-backend.tests.fsproj -c Release --no-build
