@@ -2,14 +2,16 @@ module Config
 
 open Microsoft.Extensions.Configuration
 
-let private readOr key (section: IConfigurationSection) =
+let private require key (section: IConfigurationSection) =
     section.[key]
     |> Option.ofObj
-    |> Option.defaultValue ""
+    |> Option.filter (fun s -> s.Length > 0)
+    |> Option.defaultWith (fun () ->
+        failwith $"Missing config: GoogleOAuth:{key}")
 
 let loadGoogleOAuth (cfg: IConfiguration) : Auth.GoogleOAuth =
     let s = cfg.GetSection("GoogleOAuth")
-    { ClientId     = s |> readOr "ClientId"
-      ClientSecret = s |> readOr "ClientSecret"
-      RedirectUri  = s |> readOr "RedirectUri"
-      AllowedEmail = s |> readOr "AllowedEmail" }
+    { ClientId     = s |> require "ClientId"
+      ClientSecret = s |> require "ClientSecret"
+      RedirectUri  = s |> require "RedirectUri"
+      AllowedEmail = s |> require "AllowedEmail" }

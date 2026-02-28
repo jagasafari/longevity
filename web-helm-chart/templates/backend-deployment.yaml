@@ -22,6 +22,9 @@ spec:
         env:
         - name: ASPNETCORE_URLS
           value: http://+:{{ .Values.backend.service.targetPort }}
+        envFrom:
+        - secretRef:
+            name: oauth-secret
         livenessProbe:
           httpGet:
             path: {{ .Values.backend.healthPath }}
