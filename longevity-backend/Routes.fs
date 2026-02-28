@@ -24,7 +24,7 @@ let private toResult = function
             {| error = msg |}, statusCode = 502)
 
 let authCallback
-    (cfg: Auth.GoogleOAuth)
+    (exchange: HttpClient -> string -> System.Threading.Tasks.Task<Auth.AuthResult>)
     (ctx: HttpContext)
     (factory: IHttpClientFactory)
     = task {
@@ -35,7 +35,6 @@ let authCallback
                 {| error = "Missing code parameter" |}
         else
             let http = factory.CreateClient()
-            let! result =
-                Auth.exchangeCodeForEmail http cfg code
+            let! result = exchange http code
             return toResult result
     }

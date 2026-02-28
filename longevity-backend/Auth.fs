@@ -10,30 +10,38 @@ type GoogleOAuth =
       RedirectUri: string
       AllowedEmail: string }
 
-let private authBase =
-    "https://accounts.google.com/o/oauth2/v2/auth"
-
-let private tokenUrl =
-    "https://oauth2.googleapis.com/token"
-
-let private userInfoUrl =
-    "https://www.googleapis.com/oauth2/v2/userinfo"
-
-let buildLoginUrl clientId (redirectUri: string) =
-    let qs = Uri.EscapeDataString redirectUri
-    $"{authBase}?client_id={clientId}\
-      &redirect_uri={qs}\
-      &response_type=code\
-      &scope=openid%%20email\
-      &access_type=offline\
-      &prompt=consent"
-
 type AuthResult =
     | Authorized of email: string
     | Denied     of reason: string
     | Error      of message: string
 
-let private jsonProp
+module private Google =
+    let authUrl =
+        "https://accounts.google.com/o/oauth2/v2/auth"
+    let tokenUrl =
+        "https://oauth2.googleapis.com/token"
+    let userInfoUrl =
+        "https://www.googleapis.com/oauth2/v2/userinfo"
+
+let private buildQuery
+    (pairs: (string * string) list) =
+    pairs
+    |> List.map (fun (k, v) ->
+        $"{k}={Uri.EscapeDataString v}")
+    |> String.concat "&"
+
+let buildLoginUrl clientId (redirectUri: string) =
+    let qs = buildQuery [
+        "client_id",     clientId
+        "redirect_uri",  redirectUri
+        "response_type", "code"
+        "scope",         "openid email"
+        "access_type",   "offline"
+        "prompt",        "consent"
+    ]
+    $"{Google.authUrl}?{qs}"
+
+let internal jsonProp
     (name: string)
     (doc: JsonDocument)
     : Result<string, string> =
@@ -53,7 +61,7 @@ let private fetchToken
         ]
         let! resp =
             http.PostAsync(
-                tokenUrl,
+                Google.tokenUrl,
                 new FormUrlEncodedContent(form))
         let! json = resp.Content.ReadAsStringAsync()
         return JsonDocument.Parse(json)
@@ -64,7 +72,7 @@ let private fetchEmail (http: HttpClient) token =
     task {
         use req =
             new HttpRequestMessage(
-                HttpMethod.Get, userInfoUrl)
+                HttpMethod.Get, Google.userInfoUrl)
         req.Headers.Authorization <-
             Headers.AuthenticationHeaderValue(
                 "Bearer", token)
@@ -74,14 +82,14 @@ let private fetchEmail (http: HttpClient) token =
                |> jsonProp "email"
     }
 
-let private authorize allowedEmail email =
+let internal authorize allowedEmail email =
     if email = allowedEmail
     then Authorized email
     else Denied $"Email {email} not allowed"
 
 let exchangeCodeForEmail
-    (http: HttpClient)
     (cfg: GoogleOAuth)
+    (http: HttpClient)
     (code: string)
     = task {
         try

@@ -32,7 +32,8 @@ let main args =
 
     app.MapGet("/auth/callback",
         Func<HttpContext, IHttpClientFactory, _>(
-            Routes.authCallback oauth))
+            Routes.authCallback
+                (Auth.exchangeCodeForEmail oauth)))
     |> ignore
 
     app.Run()
