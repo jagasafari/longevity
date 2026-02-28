@@ -2,14 +2,43 @@ module Auth
 
 open System
 open System.Text.Json
+open System.Text.RegularExpressions
 open System.Threading.Tasks
+
+type ClientId     = ClientId     of string
+type ClientSecret = ClientSecret of string
 
 type Email = Email of string
 
+let requireEmail label = function
+    | null | "" ->
+        failwith $"Missing: {label}"
+    | s when
+        Regex.IsMatch(
+            s,
+            @"^[^@\s]+@[^@\s]+\.[^@\s]+$") ->
+        Email s
+    | _ -> failwith $"Invalid email: {label}"
+
+type HttpsUri = HttpsUri of string
+
+let requireHttpsUri label = function
+    | null | "" ->
+        failwith $"Missing: {label}"
+    | s ->
+        match Uri.TryCreate(
+                s, UriKind.Absolute) with
+        | true, uri when
+            uri.Scheme = "https" ->
+            HttpsUri s
+        | _ ->
+            failwith
+                $"Invalid HTTPS URI: {label}"
+
 type GoogleOAuth =
-    { ClientId: string
-      ClientSecret: string
-      RedirectUri: string
+    { ClientId: ClientId
+      ClientSecret: ClientSecret
+      RedirectUri: HttpsUri
       AllowedEmail: Email }
 
 type AuthResult =

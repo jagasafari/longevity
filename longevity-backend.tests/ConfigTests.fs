@@ -40,10 +40,13 @@ let tests = testList "Config" [
         testCase "loads valid config" <| fun () ->
             let oauth =
                 validConfig [] |> Config.loadGoogleOAuth
-            test <@ oauth.ClientId = "client-123" @>
-            test <@ oauth.ClientSecret = "secret-456" @>
+            test <@ oauth.ClientId =
+                Auth.ClientId "client-123" @>
+            test <@ oauth.ClientSecret =
+                Auth.ClientSecret "secret-456" @>
             test <@ oauth.RedirectUri =
-                "https://example.com/auth/callback" @>
+                Auth.HttpsUri
+                    "https://example.com/auth/callback" @>
             test <@ oauth.AllowedEmail =
                 Auth.Email "user@example.com" @>
 
@@ -105,7 +108,8 @@ let tests = testList "Config" [
                     "https://myapp.com/cb" ]
                 |> Config.loadGoogleOAuth
             test <@ oauth.RedirectUri =
-                "https://myapp.com/cb" @>
+                Auth.HttpsUri
+                    "https://myapp.com/cb" @>
 
         testCase "accepts valid email" <| fun () ->
             let oauth =

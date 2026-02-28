@@ -5,12 +5,15 @@ open System.Text.Json
 
 let private fetchToken
     (cfg: Auth.GoogleOAuth) (http: HttpClient) code =
+    let (Auth.ClientId id) = cfg.ClientId
+    let (Auth.ClientSecret secret) = cfg.ClientSecret
+    let (Auth.HttpsUri uri) = cfg.RedirectUri
     task {
         let form = dict [
             "code",          code
-            "client_id",     cfg.ClientId
-            "client_secret", cfg.ClientSecret
-            "redirect_uri",  cfg.RedirectUri
+            "client_id",     id
+            "client_secret", secret
+            "redirect_uri",  uri
             "grant_type",    "authorization_code"
         ]
         let! resp =

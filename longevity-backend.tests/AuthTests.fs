@@ -12,44 +12,58 @@ let tests = testList "Auth" [
 
         testCase "contains client_id" <| fun () ->
             let url =
-                AuthLogin.buildLoginUrl "my-id"
-                    "https://x.com/cb"
+                AuthLogin.buildLoginUrl
+                    (Auth.ClientId "my-id")
+                    (Auth.HttpsUri "https://x.com/cb")
             test <@ url.Contains("client_id=my-id") @>
 
         testCase "encodes redirect_uri" <| fun () ->
             let uri = "https://example.com/auth/callback"
-            let url = AuthLogin.buildLoginUrl "id" uri
+            let url =
+                AuthLogin.buildLoginUrl
+                    (Auth.ClientId "id")
+                    (Auth.HttpsUri uri)
             let encoded = Uri.EscapeDataString uri
             test <@ url.Contains(
                 $"redirect_uri={encoded}") @>
 
         testCase "includes response_type code" <| fun () ->
             let url =
-                AuthLogin.buildLoginUrl "id" "https://x.com/cb"
+                AuthLogin.buildLoginUrl
+                    (Auth.ClientId "id")
+                    (Auth.HttpsUri "https://x.com/cb")
             test <@ url.Contains("response_type=code") @>
 
         testCase "includes openid email scope" <| fun () ->
             let url =
-                AuthLogin.buildLoginUrl "id" "https://x.com/cb"
+                AuthLogin.buildLoginUrl
+                    (Auth.ClientId "id")
+                    (Auth.HttpsUri "https://x.com/cb")
             let encoded =
                 Uri.EscapeDataString "openid email"
             test <@ url.Contains($"scope={encoded}") @>
 
         testCase "starts with Google auth URL" <| fun () ->
             let url =
-                AuthLogin.buildLoginUrl "id" "https://x.com/cb"
+                AuthLogin.buildLoginUrl
+                    (Auth.ClientId "id")
+                    (Auth.HttpsUri "https://x.com/cb")
             let prefix =
                 "https://accounts.google.com/o/oauth2"
             test <@ url.StartsWith(prefix) @>
 
         testCase "includes access_type offline" <| fun () ->
             let url =
-                AuthLogin.buildLoginUrl "id" "https://x.com/cb"
+                AuthLogin.buildLoginUrl
+                    (Auth.ClientId "id")
+                    (Auth.HttpsUri "https://x.com/cb")
             test <@ url.Contains("access_type=offline") @>
 
         testCase "includes prompt consent" <| fun () ->
             let url =
-                AuthLogin.buildLoginUrl "id" "https://x.com/cb"
+                AuthLogin.buildLoginUrl
+                    (Auth.ClientId "id")
+                    (Auth.HttpsUri "https://x.com/cb")
             test <@ url.Contains("prompt=consent") @>
     ]
 

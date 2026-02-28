@@ -1,6 +1,8 @@
 module AuthLogin
 
-let buildLoginUrl clientId (redirectUri: string) =
+let buildLoginUrl
+    (Auth.ClientId clientId)
+    (Auth.HttpsUri redirectUri) =
     let qs = Auth.buildQuery [
         "client_id",     clientId
         "redirect_uri",  redirectUri
