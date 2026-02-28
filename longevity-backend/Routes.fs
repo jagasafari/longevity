@@ -26,6 +26,15 @@ let private signIn (ctx: HttpContext) email =
     ctx.SignInAsync(
         scheme, ClaimsPrincipal identity)
 
+let internal redirectUrl = function
+    | Auth.Authorized _ -> "/"
+    | Auth.Denied reason ->
+        let msg = Uri.EscapeDataString reason
+        $"/?error={msg}"
+    | Auth.Error msg ->
+        let err = Uri.EscapeDataString msg
+        $"/?error={err}"
+
 let authCallback
     (exchange:
         HttpClient
@@ -47,13 +56,9 @@ let authCallback
             match result with
             | Auth.Authorized email ->
                 do! signIn ctx email
-                return Results.Redirect "/"
-            | Auth.Denied reason ->
-                let msg = Uri.EscapeDataString reason
-                return Results.Redirect $"/?error={msg}"
-            | Auth.Error msg ->
-                let err = Uri.EscapeDataString msg
-                return Results.Redirect $"/?error={err}"
+            | _ -> ()
+
+            return Results.Redirect (redirectUrl result)
     }
 
 let authMe (ctx: HttpContext) : IResult =

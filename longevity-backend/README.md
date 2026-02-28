@@ -39,7 +39,7 @@ sequenceDiagram
     end
 
     rect rgb(60, 40, 40)
-    Note over SPA,Google: 3 — Identity Verification
+    Note over SPA,Google: 3 — Session Creation
 
     App->>Google: GET /userinfo
     Note right of App: Authorization:<br/>Bearer access_token
@@ -47,51 +47,144 @@ sequenceDiagram
     Google-->>App: { email }
 
     alt email = AllowedEmail
-        App-->>SPA: 200 + Set-Cookie: session JWT
-        Note right of App: JWT contains email +<br/>expiry (~24 h)
+        App->>App: SignInAsync(ClaimsIdentity)
+        Note right of App: ASP.NET serializes<br/>ClaimsIdentity → encrypts<br/>with Data Protection (AES) →<br/>sets as cookie value.<br/>No server-side session store —<br/>the cookie IS the session.
+        App-->>SPA: 302 Redirect / + Set-Cookie
+        Note right of App: Set-Cookie:<br/>.AspNetCore.Cookies=encrypted_blob<br/>HttpOnly; SameSite=Lax
     else email ≠ AllowedEmail
-        App-->>SPA: 403 Denied
+        App-->>SPA: 302 Redirect /?error=…
+        Note right of App: No cookie set —<br/>no session created
     end
     end
 
     rect rgb(40, 50, 60)
-    Note over SPA,Google: 4 — Authenticated Session
+    Note over SPA,Google: 4 — Session Active (every request)
 
-    loop Every page navigation / API call
-        SPA->>App: GET /api/* (Cookie: session JWT)
-        Note right of SPA: Blazor SPA sends cookie<br/>automatically with each request
-        App->>App: Validate JWT signature + expiry
-        alt JWT valid
+    SPA->>App: GET /auth/me (Cookie auto-attached)
+    App->>App: Decrypt cookie → ClaimsIdentity
+    Note right of App: Cookie middleware:<br/>1. Read cookie from header<br/>2. Decrypt with Data Protection key<br/>3. Deserialize → ClaimsPrincipal<br/>4. Set HttpContext.User<br/>(all in-memory, no DB lookup)
+    App-->>SPA: { email } → LoginDisplay shows email
+
+    loop Every API call
+        SPA->>App: GET /api/* (Cookie auto-attached)
+        Note right of SPA: Browser sends cookie<br/>automatically — JS never<br/>reads or sends it explicitly
+        App->>App: Decrypt cookie → ClaimsPrincipal
+        alt Session valid (cookie decrypts OK)
             App-->>SPA: 200 + resource data
-        else JWT expired
+        else No cookie / tampered / expired
             App-->>SPA: 401 Unauthorized
-            SPA->>App: GET /auth/login (restart flow)
+            SPA->>App: GET /auth/login (new session)
         end
     end
     end
 
     rect rgb(60, 50, 40)
-    Note over SPA,Google: 5 — Logout & Revocation
+    Note over SPA,Google: 5 — Session Destroyed (Logout)
 
     SPA->>App: POST /auth/logout
-    App->>App: Clear session cookie
-    App-->>SPA: 200 + Set-Cookie: (expired)
-
-    Note over SPA,App: Optional: revoke Google token
-    App->>Google: POST /revoke?token=access_token
-    Google-->>App: 200 OK
-    Note right of Google: Google access revoked —<br/>next login requires<br/>consent again
+    App->>App: SignOutAsync → expire cookie
+    Note right of App: Sets Set-Cookie with<br/>past expiry date —<br/>browser deletes it.<br/>No server state to clean up.
+    App-->>SPA: 302 Redirect / + Set-Cookie: (expired)
+    SPA->>App: GET /auth/me → 401 (no cookie)
+    SPA->>SPA: LoginDisplay shows "Sign in" link
     end
 ```
 
-| Phase | What happens | Token / Credential |
+## Session Model — Cookie as Session
+
+This application has **no server-side session store** (no database, no
+Redis, no in-memory dictionary). The cookie itself *is* the session.
+
+```mermaid
+graph LR
+    subgraph "Session Lifecycle"
+        A[SignInAsync] -->|serialize + encrypt| B[Cookie sent to browser]
+        B -->|every request| C[Cookie middleware]
+        C -->|decrypt + deserialize| D[ClaimsPrincipal]
+        D --> E[HttpContext.User.Identity]
+    end
+
+    subgraph "What lives where"
+        F[Browser] -->|stores| G[Encrypted cookie blob]
+        H[Backend] -->|holds| I[Data Protection key]
+        H -->|does NOT hold| J[Session state / user table]
+    end
+
+    style B fill:#2d8659,color:#fff
+    style G fill:#2d8659,color:#fff
+    style I fill:#4a6fa5,color:#fff
+    style J fill:#8a5a44,color:#fff
+```
+
+| Question | Answer |
+|----------|--------|
+| **Where is the session stored?** | Inside the cookie — browser stores the encrypted blob, backend decrypts it on each request |
+| **Is there a session ID?** | No. There is no server-side lookup. The cookie payload contains the full `ClaimsIdentity` |
+| **What happens on restart?** | If the Data Protection key persists (default: `~/.aspnet/DataProtection-Keys`), existing cookies remain valid. If the key is lost, all sessions are invalidated |
+| **How does it expire?** | ASP.NET sets a cookie expiry. After that, the browser stops sending it. No server-side cleanup needed |
+| **How does logout work?** | `SignOutAsync` tells the browser to delete the cookie (Set-Cookie with past date). Nothing to delete on the server |
+| **Scalability?** | Stateless — any backend instance can decrypt the cookie if they share the same Data Protection key. No sticky sessions needed |
+
+## Cookie Security Model
+
+The SPA runs entirely in the browser (Blazor WebAssembly) so it cannot
+hold secrets — no client secret, no tokens in `localStorage`. Instead,
+the backend owns the full OAuth exchange and issues an **encrypted
+HttpOnly cookie** as the session credential.
+
+```mermaid
+graph TB
+    subgraph "Why cookies?"
+        A[SPA = public client] -->|cannot store secrets| B[Backend handles OAuth]
+        B -->|issues| C[Encrypted HttpOnly cookie]
+    end
+
+    subgraph "What the cookie protects against"
+        C -->|HttpOnly| D[XSS cannot read cookie via JS]
+        C -->|SameSite=Lax| E[CSRF blocked on POST/PUT/DELETE]
+        C -->|Encrypted| F[Content not readable or tamperable]
+        C -->|Secure in prod| G[Only sent over HTTPS]
+    end
+
+    subgraph "What the cookie contains"
+        C -->|decrypted by backend| H[ClaimsIdentity]
+        H --> I[Email claim]
+    end
+
+    style A fill:#8a5a44,color:#fff
+    style C fill:#2d8659,color:#fff
+    style D fill:#4a6fa5,color:#fff
+    style E fill:#4a6fa5,color:#fff
+    style F fill:#4a6fa5,color:#fff
+    style G fill:#4a6fa5,color:#fff
+```
+
+| Property | Value | Why |
+|----------|-------|-----|
+| **HttpOnly** | `true` | Cookie is invisible to JavaScript — XSS attacks cannot steal it |
+| **SameSite** | `Lax` | Browser only sends cookie to same-origin requests (blocks CSRF on mutations) |
+| **Encrypted** | ASP.NET Data Protection | Cookie payload is AES-encrypted + HMAC-signed — cannot be forged or read |
+| **Secure** | `true` in production | Cookie only sent over HTTPS — cannot be intercepted in transit |
+| **No tokens in browser** | — | Access token + client secret stay server-side, never exposed to JS |
+
+## Endpoints
+
+| Method | Route | Auth | Purpose |
+|--------|-------|------|---------|
+| GET | `/auth/login` | — | Redirect to Google consent screen |
+| GET | `/auth/callback` | — | Exchange code → set cookie → redirect `/` |
+| GET | `/auth/me` | Cookie | Return `{ email }` or 401 |
+| POST | `/auth/logout` | Cookie | Expire cookie → redirect `/` |
+| GET | `/api/weatherforecast` | — | Sample data |
+
+| Phase | What happens | Credential |
 |-------|--------------|--------------------|
 | **Login** | `GET /auth/login` → 302 to Google | — |
 | **Consent** | User approves on Google | — |
 | **Callback** | `GET /auth/callback?code=…` | Authorization code (one-time, ~10 min) |
 | **Token exchange** | `POST googleapis.com/token` | Code → **Access token** (~1 hour) |
 | **Identity** | `GET googleapis.com/userinfo` | **Bearer access_token** |
-| **Session start** | Backend sets cookie | **Session JWT** (~24 hours) |
-| **Navigation** | Browser sends cookie on every request | **Session JWT** (auto-attached) |
-| **Expiry** | JWT expires → 401 | Must re-authenticate |
-| **Logout** | Clear cookie, optionally revoke at Google | Cookie deleted, Google token revoked |
+| **Cookie set** | `SignInAsync` serializes ClaimsIdentity → encrypted cookie | **Encrypted cookie** (= the session) |
+| **Navigation** | Browser sends cookie on every request | **Cookie** (auto-attached, decrypted server-side) |
+| **Expiry** | Cookie expires → browser stops sending → 401 | No server cleanup |
+| **Logout** | `SignOutAsync` → Set-Cookie with past date | Cookie deleted (session destroyed) |

@@ -73,6 +73,30 @@ let tests = testList "Auth" [
             | _ -> failtest "Expected Denied"
     ]
 
+    testList "buildQuery" [
+
+        testCase "builds key=value pairs" <| fun () ->
+            let result = Auth.buildQuery [
+                "a", "1"; "b", "2" ]
+            test <@ result = "a=1&b=2" @>
+
+        testCase "escapes values" <| fun () ->
+            let result =
+                Auth.buildQuery [ "q", "hello world" ]
+            test <@ result = "q=hello%20world" @>
+
+        testCase "empty list → empty string"
+            <| fun () ->
+            let result = Auth.buildQuery []
+            test <@ result = "" @>
+
+        testCase "escapes special characters"
+            <| fun () ->
+            let result =
+                Auth.buildQuery [ "u", "a@b.com" ]
+            test <@ result.Contains("%40") @>
+    ]
+
     testList "jsonProp" [
 
         testCase "extracts existing property" <| fun () ->
