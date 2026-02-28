@@ -1,27 +1,11 @@
-<#
-Usage examples:
-    pwsh ./scripts/rotate-sas.ps1
-    pwsh ./scripts/rotate-sas.ps1 -ExpiryDays 7 -Permissions cw
-    pwsh ./scripts/rotate-sas.ps1 -StorageAccountName longevityphotos -ContainerName photos -KeyVaultName longevity-kv-001 -SecretName photos-upload-sas
-#>
+# Usage: pwsh rotate-sas.ps1 [-ExpiryDays 7] [-Permissions cw]
 
 param(
-    [Parameter(Mandatory = $false)]
     [string]$StorageAccountName = "longevityphotos",
-
-    [Parameter(Mandatory = $false)]
     [string]$ContainerName = "photos",
-
-    [Parameter(Mandatory = $false)]
     [string]$KeyVaultName = "longevity-kv-001",
-
-    [Parameter(Mandatory = $false)]
     [string]$SecretName = "photos-upload-sas",
-
-    [Parameter(Mandatory = $false)]
     [int]$ExpiryDays = 7,
-
-    [Parameter(Mandatory = $false)]
     [string]$Permissions = "cw"
 )
 

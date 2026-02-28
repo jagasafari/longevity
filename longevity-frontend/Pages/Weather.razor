@@ -5,8 +5,6 @@
 
 <h1>Weather</h1>
 
-<p>This component demonstrates fetching data from the server.</p>
-
 @if (forecasts == null)
 {
     <p><em>Loading...</em></p>
@@ -18,7 +16,6 @@ else
             <tr>
                 <th>Date</th>
                 <th aria-label="Temperature in Celsius">Temp. (C)</th>
-                <th aria-label="Temperature in Fahrenheit">Temp. (F)</th>
                 <th>Summary</th>
             </tr>
         </thead>
@@ -28,7 +25,6 @@ else
                 <tr>
                     <td>@forecast.Date.ToShortDateString()</td>
                     <td>@forecast.TemperatureC</td>
-                    <td>@forecast.TemperatureF</td>
                     <td>@forecast.Summary</td>
                 </tr>
             }
@@ -41,17 +37,13 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        forecasts = await Http.GetFromJsonAsync<WeatherForecast[]>("sample-data/weather.json");
+        forecasts = await Http.GetFromJsonAsync<WeatherForecast[]>("/api/weatherforecast");
     }
 
     public class WeatherForecast
     {
         public DateOnly Date { get; set; }
-
         public int TemperatureC { get; set; }
-
         public string? Summary { get; set; }
-
-        public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
     }
 }

@@ -4,15 +4,11 @@ open System
 open System.Net.Http
 open System.Text.Json
 
-// ── Config (loaded from appsettings) ─────
-
 type GoogleOAuth =
     { ClientId: string
       ClientSecret: string
       RedirectUri: string
       AllowedEmail: string }
-
-// ── Pure: build Google OAuth URLs ────────
 
 let private authBase =
     "https://accounts.google.com/o/oauth2/v2/auth"
@@ -31,8 +27,6 @@ let buildLoginUrl (cfg: GoogleOAuth) =
       &scope=openid%%20email\
       &access_type=offline\
       &prompt=consent"
-
-// ── Impure: exchange code → token → email ─
 
 type AuthResult =
     | Authorized of email: string

@@ -1,23 +1,23 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: web-deployment
+  name: frontend-deployment
   namespace: {{ .Values.namespace }}
 spec:
-  replicas: {{ .Values.replicaCount }}
+  replicas: {{ .Values.frontend.replicaCount }}
   selector:
     matchLabels:
-      app: web
+      app: frontend
   template:
     metadata:
       labels:
-        app: web
+        app: frontend
     spec:
       containers:
-      - image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+      - image: {{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag }}
         name: nginx
         ports:
-        - containerPort: {{ .Values.service.targetPort }}
+        - containerPort: {{ .Values.frontend.service.targetPort }}
         volumeMounts:
         - mountPath: /etc/nginx/conf.d/default.conf
           name: nginx-config

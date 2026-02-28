@@ -1,4 +1,3 @@
-USER-SUPPLIED VALUES:
 controller:
   podAnnotations:
     kubectl.kubernetes.io/restartedAt: 1769874737

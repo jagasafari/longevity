@@ -1,23 +1,23 @@
-# Infrastructure Deployment
+# Infrastructure
 
-## Usage
+## Deploy everything
 
-```bash
-cd /Users/mika/dev/projects/longevity/longevity-app/infra
-# Update the SUBSCRIPTION_ID in the script first
-chmod +x scripts/deploy.sh
-./scripts/deploy.sh
+```powershell
+pwsh scripts/deploy-all.ps1
 ```
 
-## What it does
+## Deploy individually
 
-1. Deploys AKS cluster and resource group via Bicep
-2. Configures kubectl credentials
-3. Installs NGINX Ingress Controller with custom values
-4. Applies cluster-level manifests from `k8s/`
+```powershell
+pwsh scripts/deploy-infra.ps1
+pwsh scripts/setup-tls.ps1
+pwsh scripts/setup-cluster.ps1
+pwsh scripts/deploy-app.ps1
+```
 
 ## Prerequisites
 
-- Azure CLI logged in (`az login`)
-- kubectl installed
-- Helm 3 installed
+- Azure CLI (`az login`)
+- kubectl
+- Helm 3
+- Docker

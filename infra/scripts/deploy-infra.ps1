@@ -1,4 +1,3 @@
-# Deploy Azure infrastructure using Bicep
 # Usage: pwsh deploy-infra.ps1
 
 . $PSScriptRoot/config.ps1

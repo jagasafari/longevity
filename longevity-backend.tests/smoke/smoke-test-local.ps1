@@ -1,65 +1,34 @@
 param([string]$BaseUrl, [switch]$IncludeAuthChecks)
 $ErrorActionPreference = "Stop"
-$script = "pwsh ./smoke-test-local.ps1"
+. $PSScriptRoot/lib/test-helpers.ps1
 
 if (!$BaseUrl) {
-    Write-Host "ERROR: Missing required argument -BaseUrl" -ForegroundColor Red
-    @("Usage:",
-      "  $script -BaseUrl <url>",
-      "",
-      "Examples:",
-      "  # Local dotnet run (port 5001)",
-      "  $script -BaseUrl http://localhost:5001",
-      "",
-      "  # Docker container (port 8080)",
-      "  $script -BaseUrl http://localhost:8080",
-      "",
-      "  # With auth endpoint checks",
-      "  $script -BaseUrl http://localhost:8080 -IncludeAuthChecks"
-    ) | ForEach-Object { Write-Host $_ }
+    Write-Host "Missing -BaseUrl" -ForegroundColor Red
+    Write-Host "  pwsh ./smoke-test-local.ps1 -BaseUrl http://localhost:5001"
     exit 1
 }
 
 $BaseUrl = $BaseUrl.TrimEnd('/')
+$http    = New-TestHttpClient
 
-$handler = [System.Net.Http.HttpClientHandler]::new()
-$handler.AllowAutoRedirect = $false
-$http    = [System.Net.Http.HttpClient]::new($handler)
-
-function Test-Endpoint(
-    $Name, $Url, [int[]]$Expected = @(200)
-) {
-    $label = $Name.PadRight(42)
-    try {
-        $resp   = $http.GetAsync($Url).Result
-        $status = [int]$resp.StatusCode
-    }
-    catch {
-        Write-Host "  $label ❌ FAIL ($($_.Exception.Message))" `
-            -ForegroundColor Red
-        return $false
-    }
-    $ok    = $Expected -contains $status
-    $msg   = if ($ok) { "✅ OK ($status)" } else { "❌ FAIL (expected: $($Expected -join ', '), got: $status)" }
-    $color = if ($ok) { "Green" } else { "Red" }
-    Write-Host "  $label $msg" -ForegroundColor $color
-    $ok
-}
-
-Write-Host "`n==> Running local smoke test against: $BaseUrl`n" -ForegroundColor Cyan
+Write-Host "`n==> Smoke test: $BaseUrl`n" `
+    -ForegroundColor Cyan
 
 $results = @(
-    Test-Endpoint "GET /api/weatherforecast" "$BaseUrl/api/weatherforecast"
+    Test-Endpoint $http `
+        "GET /api/weatherforecast" `
+        "$BaseUrl/api/weatherforecast"
 )
 
 if ($IncludeAuthChecks) {
-    $results += Test-Endpoint "GET /auth/login"    "$BaseUrl/auth/login"    -Expected 200,302,401,404
-    $results += Test-Endpoint "GET /auth/callback" "$BaseUrl/auth/callback" -Expected 200,302,400,401,404
+    $results += Test-Endpoint $http `
+        "GET /auth/login" `
+        "$BaseUrl/auth/login" `
+        -Expected 200,302,401,404
+    $results += Test-Endpoint $http `
+        "GET /auth/callback" `
+        "$BaseUrl/auth/callback" `
+        -Expected 200,302,400,401,404
 }
 
-$passed = $results -notcontains $false
-Write-Host ""
-$msg   = if ($passed) { '✅ Smoke test passed' } else { '❌ Smoke test failed' }
-$color = if ($passed) { 'Green' } else { 'Red' }
-Write-Host "==> $msg" -ForegroundColor $color
-exit [int](!$passed)
+Write-TestResult $results

@@ -1,4 +1,3 @@
-# Generate and upload TLS certificate to Key Vault
 # Usage: pwsh setup-tls.ps1 [-Force]
 
 param(

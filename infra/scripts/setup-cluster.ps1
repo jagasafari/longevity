@@ -1,4 +1,3 @@
-# Set up AKS cluster services: ESO, ClusterSecretStore, ingress-nginx
 # Usage: pwsh setup-cluster.ps1
 
 . $PSScriptRoot/config.ps1

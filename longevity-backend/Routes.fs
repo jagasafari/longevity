@@ -4,18 +4,13 @@ open System
 open System.Net.Http
 open Microsoft.AspNetCore.Http
 
-// ── Weather ──────────────────────────────
-
 let weatherForecast () =
     DateOnly.FromDateTime DateTime.Now
     |> fun today -> Weather.generateRandom today 5
 
-// ── Auth ─────────────────────────────────
-
 let authLogin (cfg: Auth.GoogleOAuth) : IResult =
     Auth.buildLoginUrl cfg |> Results.Redirect
 
-/// Map domain result to HTTP response — pure.
 let private toResult = function
     | Auth.Authorized email ->
         Results.Ok {| message = "Authenticated"

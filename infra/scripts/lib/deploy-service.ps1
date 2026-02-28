@@ -1,4 +1,3 @@
-# Build, push & deploy a single service
 # Usage: pwsh deploy-service.ps1 -Service frontend [-Tag x]
 #        pwsh deploy-service.ps1 -Service backend  [-Tag x]
 
@@ -13,8 +12,8 @@ param(
 
 $cfg = @{
     frontend = @{
-        HelmSet    = "image.tag"
-        Deployment = "web-deployment"
+        HelmSet    = "frontend.image.tag"
+        Deployment = "frontend-deployment"
     }
     backend  = @{
         HelmSet    = "backend.image.tag"

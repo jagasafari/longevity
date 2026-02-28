@@ -1,4 +1,3 @@
-# Full deployment: infrastructure + cluster services + app
 # Usage: pwsh deploy-all.ps1 [-SkipInfra] [-SkipCluster] [-SkipApp] [-ForceTls] [-Tag <string>]
 
 param(

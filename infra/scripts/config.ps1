@@ -1,5 +1,5 @@
-# Shared configuration for all deployment scripts
-# Dot-source this: . $PSScriptRoot/config.ps1
+# Shared configuration — dot-source this:
+#   . $PSScriptRoot/config.ps1
 
 $ErrorActionPreference = 'Stop'
 

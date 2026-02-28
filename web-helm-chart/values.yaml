@@ -1,28 +1,25 @@
 namespace: longevity
-replicaCount: 1
 
-image:
-  repository: longevityacr.azurecr.io/longevity-frontend
-  tag: 5258fe7
+frontend:
+  replicaCount: 1
+  image:
+    repository: longevityacr.azurecr.io/longevity-frontend
+    tag: 5258fe7
+  service:
+    port: 80
+    targetPort: 80
 
 backend:
   replicaCount: 1
   image:
     repository: longevityacr.azurecr.io/longevity-backend
-    tag: ""  # set via --set backend.image.tag=<sha>
+    tag: ""
   service:
     port: 80
     targetPort: 8080
   healthPath: /api/weatherforecast
 
-service:
-  port: 80
-  targetPort: 80
-
 ingress:
-  name: web-ingress
   enabled: true
   className: nginx
-  path: /
-  pathType: Prefix
   tlsSecretName: web-tls

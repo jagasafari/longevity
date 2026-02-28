@@ -17,6 +17,7 @@ When responding:
 - Keep functions small, composable, and testable in isolation
 - Minimize lines of code — concise > verbose
 - No code comments — code should be self-documenting via clear naming
+- Keep script usage comments (e.g. `# Usage: pwsh script.ps1 [-Flag]`)
 - Inject side effects (randomness, IO, time) as function parameters
 - Make illegal states unrepresentable: encode domain rules in types, not runtime checks
   - Use discriminated unions / sum types instead of booleans or string flags

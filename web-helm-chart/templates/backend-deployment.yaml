@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - image: >-
-          {{ .Values.backend.image.repository }}:{{ default .Values.image.tag .Values.backend.image.tag }}
+          {{ .Values.backend.image.repository }}:{{ default .Values.frontend.image.tag .Values.backend.image.tag }}
         name: backend
         ports:
         - containerPort: {{ .Values.backend.service.targetPort }}
