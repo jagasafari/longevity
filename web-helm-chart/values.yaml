@@ -5,6 +5,16 @@ image:
   repository: longevityacr.azurecr.io/longevity-frontend
   tag: 5258fe7
 
+backend:
+  replicaCount: 1
+  image:
+    repository: longevityacr.azurecr.io/longevity-backend
+    tag: ""  # set via --set backend.image.tag=<sha>
+  service:
+    port: 80
+    targetPort: 8080
+  healthPath: /weatherforecast
+
 service:
   port: 80
   targetPort: 80

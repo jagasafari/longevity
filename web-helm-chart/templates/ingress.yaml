@@ -9,13 +9,27 @@ spec:
   rules:
   - http:
       paths:
-      - backend:
+      - path: /auth
+        pathType: Prefix
+        backend:
+          service:
+            name: backend-svc
+            port:
+              number: {{ .Values.backend.service.port }}
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: backend-svc
+            port:
+              number: {{ .Values.backend.service.port }}
+      - path: {{ .Values.ingress.path }}
+        pathType: {{ .Values.ingress.pathType }}
+        backend:
           service:
             name: web-svc
             port:
               number: {{ .Values.service.port }}
-        path: {{ .Values.ingress.path }}
-        pathType: {{ .Values.ingress.pathType }}
   tls:
   - secretName: {{ .Values.ingress.tlsSecretName }}
 {{- end }}

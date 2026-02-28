@@ -4,7 +4,19 @@ $script = "pwsh ./smoke-test-local.ps1"
 
 if (!$BaseUrl) {
     Write-Host "ERROR: Missing required argument -BaseUrl" -ForegroundColor Red
-    @("Usage:", "  $script -BaseUrl http://localhost:5001 -IncludeAuthChecks") | ForEach-Object { Write-Host $_ }
+    @("Usage:",
+      "  $script -BaseUrl <url>",
+      "",
+      "Examples:",
+      "  # Local dotnet run (port 5001)",
+      "  $script -BaseUrl http://localhost:5001",
+      "",
+      "  # Docker container (port 8080)",
+      "  $script -BaseUrl http://localhost:8080",
+      "",
+      "  # With auth endpoint checks",
+      "  $script -BaseUrl http://localhost:8080 -IncludeAuthChecks"
+    ) | ForEach-Object { Write-Host $_ } parallel parallel
     exit 1
 }
 
