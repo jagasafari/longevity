@@ -8,8 +8,9 @@ let weatherForecast () =
     DateOnly.FromDateTime DateTime.Now
     |> fun today -> Weather.generateRandom today 5
 
-let authLogin (cfg: Auth.GoogleOAuth) : IResult =
-    Auth.buildLoginUrl cfg |> Results.Redirect
+let authLogin clientId redirectUri : IResult =
+    Auth.buildLoginUrl clientId redirectUri
+    |> Results.Redirect
 
 let private toResult = function
     | Auth.Authorized email ->

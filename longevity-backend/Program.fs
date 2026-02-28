@@ -24,7 +24,10 @@ let main args =
     |> ignore
 
     app.MapGet("/auth/login",
-        Func<IResult>(fun () -> Routes.authLogin oauth))
+        Func<IResult>(fun () ->
+            Routes.authLogin
+                oauth.ClientId
+                oauth.RedirectUri))
     |> ignore
 
     app.MapGet("/auth/callback",

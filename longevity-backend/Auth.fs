@@ -19,9 +19,9 @@ let private tokenUrl =
 let private userInfoUrl =
     "https://www.googleapis.com/oauth2/v2/userinfo"
 
-let buildLoginUrl (cfg: GoogleOAuth) =
-    let qs = Uri.EscapeDataString cfg.RedirectUri
-    $"{authBase}?client_id={cfg.ClientId}\
+let buildLoginUrl clientId (redirectUri: string) =
+    let qs = Uri.EscapeDataString redirectUri
+    $"{authBase}?client_id={clientId}\
       &redirect_uri={qs}\
       &response_type=code\
       &scope=openid%%20email\
@@ -74,8 +74,8 @@ let private fetchEmail (http: HttpClient) token =
                |> jsonProp "email"
     }
 
-let private authorize cfg email =
-    if email = cfg.AllowedEmail
+let private authorize allowedEmail email =
+    if email = allowedEmail
     then Authorized email
     else Denied $"Email {email} not allowed"
 
@@ -90,7 +90,7 @@ let exchangeCodeForEmail
             | Ok token ->
             match! fetchEmail http token with
             | Result.Error msg -> return Error msg
-            | Ok email -> return authorize cfg email
+            | Ok email -> return authorize cfg.AllowedEmail email
         with ex ->
             return Error ex.Message
     }

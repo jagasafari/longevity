@@ -1,0 +1,177 @@
+# Longevity App
+
+Health & longevity tracking application.
+
+## Architecture Overview
+
+```mermaid
+graph TB
+    subgraph Internet
+        User[Blazor SPA<br/>in Browser]
+    end
+
+    subgraph Azure
+        subgraph AKS Cluster
+            ING[nginx Ingress<br/>:443 TLS]
+
+            subgraph Frontend
+                FE[nginx<br/>Blazor WASM]
+            end
+
+            subgraph Backend
+                BE[F# Minimal API<br/>ASP.NET Core]
+            end
+
+            subgraph Secrets
+                ESO[ExternalSecret Operator]
+                TLS[TLS Secret]
+                OAuth[OAuth Secret]
+            end
+        end
+
+        ACR[Container Registry]
+        KV[Key Vault]
+        SA[Storage Account]
+    end
+
+    subgraph Google
+        GOAuth[Google OAuth 2.0]
+    end
+
+    User -->|HTTPS| ING
+    ING -->|/| FE
+    ING -->|/api, /auth| BE
+    BE -->|Token exchange| GOAuth
+    KV -->|Sync| ESO
+    ESO --> TLS
+    ESO --> OAuth
+    OAuth -->|env vars| BE
+    TLS -->|cert| ING
+    ACR -->|Images| AKS
+
+    style User fill:#4a6fa5,color:#fff
+    style ING fill:#6a4a7a,color:#fff
+    style FE fill:#2d8659,color:#fff
+    style BE fill:#8a5a44,color:#fff
+    style ACR fill:#4a6fa5,color:#fff
+    style KV fill:#8a5a44,color:#fff
+    style SA fill:#5a7a4a,color:#fff
+    style GOAuth fill:#c44a3f,color:#fff
+    style ESO fill:#6a6a3a,color:#fff
+```
+
+## Project Structure
+
+```mermaid
+graph LR
+    subgraph Repository
+        ROOT[longevity-app]
+        FE[longevity-frontend/]
+        BE[longevity-backend/]
+        TESTS[longevity-backend.tests/]
+        HELM[web-helm-chart/]
+        INFRA[infra/]
+    end
+
+    ROOT --- FE
+    ROOT --- BE
+    ROOT --- TESTS
+    ROOT --- HELM
+    ROOT --- INFRA
+
+    FE -.- FED[Blazor WASM + nginx]
+    BE -.- BED[F# Minimal API]
+    TESTS -.- TD[Smoke tests]
+    HELM -.- HD[Helm chart + K8s templates]
+    INFRA -.- ID[Bicep + deploy scripts]
+
+    style FE fill:#2d8659,color:#fff
+    style BE fill:#8a5a44,color:#fff
+    style TESTS fill:#5a5a7a,color:#fff
+    style HELM fill:#6a4a7a,color:#fff
+    style INFRA fill:#4a6fa5,color:#fff
+```
+
+## End-to-End Request Flow
+
+```mermaid
+sequenceDiagram
+    participant SPA as Blazor SPA (Browser)
+    participant ING as nginx Ingress (:443)
+    participant Files as Static Files (nginx)
+    participant BE as Backend (F# API)
+    participant Google as Google OAuth
+
+    Note over SPA: Single-page application<br/>running client-side
+
+    rect rgb(40, 60, 40)
+    Note over SPA,Files: Page Load
+
+    SPA->>ING: GET / (HTTPS)
+    ING->>Files: Route to frontend-svc
+    Files-->>SPA: index.html + Blazor WASM
+    end
+
+    rect rgb(40, 40, 60)
+    Note over SPA,BE: API Call
+
+    SPA->>ING: GET /api/weatherforecast
+    ING->>BE: Route to backend-svc
+    BE-->>SPA: JSON response
+    end
+
+    rect rgb(60, 40, 40)
+    Note over SPA,Google: Authentication
+
+    SPA->>ING: GET /auth/login
+    ING->>BE: Route to backend-svc
+    BE-->>SPA: 302 → Google consent
+    SPA->>Google: Approve access
+    Google-->>SPA: 302 → /auth/callback?code=…
+    SPA->>ING: GET /auth/callback?code=…
+    ING->>BE: Route to backend-svc
+    BE->>Google: Exchange code → access token
+    BE->>Google: Fetch email with Bearer token
+    BE-->>SPA: Authorized / Denied
+    end
+```
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Frontend | Blazor WebAssembly, nginx |
+| Backend | F# / ASP.NET Core Minimal API (.NET 10) |
+| Auth | Google OAuth 2.0 |
+| Container | Docker (linux/amd64) |
+| Registry | Azure Container Registry |
+| Orchestration | AKS (Kubernetes) + Helm |
+| Ingress | nginx Ingress Controller + TLS |
+| Secrets | Azure Key Vault + ExternalSecret Operator |
+| Storage | Azure Storage Account |
+| IaC | Bicep |
+| Scripts | PowerShell 7 |
+
+## Quick Start
+
+```powershell
+# Deploy everything
+pwsh infra/scripts/deploy-all.ps1
+
+# Deploy only backend
+pwsh infra/scripts/deploy-backend.ps1
+
+# Deploy only frontend
+pwsh infra/scripts/deploy-frontend.ps1
+
+# Run backend locally
+cd longevity-backend && dotnet run
+
+# Run frontend locally
+cd longevity-frontend && dotnet run
+```
+
+See individual READMEs for details:
+- [Backend](longevity-backend/README.md) — API routes, OAuth flow
+- [Frontend](longevity-frontend/README.md) — SPA architecture, request flow
+- [Infrastructure](infra/README.md) — Azure resources, deployment pipeline, ingress routing

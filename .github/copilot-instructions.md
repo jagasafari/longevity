@@ -19,6 +19,7 @@ When responding:
 - No code comments — code should be self-documenting via clear naming
 - Keep script usage comments (e.g. `# Usage: pwsh script.ps1 [-Flag]`)
 - Inject side effects (randomness, IO, time) as function parameters
+- Pass only what a function needs — never forward an entire record when a subset suffices
 - Make illegal states unrepresentable: encode domain rules in types, not runtime checks
   - Use discriminated unions / sum types instead of booleans or string flags
   - Use `option`/`Result` instead of nulls or exceptions
