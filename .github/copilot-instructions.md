@@ -26,7 +26,7 @@ When responding:
   - Prefer narrowing inputs to the smallest valid type over defensive validation
 
 ### PowerShell
-- Keep lines to a maximum of 64 characters
+- Keep lines to a maximum of 94 characters
 - Extract variables instead of using long inline expressions
 - Prefer functional style (inspired by F#/Haskell):
   - Avoid mutable variables; derive state from data

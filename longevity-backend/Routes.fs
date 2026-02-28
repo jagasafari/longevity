@@ -36,6 +36,15 @@ let internal redirectUrl = function
         let err = Uri.EscapeDataString msg
         $"/?error={err}"
 
+let private signInIfAuthorized ctx = function
+    | Auth.Authorized email -> signIn ctx email
+    | _ -> Task.CompletedTask
+
+let private extractCode (ctx: HttpContext) =
+    match ctx.Request.Query["code"] |> string with
+    | null | "" -> None
+    | code      -> Some code
+
 let authCallback
     (exchange:
         HttpClient
@@ -44,33 +53,27 @@ let authCallback
     (ctx: HttpContext)
     (factory: IHttpClientFactory)
     = task {
-        let code =
-            ctx.Request.Query["code"] |> string
+        let! result =
+            match extractCode ctx with
+            | None ->
+                Task.FromResult
+                    (Auth.Error "missing_code")
+            | Some code ->
+                exchange
+                    (factory.CreateClient()) code
 
-        if String.IsNullOrEmpty code then
-            return Results.Redirect
-                "/?error=missing_code"
-        else
-            let http = factory.CreateClient()
-            let! result = exchange http code
-
-            match result with
-            | Auth.Authorized email ->
-                do! signIn ctx email
-            | _ -> ()
-
-            return Results.Redirect (redirectUrl result)
+        do! signInIfAuthorized ctx result
+        return Results.Redirect (redirectUrl result)
     }
 
 let authMe (ctx: HttpContext) : IResult =
-    match ctx.User.Identity.IsAuthenticated with
-    | true ->
-        ctx.User.FindFirstValue ClaimTypes.Email
-        |> fun email -> Results.Ok {| email = email |}
-    | false ->
+    match ctx.User.FindFirstValue ClaimTypes.Email with
+    | null ->
         Results.Json(
             {| error = "Not authenticated" |},
             statusCode = 401)
+    | email ->
+        Results.Ok {| email = email |}
 
 let authLogout (ctx: HttpContext) = task {
     do! ctx.SignOutAsync()
