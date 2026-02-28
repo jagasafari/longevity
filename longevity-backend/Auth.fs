@@ -33,13 +33,17 @@ type AuthResult =
     | Denied     of reason: string
     | Error      of message: string
 
-let exchangeCodeForEmail
-    (http: HttpClient)
-    (cfg: GoogleOAuth)
-    (code: string)
-    = task {
-    try
-        // Exchange code for access token
+let private jsonProp
+    (name: string)
+    (doc: JsonDocument)
+    : Result<string, string> =
+    match doc.RootElement.TryGetProperty(name) with
+    | true, (el: JsonElement) -> Ok (el.GetString())
+    | false, _ -> Result.Error $"Missing '{name}'"
+
+let private fetchToken
+    (http: HttpClient) (cfg: GoogleOAuth) code =
+    task {
         let form = dict [
             "code",          code
             "client_id",     cfg.ClientId
@@ -47,43 +51,46 @@ let exchangeCodeForEmail
             "redirect_uri",  cfg.RedirectUri
             "grant_type",    "authorization_code"
         ]
-        let content = new FormUrlEncodedContent(form)
-        let! tokenResp =
-            http.PostAsync(tokenUrl, content)
-        let! tokenJson =
-            tokenResp.Content.ReadAsStringAsync()
-        let tokenDoc =
-            JsonDocument.Parse(tokenJson)
+        let! resp =
+            http.PostAsync(
+                tokenUrl,
+                new FormUrlEncodedContent(form))
+        let! json = resp.Content.ReadAsStringAsync()
+        return JsonDocument.Parse(json)
+               |> jsonProp "access_token"
+    }
 
-        match tokenDoc.RootElement.TryGetProperty "access_token" with
-        | false, _ ->
-            return Error $"No access_token in response: {tokenJson}"
-        | true, tokenEl ->
-
-        let accessToken = tokenEl.GetString()
-
-        // Fetch user email
-        use req = new HttpRequestMessage(
-            HttpMethod.Get, userInfoUrl)
+let private fetchEmail (http: HttpClient) token =
+    task {
+        use req =
+            new HttpRequestMessage(
+                HttpMethod.Get, userInfoUrl)
         req.Headers.Authorization <-
             Headers.AuthenticationHeaderValue(
-                "Bearer", accessToken)
-        let! infoResp = http.SendAsync(req)
-        let! infoJson =
-            infoResp.Content.ReadAsStringAsync()
-        let infoDoc = JsonDocument.Parse(infoJson)
+                "Bearer", token)
+        let! resp = http.SendAsync req
+        let! json = resp.Content.ReadAsStringAsync()
+        return JsonDocument.Parse(json)
+               |> jsonProp "email"
+    }
 
-        match infoDoc.RootElement.TryGetProperty "email" with
-        | false, _ ->
-            return Error "No email in userinfo"
-        | true, emailEl ->
+let private authorize cfg email =
+    if email = cfg.AllowedEmail
+    then Authorized email
+    else Denied $"Email {email} not allowed"
 
-        let email = emailEl.GetString()
-
-        if email = cfg.AllowedEmail then
-            return Authorized email
-        else
-            return Denied $"Email {email} not allowed"
-    with ex ->
-        return Error ex.Message
-}
+let exchangeCodeForEmail
+    (http: HttpClient)
+    (cfg: GoogleOAuth)
+    (code: string)
+    = task {
+        try
+            match! fetchToken http cfg code with
+            | Result.Error msg -> return Error msg
+            | Ok token ->
+            match! fetchEmail http token with
+            | Result.Error msg -> return Error msg
+            | Ok email -> return authorize cfg email
+        with ex ->
+            return Error ex.Message
+    }
