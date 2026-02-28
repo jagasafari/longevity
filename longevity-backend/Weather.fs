@@ -12,14 +12,13 @@ let private summaries =
        "Cool"; "Mild"; "Warm"
        "Balmy"; "Hot"; "Sweltering"; "Scorching" |]
 
-let generate (today: DateOnly) count randTemp randSummary =
+let generate randTemp randSummary (today: DateOnly) count =
     [| for i in 1..count ->
         { Date         = today.AddDays i
           TemperatureC = randTemp ()
           Summary      = summaries[randSummary ()] } |]
 
-let generateRandom today count =
+let generateRandom =
     generate
-        today count
         (fun () -> Random.Shared.Next(-20, 55))
         (fun () -> Random.Shared.Next(summaries.Length))

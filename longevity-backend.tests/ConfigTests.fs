@@ -45,7 +45,7 @@ let tests = testList "Config" [
             test <@ oauth.RedirectUri =
                 "https://example.com/auth/callback" @>
             test <@ oauth.AllowedEmail =
-                "user@example.com" @>
+                Auth.Email "user@example.com" @>
 
         testCase "fails on missing ClientId" <| fun () ->
             let cfg = buildConfig [
@@ -114,6 +114,6 @@ let tests = testList "Config" [
                     "test@domain.org" ]
                 |> Config.loadGoogleOAuth
             test <@ oauth.AllowedEmail =
-                "test@domain.org" @>
+                Auth.Email "test@domain.org" @>
     ]
 ]

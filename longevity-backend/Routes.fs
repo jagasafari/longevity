@@ -16,7 +16,8 @@ let authLogin clientId redirectUri : IResult =
     AuthLogin.buildLoginUrl clientId redirectUri
     |> Results.Redirect
 
-let private signIn (ctx: HttpContext) email =
+let private signIn
+    (ctx: HttpContext) (Auth.Email email) =
     let scheme =
         CookieAuthenticationDefaults.AuthenticationScheme
     let identity =

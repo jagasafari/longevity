@@ -58,14 +58,17 @@ let tests = testList "Auth" [
         testCase "Authorized when email matches" <| fun () ->
             let result =
                 AuthCallback.authorize
-                    "me@example.com" "me@example.com"
+                    (Auth.Email "me@example.com")
+                    (Auth.Email "me@example.com")
             test <@ result =
-                Auth.Authorized "me@example.com" @>
+                Auth.Authorized
+                    (Auth.Email "me@example.com") @>
 
         testCase "Denied when email differs" <| fun () ->
             let result =
                 AuthCallback.authorize
-                    "me@example.com" "other@example.com"
+                    (Auth.Email "me@example.com")
+                    (Auth.Email "other@example.com")
             match result with
             | Auth.Denied reason ->
                 test <@ reason.Contains(

@@ -4,7 +4,7 @@ open System.Net.Http
 open System.Text.Json
 
 let private fetchToken
-    (http: HttpClient) (cfg: Auth.GoogleOAuth) code =
+    (cfg: Auth.GoogleOAuth) (http: HttpClient) code =
     task {
         let form = dict [
             "code",          code
@@ -34,12 +34,14 @@ let private fetchEmail (http: HttpClient) token =
         let! json = resp.Content.ReadAsStringAsync()
         return JsonDocument.Parse(json)
                |> Auth.jsonProp "email"
+               |> Result.map Auth.Email
     }
 
-let internal authorize allowedEmail email =
-    if email = allowedEmail
-    then Auth.Authorized email
-    else Auth.Denied $"Email {email} not allowed"
+let internal authorize
+    (Auth.Email allowed) (Auth.Email actual) =
+    if allowed = actual
+    then Auth.Authorized (Auth.Email actual)
+    else Auth.Denied $"Email {actual} not allowed"
 
 let exchangeCodeForEmail
     (cfg: Auth.GoogleOAuth)
@@ -47,13 +49,13 @@ let exchangeCodeForEmail
     (code: string)
     = task {
         try
-            match! fetchToken http cfg code with
-            | Result.Error msg -> return Auth.Error msg
-            | Ok token ->
-            match! fetchEmail http token with
-            | Result.Error msg -> return Auth.Error msg
+            match! fetchToken cfg http code
+                   |> Auth.TaskResult.bind
+                       (fetchEmail http) with
             | Ok email ->
                 return authorize cfg.AllowedEmail email
+            | Error msg ->
+                return Auth.Error msg
         with ex ->
             return Auth.Error ex.Message
     }

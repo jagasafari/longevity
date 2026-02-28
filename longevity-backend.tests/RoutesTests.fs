@@ -12,7 +12,8 @@ let tests = testList "Routes" [
         testCase "Authorized → root" <| fun () ->
             let url =
                 Routes.redirectUrl
-                    (Auth.Authorized "a@b.com")
+                    (Auth.Authorized
+                        (Auth.Email "a@b.com"))
             test <@ url = "/" @>
 
         testCase "Denied → error with reason" <| fun () ->

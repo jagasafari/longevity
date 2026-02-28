@@ -12,15 +12,17 @@ let tests = testList "Weather" [
         testCase "returns requested count" <| fun () ->
             let today = DateOnly(2026, 3, 1)
             let result =
-                Weather.generate today 3
+                Weather.generate
                     (fun () -> 20) (fun () -> 0)
+                    today 3
             test <@ result.Length = 3 @>
 
         testCase "dates are consecutive from tomorrow" <| fun () ->
             let today = DateOnly(2026, 3, 1)
             let result =
-                Weather.generate today 3
+                Weather.generate
                     (fun () -> 20) (fun () -> 0)
+                    today 3
             let dates =
                 result |> Array.map (fun f -> f.Date)
             test <@ dates = [|
@@ -31,8 +33,9 @@ let tests = testList "Weather" [
         testCase "uses injected temperature" <| fun () ->
             let today = DateOnly(2026, 3, 1)
             let result =
-                Weather.generate today 2
+                Weather.generate
                     (fun () -> 42) (fun () -> 0)
+                    today 2
             let temps =
                 result
                 |> Array.map (fun f -> f.TemperatureC)
@@ -41,15 +44,17 @@ let tests = testList "Weather" [
         testCase "uses injected summary index" <| fun () ->
             let today = DateOnly(2026, 3, 1)
             let result =
-                Weather.generate today 1
+                Weather.generate
                     (fun () -> 10) (fun () -> 5)
+                    today 1
             test <@ result[0].Summary = "Warm" @>
 
         testCase "empty for count zero" <| fun () ->
             let today = DateOnly(2026, 3, 1)
             let result =
-                Weather.generate today 0
+                Weather.generate
                     (fun () -> 0) (fun () -> 0)
+                    today 0
             test <@ result.Length = 0 @>
     ]
 

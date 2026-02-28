@@ -20,7 +20,7 @@ let private requireUri key section =
 let private requireEmail key section =
     let value = require key section
     if Regex.IsMatch(value, @"^[^@\s]+@[^@\s]+\.[^@\s]+$")
-    then value
+    then Auth.Email value
     else failwith $"Invalid email: GoogleOAuth:{key}"
 
 let loadGoogleOAuth (cfg: IConfiguration) : Auth.GoogleOAuth =
