@@ -6,69 +6,73 @@ F# / ASP.NET Core minimal API.
 
 ```mermaid
 sequenceDiagram
+    box rgb(170,255,200) SPA
     participant SPA as Blazor SPA (Browser)
+    end
+    box rgb(255,180,180) Backend
     participant App as Backend (F# API)
+    end
     participant Google as Google OAuth
 
-    Note over SPA: Blazor WebAssembly<br/>single-page application<br/>running client-side
+    Note over SPA: Blazor WebAssembly single-page app running client-side
 
     rect rgb(40, 40, 60)
-    Note over SPA,Google: 1 — Login & Consent
+    Note over SPA,Google: 1 - Login and Consent
 
     SPA->>App: GET /auth/login
     App-->>SPA: 302 Redirect to Google
 
-    Note right of App: query: client_id,<br/>redirect_uri,<br/>scope=openid email,<br/>response_type=code
+    Note right of App: query params - client_id, redirect_uri, scope=openid email, response_type=code
 
     SPA->>Google: Browser follows redirect
     Google-->>SPA: Consent screen
     SPA->>Google: Approves access
-    Google-->>SPA: 302 → /auth/callback?code=AUTH_CODE
+    Google-->>SPA: 302 redirect to /auth/callback?code=AUTH_CODE
     end
 
     rect rgb(40, 60, 40)
-    Note over SPA,Google: 2 — Token Exchange (server-side)
+    Note over SPA,Google: 2 - Token Exchange (server-side)
 
     SPA->>App: GET /auth/callback?code=AUTH_CODE
 
     App->>Google: POST /token
-    Note right of App: body: auth_code +<br/>client_id + client_secret +<br/>redirect_uri + grant_type
+    Note right of App: body - auth_code, client_id, client_secret, redirect_uri, grant_type
 
     Google-->>App: { access_token (Bearer) }
-    Note right of App: access_token is short-lived<br/>(~1 hour, Google default)
+    Note right of App: access_token is short-lived (~1 hour, Google default)
     end
 
     rect rgb(60, 40, 40)
-    Note over SPA,Google: 3 — Session Creation
+    Note over SPA,Google: 3 - Session Creation
 
     App->>Google: GET /userinfo
-    Note right of App: Authorization:<br/>Bearer access_token
+    Note right of App: Authorization header uses Bearer access_token
 
     Google-->>App: { email }
 
     alt email = AllowedEmail
         App->>App: SignInAsync(ClaimsIdentity)
-        Note right of App: ASP.NET serializes<br/>ClaimsIdentity → encrypts<br/>with Data Protection (AES) →<br/>sets as cookie value.<br/>No server-side session store —<br/>the cookie IS the session.
+        Note right of App: encrypts ClaimsIdentity (AES) into cookie - cookie IS the session
         App-->>SPA: 302 Redirect / + Set-Cookie
-        Note right of App: Set-Cookie:<br/>.AspNetCore.Cookies=encrypted_blob<br/>HttpOnly; SameSite=Lax
-    else email ≠ AllowedEmail
-        App-->>SPA: 302 Redirect /?error=…
-        Note right of App: No cookie set —<br/>no session created
+        Note right of App: Set-Cookie .AspNetCore.Cookies=encrypted_blob, HttpOnly, SameSite=Lax
+    else email does not match AllowedEmail
+        App-->>SPA: 302 Redirect /?error=access_denied
+        Note right of App: No cookie set, no session created
     end
     end
 
     rect rgb(40, 50, 60)
-    Note over SPA,Google: 4 — Session Active (every request)
+    Note over SPA,Google: 4 - Session Active (every request)
 
     SPA->>App: GET /auth/me (Cookie auto-attached)
-    App->>App: Decrypt cookie → ClaimsIdentity
-    Note right of App: Cookie middleware:<br/>1. Read cookie from header<br/>2. Decrypt with Data Protection key<br/>3. Deserialize → ClaimsPrincipal<br/>4. Set HttpContext.User<br/>(all in-memory, no DB lookup)
-    App-->>SPA: { email } → LoginDisplay shows email
+    App->>App: Decrypt cookie to ClaimsIdentity
+    Note right of App: cookie middleware decrypts to ClaimsPrincipal in-memory - no DB lookup
+    App-->>SPA: email payload then LoginDisplay shows email
 
     loop Every API call
         SPA->>App: GET /api/* (Cookie auto-attached)
-        Note right of SPA: Browser sends cookie<br/>automatically — JS never<br/>reads or sends it explicitly
-        App->>App: Decrypt cookie → ClaimsPrincipal
+        Note right of SPA: Browser sends cookie automatically, JS never reads or sends it
+        App->>App: Decrypt cookie to ClaimsPrincipal
         alt Session valid (cookie decrypts OK)
             App-->>SPA: 200 + resource data
         else No cookie / tampered / expired
@@ -79,13 +83,13 @@ sequenceDiagram
     end
 
     rect rgb(60, 50, 40)
-    Note over SPA,Google: 5 — Session Destroyed (Logout)
+    Note over SPA,Google: 5 - Session Destroyed (Logout)
 
     SPA->>App: POST /auth/logout
-    App->>App: SignOutAsync → expire cookie
-    Note right of App: Sets Set-Cookie with<br/>past expiry date —<br/>browser deletes it.<br/>No server state to clean up.
-    App-->>SPA: 302 Redirect / + Set-Cookie: (expired)
-    SPA->>App: GET /auth/me → 401 (no cookie)
+    App->>App: SignOutAsync expires cookie
+    Note right of App: Set-Cookie with past expiry - browser deletes it, no server state
+    App-->>SPA: 302 Redirect / + expired Set-Cookie
+    SPA->>App: GET /auth/me returns 401 (no cookie)
     SPA->>SPA: LoginDisplay shows "Sign in" link
     end
 ```
@@ -188,3 +192,9 @@ graph TB
 | **Navigation** | Browser sends cookie on every request | **Cookie** (auto-attached, decrypted server-side) |
 | **Expiry** | Cookie expires → browser stops sending → 401 | No server cleanup |
 | **Logout** | `SignOutAsync` → Set-Cookie with past date | Cookie deleted (session destroyed) |
+
+## Related READMEs
+
+- [Project Root](../README.md)
+- [Frontend](../longevity-frontend/README.md)
+- [Infrastructure](../infra/README.md)

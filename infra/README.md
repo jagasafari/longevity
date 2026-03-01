@@ -135,3 +135,9 @@ pwsh scripts/deploy-app.ps1
 - kubectl
 - Helm 3
 - Docker
+
+## Related READMEs
+
+- [Project Root](../README.md)
+- [Backend](../longevity-backend/README.md)
+- [Frontend](../longevity-frontend/README.md)

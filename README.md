@@ -96,10 +96,16 @@ graph LR
 
 ```mermaid
 sequenceDiagram
+    box rgb(170,255,200) SPA
     participant SPA as Blazor SPA (Browser)
+    end
+    box rgb(170,210,255) Ingress
     participant ING as nginx Ingress (:443)
+    end
     participant Files as Static Files (nginx)
+    box rgb(255,180,180) Backend
     participant BE as Backend (F# API)
+    end
     participant Google as Google OAuth
 
     Note over SPA: Single-page application<br/>running client-side
@@ -175,3 +181,9 @@ See individual READMEs for details:
 - [Backend](longevity-backend/README.md) — API routes, OAuth flow
 - [Frontend](longevity-frontend/README.md) — SPA architecture, request flow
 - [Infrastructure](infra/README.md) — Azure resources, deployment pipeline, ingress routing
+
+## Related READMEs
+
+- [Backend](longevity-backend/README.md)
+- [Frontend](longevity-frontend/README.md)
+- [Infrastructure](infra/README.md)

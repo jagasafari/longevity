@@ -10,8 +10,8 @@ graph LR
         Blazor[Blazor WASM App]
     end
 
-    subgraph AKS Pod
-        Nginx[nginx :80]
+    subgraph Frontend Pod
+        Nginx[nginx :80 - Static Files SPA]
     end
 
     subgraph Backend Pod
@@ -31,10 +31,16 @@ graph LR
 
 ```mermaid
 sequenceDiagram
+    box rgb(170,255,200) SPA
     participant SPA as Blazor SPA (Browser)
+    end
+    box rgb(170,210,255) Ingress
     participant Ingress as nginx Ingress
+    end
     participant Files as Static Files (nginx)
+    box rgb(255,180,180) Backend
     participant BE as Backend Pod (F# API)
+    end
 
     Note over SPA: Single-page application<br/>running client-side in browser
 
@@ -90,8 +96,12 @@ HttpOnly cookie** set by the backend after Google OAuth completes.
 ```mermaid
 sequenceDiagram
     participant User
+    box rgb(170,255,200) SPA
     participant SPA as Blazor SPA (Browser)
+    end
+    box rgb(255,180,180) Backend
     participant BE as Backend (F# API)
+    end
 
     Note over SPA: LoginDisplay component<br/>renders in MainLayout top bar
 
@@ -166,3 +176,9 @@ docker compose up -d
 ```
 
 http://localhost:8080
+
+## Related READMEs
+
+- [Project Root](../README.md)
+- [Backend](../longevity-backend/README.md)
+- [Infrastructure](../infra/README.md)
