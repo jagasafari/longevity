@@ -31,6 +31,10 @@ kubectl wait clustersecretstore/azure-keyvault `
 
 if ($LASTEXITCODE -ne 0) { throw "ClusterSecretStore not ready" }
 
+Write-Host "==> Applying Container Insights log filter config..." -ForegroundColor Cyan
+kubectl apply -f "$InfraDir/k8s/container-insights-agentconfig.yaml"
+if ($LASTEXITCODE -ne 0) { throw "Container Insights agent config apply failed" }
+
 # --- Ingress NGINX ---
 Write-Host "==> Installing NGINX Ingress Controller..." -ForegroundColor Cyan
 helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx

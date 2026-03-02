@@ -4,6 +4,9 @@ param config object
 @description('The location of the Managed Cluster resource.')
 param location string
 
+@description('Log Analytics workspace resource ID for Container Insights.')
+param logAnalyticsWorkspaceResourceId string
+
 resource aks 'Microsoft.ContainerService/managedClusters@2024-02-01' = {
   name: config.clusterName
   location: location
@@ -32,6 +35,12 @@ resource aks 'Microsoft.ContainerService/managedClusters@2024-02-01' = {
         config: {
           enableSecretRotation: 'true'
           rotationPollInterval: '2m'
+        }
+      }
+      omsagent: {
+        enabled: true
+        config: {
+          logAnalyticsWorkspaceResourceID: logAnalyticsWorkspaceResourceId
         }
       }
     }
