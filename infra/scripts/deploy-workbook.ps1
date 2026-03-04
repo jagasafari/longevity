@@ -2,26 +2,43 @@
 
 . $PSScriptRoot/config.ps1
 
-$WorkbookBicepFile = "$InfraDir/bicep/workbook-only.bicep"
+$WorkbookBicepFile = "$InfraDir/azure/workbook-only.bicep"
+$WorkbookBuilderFile = "$InfraDir/azure/workbook/workbook-builder.py"
+$WorkbookSerializedFile = "$InfraDir/azure/modules/workbook.serialized.json"
 $WorkbookName = 'longevity workbook'
 $WorkspaceName = 'longevity-workspace'
 
 $DeploymentName = "workbook-only-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
 
-Write-Host "==> Deploying workbook only with Bicep..." -ForegroundColor Cyan
-$Deployment = az deployment sub create `
-    --name $DeploymentName `
-    --location $RgLocation `
-    --template-file $WorkbookBicepFile `
-    --parameters rgName=$RgName rgLocation=$RgLocation workbookDisplayName="$WorkbookName" logAnalyticsWorkspaceName="$WorkspaceName" `
-    --subscription $SubscriptionId `
-    -o json | ConvertFrom-Json
+try {
+    Write-Host "==> Generating workbook payload..." -ForegroundColor Cyan
+    $WorkspaceResourceId = "/subscriptions/$SubscriptionId/resourcegroups/$RgName/providers/microsoft.operationalinsights/workspaces/$WorkspaceName"
+    python3 $WorkbookBuilderFile $WorkbookSerializedFile $WorkspaceResourceId
+    if ($LASTEXITCODE -ne 0) { throw "Workbook payload generation failed" }
 
-if ($LASTEXITCODE -ne 0) { throw "Workbook-only Bicep deployment failed" }
+    Write-Host "==> Deploying workbook only with Bicep..." -ForegroundColor Cyan
+    $Deployment = az deployment sub create `
+        --name $DeploymentName `
+        --location $RgLocation `
+        --template-file $WorkbookBicepFile `
+        --parameters rgName=$RgName rgLocation=$RgLocation `
+        --parameters workbookDisplayName="$WorkbookName" `
+        --parameters logAnalyticsWorkspaceName="$WorkspaceName" `
+        --subscription $SubscriptionId `
+        -o json | ConvertFrom-Json
 
-$WorkbookUrl = $Deployment.properties.outputs.workbookUrl.value
+    if ($LASTEXITCODE -ne 0) { throw "Workbook-only Bicep deployment failed" }
 
-Write-Host "==> Workbook deployed successfully" -ForegroundColor Green
-if ($WorkbookUrl) {
-    Write-Host "==> Workbook URL: $WorkbookUrl" -ForegroundColor Green
+    $WorkbookUrl = $Deployment.properties.outputs.workbookUrl.value
+
+    Write-Host "==> Workbook deployed successfully" -ForegroundColor Green
+    if ($WorkbookUrl) {
+        Write-Host "==> Workbook URL: $WorkbookUrl" -ForegroundColor Green
+    }
+}
+finally {
+    if (Test-Path $WorkbookSerializedFile) {
+        Remove-Item $WorkbookSerializedFile -Force
+        Write-Host "==> Removed temporary workbook payload" -ForegroundColor DarkGray
+    }
 }

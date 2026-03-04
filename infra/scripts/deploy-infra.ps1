@@ -2,6 +2,9 @@
 
 . $PSScriptRoot/config.ps1
 
+$WorkbookBuilderFile = "$InfraDir/azure/workbook/workbook-builder.py"
+$WorkbookSerializedFile = "$InfraDir/azure/modules/workbook.serialized.json"
+
 function Get-ProviderState {
     param([string]$Namespace)
 
@@ -77,22 +80,36 @@ if ($LASTEXITCODE -ne 0) { throw "Failed to get deployer principal ID" }
 
 $DeploymentName = "longevity-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
 
-Write-Host "==> Deploying infrastructure with Bicep..." -ForegroundColor Cyan
-$Deployment = az deployment sub create `
-    --name $DeploymentName `
-    --location $RgLocation `
-    --template-file $BicepFile `
-    --parameters $ParamsFile `
-    --parameters deployerPrincipalId=$DeployerPrincipalId `
-    --subscription $SubscriptionId `
-    -o json | ConvertFrom-Json
+try {
+    Write-Host "==> Generating workbook payload..." -ForegroundColor Cyan
+    $WorkspaceName = $Params.parameters.logAnalyticsWorkspaceName.value
+    $WorkspaceResourceId = "/subscriptions/$SubscriptionId/resourcegroups/$RgName/providers/microsoft.operationalinsights/workspaces/$WorkspaceName"
+    python3 $WorkbookBuilderFile $WorkbookSerializedFile $WorkspaceResourceId
+    if ($LASTEXITCODE -ne 0) { throw "Workbook payload generation failed" }
 
-if ($LASTEXITCODE -ne 0) { throw "Bicep deployment failed" }
+    Write-Host "==> Deploying infrastructure with Bicep..." -ForegroundColor Cyan
+    $Deployment = az deployment sub create `
+        --name $DeploymentName `
+        --location $RgLocation `
+        --template-file $BicepFile `
+        --parameters $ParamsFile `
+        --parameters deployerPrincipalId=$DeployerPrincipalId `
+        --subscription $SubscriptionId `
+        -o json | ConvertFrom-Json
 
-$WorkbookUrl = $Deployment.properties.outputs.workbookUrl.value
+    if ($LASTEXITCODE -ne 0) { throw "Bicep deployment failed" }
 
-Write-Host "==> Infrastructure deployed successfully" -ForegroundColor Green
+    $WorkbookUrl = $Deployment.properties.outputs.workbookUrl.value
 
-if ($WorkbookUrl) {
-    Write-Host "==> Workbook URL: $WorkbookUrl" -ForegroundColor Green
+    Write-Host "==> Infrastructure deployed successfully" -ForegroundColor Green
+
+    if ($WorkbookUrl) {
+        Write-Host "==> Workbook URL: $WorkbookUrl" -ForegroundColor Green
+    }
+}
+finally {
+    if (Test-Path $WorkbookSerializedFile) {
+        Remove-Item $WorkbookSerializedFile -Force
+        Write-Host "==> Removed temporary workbook payload" -ForegroundColor DarkGray
+    }
 }

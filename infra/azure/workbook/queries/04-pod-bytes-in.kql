@@ -1,0 +1,8 @@
+InsightsMetrics
+| where TimeGenerated > ago(24h)
+| where Namespace == "container.azm.ms/net"
+| where Name == "recv_bytes"
+| extend MetricTags = todynamic(Tags)
+| where tostring(MetricTags["k8sNamespace"]) == "longevity"
+| summarize AvgBytesIn = avg(Val) by Pod = tostring(MetricTags["pod"]), bin(TimeGenerated, 5m)
+| order by TimeGenerated asc
