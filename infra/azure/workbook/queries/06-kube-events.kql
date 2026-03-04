@@ -1,0 +1,5 @@
+KubeEvents
+| where TimeGenerated > ago(24h)
+| where Namespace == "longevity"
+| project TimeGenerated, Name, Reason, Type, Message
+| order by TimeGenerated desc

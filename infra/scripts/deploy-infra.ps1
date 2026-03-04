@@ -2,6 +2,10 @@
 
 . $PSScriptRoot/config.ps1
 
+$WorkbookBuilderFile = "$InfraDir/azure/workbook/workbook-builder.py"
+$WorkbookSerializedFile = "$InfraDir/azure/modules/workbook.serialized.json"
+$DefaultWorkspaceName = 'longevity-workspace'
+
 function Get-ProviderState {
     param([string]$Namespace)
 
@@ -77,22 +81,64 @@ if ($LASTEXITCODE -ne 0) { throw "Failed to get deployer principal ID" }
 
 $DeploymentName = "longevity-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
 
-Write-Host "==> Deploying infrastructure with Bicep..." -ForegroundColor Cyan
-$Deployment = az deployment sub create `
-    --name $DeploymentName `
-    --location $RgLocation `
-    --template-file $BicepFile `
-    --parameters $ParamsFile `
-    --parameters deployerPrincipalId=$DeployerPrincipalId `
-    --subscription $SubscriptionId `
-    -o json | ConvertFrom-Json
+try {
+    Write-Host "==> Generating workbook payload..." -ForegroundColor Cyan
+    $WorkspaceParam =
+        if ($Params.parameters -is [hashtable] -and
+            $Params.parameters.ContainsKey('logAnalyticsWorkspaceName')) {
+            $Params.parameters['logAnalyticsWorkspaceName']
+        }
+        elseif ($Params.parameters -and
+            $Params.parameters.PSObject.Properties['logAnalyticsWorkspaceName']) {
+            $Params.parameters.logAnalyticsWorkspaceName
+        }
+        else {
+            $null
+        }
 
-if ($LASTEXITCODE -ne 0) { throw "Bicep deployment failed" }
+    $WorkspaceName =
+        if ($WorkspaceParam -and
+            -not [string]::IsNullOrWhiteSpace($WorkspaceParam.value)) {
+            $WorkspaceParam.value
+        }
+        else {
+            $DefaultWorkspaceName
+        }
 
-$WorkbookUrl = $Deployment.properties.outputs.workbookUrl.value
+    if ($WorkspaceName -eq $DefaultWorkspaceName) {
+        Write-Host (
+            "==> logAnalyticsWorkspaceName not set in parameters; using default " +
+            "'$DefaultWorkspaceName'"
+        ) -ForegroundColor DarkGray
+    }
 
-Write-Host "==> Infrastructure deployed successfully" -ForegroundColor Green
+    $WorkspaceResourceId = "/subscriptions/$SubscriptionId/resourcegroups/$RgName/providers/microsoft.operationalinsights/workspaces/$WorkspaceName"
+    python3 $WorkbookBuilderFile $WorkbookSerializedFile $WorkspaceResourceId
+    if ($LASTEXITCODE -ne 0) { throw "Workbook payload generation failed" }
 
-if ($WorkbookUrl) {
-    Write-Host "==> Workbook URL: $WorkbookUrl" -ForegroundColor Green
+    Write-Host "==> Deploying infrastructure with Bicep..." -ForegroundColor Cyan
+    $Deployment = az deployment sub create `
+        --name $DeploymentName `
+        --location $RgLocation `
+        --template-file $BicepFile `
+        --parameters $ParamsFile `
+        --parameters deployerPrincipalId=$DeployerPrincipalId `
+        --subscription $SubscriptionId `
+        -o json | ConvertFrom-Json
+
+    if ($LASTEXITCODE -ne 0) { throw "Bicep deployment failed" }
+
+    $WorkbookUrl = $Deployment.properties.outputs.workbookUrl.value
+
+    Write-Host "==> Infrastructure deployed successfully" -ForegroundColor Green
+
+    if ($WorkbookUrl) {
+        Write-Host "==> Workbook URL: $WorkbookUrl" -ForegroundColor Green
+    }
+}
+finally {
+    if (Test-Path $WorkbookSerializedFile) {
+        Remove-Item $WorkbookSerializedFile -Force
+        Write-Host "==> Removed temporary workbook payload" -ForegroundColor DarkGray
+    }
 }

@@ -1,0 +1,11 @@
+ContainerLog
+| where TimeGenerated > ago(24h)
+| where LogEntry has "HTTP/"
+| where LogEntry has_any ("GET ", "POST ", "PUT ", "PATCH ", "DELETE ")
+| extend Route = case(
+    LogEntry has "/api" or LogEntry has "/auth", "backend",
+    LogEntry has " / " or LogEntry has " /\" ", "frontend",
+    "other"
+  )
+| summarize Requests = count() by Route, bin(TimeGenerated, 5m)
+| order by TimeGenerated asc

@@ -1,0 +1,6 @@
+ContainerLog
+| where TimeGenerated > ago(24h)
+| where LogEntry has "HTTP/"
+| where LogEntry has_any ("GET ", "POST ", "PUT ", "PATCH ", "DELETE ")
+| project TimeGenerated, LogEntry
+| order by TimeGenerated desc

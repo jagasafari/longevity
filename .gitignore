@@ -48,3 +48,9 @@ Thumbs.db
 # Ignore webcil and tmp-webcil
 **/webcil/
 **/tmp-webcil/
+
+# Generated workbook payload
+infra/azure/modules/workbook.serialized.json
+
+# Local Bicep build output
+infra/azure/modules/workbook.json

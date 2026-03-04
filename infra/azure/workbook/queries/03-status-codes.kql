@@ -1,0 +1,7 @@
+ContainerLog
+| where TimeGenerated > ago(24h)
+| where LogEntry has "HTTP/"
+| parse LogEntry with * '" ' StatusCode:string ' ' *
+| where StatusCode matches regex @"^\d{3}$"
+| summarize Count = count() by StatusCode
+| order by StatusCode asc

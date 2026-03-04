@@ -8,8 +8,8 @@ $InfraDir = Resolve-Path "$ScriptDir/.."
 $AppDir = Resolve-Path "$InfraDir/.."
 
 $SubscriptionId = "91b69f0b-43fb-41ca-aa83-f71f2db5ea20"
-$BicepFile = "$InfraDir/bicep/main.bicep"
-$ParamsFile = "$InfraDir/bicep/main.parameters.json"
+$BicepFile = "$InfraDir/azure/main.bicep"
+$ParamsFile = "$InfraDir/azure/main.parameters.json"
 
 # Read values from parameters file
 $Params = Get-Content $ParamsFile | ConvertFrom-Json
