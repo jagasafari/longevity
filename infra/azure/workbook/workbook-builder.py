@@ -1,7 +1,6 @@
-# Usage: python workbook-builder.py [output_path] [workspace_resource_id]
+
 import json, sys
 from pathlib import Path
-from uuid import uuid4
 
 QUERIES_DIR = Path(__file__).parent / "queries"
 DEFAULT_OUTPUT = Path(__file__).parent.parent / "modules" / "workbook.serialized.json"
@@ -19,7 +18,7 @@ args          = sys.argv[1:]
 output_path   = Path(args[0]) if args else DEFAULT_OUTPUT
 workspace_id  = args[1] if len(args) > 1 else ""
 
-def query_item(i, filename, visualization):
+def query_item(i, filename, title, visualization):
     query = (QUERIES_DIR / filename).read_text().strip()
     return {
         "type": 3,
@@ -27,17 +26,18 @@ def query_item(i, filename, visualization):
             "version": "KqlItem/1.0",
             "query": query,
             "size": 0,
+            "title": title,
             "timeContext": {"durationMs": 86400000},
             "queryType": 0,
             "resourceType": "microsoft.operationalinsights/workspaces",
             "visualization": visualization,
         },
-        "name": f"query - {i}",
+        "name": f"query - {i} - {title}",
     }
 
 workbook = {
     "version": "Notebook/1.0",
-    "items": [query_item(i, f, v) for i, (f, _, v) in enumerate(QUERY_SPECS)],
+    "items": [query_item(i, f, t, v) for i, (f, t, v) in enumerate(QUERY_SPECS)],
     "isLocked": False,
     **({"fallbackResourceIds": [workspace_id]} if workspace_id else {}),
     "$schema": "https://github.com/Microsoft/Application-Insights-Workbooks/blob/master/schema/workbook.json",
