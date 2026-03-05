@@ -1,0 +1,31 @@
+workbook_version: "Notebook/1.0"
+kql_item_version: "KqlItem/1.0"
+resource_type: "microsoft.operationalinsights/workspaces"
+schema: "https://github.com/Microsoft/Application-Insights-Workbooks/blob/master/schema/workbook.json"
+time_context_ms: 86400000
+queries_dir: queries
+
+queries:
+  - file: 01-ingress-requests-all.kql
+    title: All Incoming Requests (Ingress)
+    visualization: table
+
+  - file: 02-route-split.kql
+    title: Traffic Split (Frontend vs Backend)
+    visualization: timechart
+
+  - file: 03-status-codes.kql
+    title: HTTP Status Code Distribution
+    visualization: barchart
+
+  - file: 04-pod-bytes-in.kql
+    title: Pod Network Bytes In
+    visualization: timechart
+
+  - file: 05-pod-health.kql
+    title: Pod Health Snapshot
+    visualization: table
+
+  - file: 06-kube-events.kql
+    title: Kubernetes Events
+    visualization: table
