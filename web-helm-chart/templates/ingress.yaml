@@ -4,10 +4,13 @@ kind: Ingress
 metadata:
   name: app-ingress
   namespace: {{ .Values.namespace }}
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
 spec:
   ingressClassName: {{ .Values.ingress.className }}
   rules:
-  - http:
+  - host: {{ .Values.ingress.host }}
+    http:
       paths:
       - path: /auth
         pathType: Prefix
@@ -31,5 +34,7 @@ spec:
             port:
               number: {{ .Values.frontend.service.port }}
   tls:
-  - secretName: {{ .Values.ingress.tlsSecretName }}
+  - hosts:
+    - {{ .Values.ingress.host }}
+    secretName: {{ .Values.ingress.tlsSecretName }}
 {{- end }}

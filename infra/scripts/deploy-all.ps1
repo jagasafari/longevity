@@ -1,10 +1,9 @@
-# Usage: pwsh deploy-all.ps1 [-SkipInfra] [-SkipCluster] [-SkipApp] [-ForceTls] [-Tag <string>]
+# Usage: pwsh deploy-all.ps1 [-SkipInfra] [-SkipCluster] [-SkipApp] [-Tag <string>]
 
 param(
     [switch]$SkipInfra,
     [switch]$SkipCluster,
     [switch]$SkipApp,
-    [switch]$ForceTls,
     [string]$Tag
 )
 
@@ -14,13 +13,6 @@ $ScriptDir = $PSScriptRoot
 if (-not $SkipInfra) {
     Write-Host "`n========== INFRASTRUCTURE ==========" -ForegroundColor Magenta
     & "$ScriptDir/deploy-infra.ps1"
-
-    Write-Host "`n========== TLS CERTIFICATE ==========" -ForegroundColor Magenta
-    if ($ForceTls) {
-        & "$ScriptDir/setup-tls.ps1" -Force
-    } else {
-        & "$ScriptDir/setup-tls.ps1"
-    }
 } else {
     Write-Host "==> Skipping infrastructure deployment" -ForegroundColor Yellow
 }

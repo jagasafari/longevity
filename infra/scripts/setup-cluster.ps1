@@ -47,4 +47,56 @@ helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx `
     --wait
 
 if ($LASTEXITCODE -ne 0) { throw "Ingress NGINX installation failed" }
+
+# --- Assign DNS label to ingress public IP ---
+Write-Host "==> Assigning DNS label to ingress public IP..." -ForegroundColor Cyan
+$ingressIp = kubectl get svc ingress-nginx-controller -n ingress-nginx `
+    -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
+if (-not $ingressIp) { throw "Ingress load balancer IP not assigned yet — is ingress-nginx running?" }
+
+$mcRg = az aks show --resource-group $RgName --name $ClusterName `
+    --query nodeResourceGroup -o tsv
+
+$ipName = az network public-ip list --resource-group $mcRg `
+    --query "[?ipAddress=='$ingressIp'].name" -o tsv
+if (-not $ipName) { throw "Could not find Azure public IP resource for $ingressIp" }
+
+az network public-ip update `
+    --name $ipName `
+    --resource-group $mcRg `
+    --dns-name $DnsLabel | Out-Null
+
+$fqdn = az network public-ip show `
+    --name $ipName `
+    --resource-group $mcRg `
+    --query dnsSettings.fqdn -o tsv
+
+Write-Host "==> Ingress hostname: $fqdn" -ForegroundColor Green
+
+# --- cert-manager ---
+Write-Host "==> Installing cert-manager..." -ForegroundColor Cyan
+helm repo add jetstack https://charts.jetstack.io
+helm repo update
+
+helm upgrade --install cert-manager jetstack/cert-manager `
+    --namespace cert-manager `
+    --create-namespace `
+    --set crds.enabled=true `
+    --wait
+
+if ($LASTEXITCODE -ne 0) { throw "cert-manager installation failed" }
+
+# --- Let's Encrypt ClusterIssuer ---
+Write-Host "==> Applying Let's Encrypt ClusterIssuer..." -ForegroundColor Cyan
+$issuerYaml = Get-Content "$InfraDir/k8s/cluster-issuer.yaml" -Raw
+$issuerYaml = $issuerYaml -replace 'CERT_EMAIL_PLACEHOLDER', $CertEmail
+$issuerYaml | kubectl apply -f -
+
+if ($LASTEXITCODE -ne 0) { throw "ClusterIssuer apply failed" }
+
+kubectl wait clusterissuer/letsencrypt-prod `
+    --for=condition=Ready `
+    --timeout=60s
+
+if ($LASTEXITCODE -ne 0) { throw "ClusterIssuer not ready" }
 Write-Host "==> Cluster services configured successfully" -ForegroundColor Green

@@ -64,24 +64,18 @@ sequenceDiagram
     end
 
     rect rgb(40, 50, 60)
-    Note over Dev,K8s: 2 — TLS Certificate (setup-tls.ps1)
-
-    Script->>K8s: kubectl apply cert-manager CRDs
-    Script->>K8s: ClusterIssuer (Let's Encrypt)
-    Note right of K8s: ExternalSecret syncs<br/>TLS cert from Key Vault
-    end
-
-    rect rgb(40, 60, 40)
-    Note over Dev,K8s: 3 — Cluster Services (setup-cluster.ps1)
+    Note over Dev,K8s: 2 — Cluster Services (setup-cluster.ps1)
 
     Script->>K8s: helm install ingress-nginx
+    Script->>Az: az network public-ip update (DNS label)
+    Script->>K8s: helm install cert-manager
+    Script->>K8s: kubectl apply ClusterIssuer (Let's Encrypt)
     Script->>K8s: kubectl apply ClusterSecretStore
-    Script->>K8s: kubectl apply ExternalSecret (OAuth)
-    Note right of K8s: SecretStore connects to<br/>Key Vault via Managed Identity
+    Note right of K8s: cert-manager auto-issues TLS cert<br/>SecretStore connects to Key Vault
     end
 
     rect rgb(60, 50, 40)
-    Note over Dev,K8s: 4 — Application (deploy-app.ps1)
+    Note over Dev,K8s: 3 — Application (deploy-app.ps1)
 
     Script->>ACR: docker build + push frontend
     Script->>ACR: docker build + push backend
@@ -124,7 +118,6 @@ pwsh scripts/deploy-all.ps1
 
 ```powershell
 pwsh scripts/deploy-infra.ps1
-pwsh scripts/setup-tls.ps1
 pwsh scripts/setup-cluster.ps1
 pwsh scripts/deploy-app.ps1
 ```

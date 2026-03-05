@@ -19,3 +19,6 @@ $ClusterName = $Params.parameters.aksConfig.value.clusterName
 $KeyVaultName = $Params.parameters.keyVaultName.value
 $AcrName = "longevityacr"
 $Namespace = "longevity"
+$DnsLabel = "longevity"   # results in: longevity.eastus2.cloudapp.azure.com
+$IngressHostname = "longevity.eastus2.cloudapp.azure.com"
+$CertEmail = "kaszuba.mika@gmail.com"   # Let's Encrypt expiry notifications
