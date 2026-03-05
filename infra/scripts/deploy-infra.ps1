@@ -2,11 +2,6 @@
 
 . $PSScriptRoot/config.ps1
 
-$WorkbookBuilderFile = "$InfraDir/azure/workbook/builder.py"
-$WorkbookConfigFile = "$InfraDir/azure/workbook/workbook.yaml"
-$WorkbookSerializedFile = "$InfraDir/azure/modules/workbook.serialized.json"
-$DefaultWorkspaceName = 'longevity-workspace'
-
 function Get-ProviderState {
     param([string]$Namespace)
 
@@ -81,41 +76,6 @@ $DeployerPrincipalId = az ad signed-in-user show --query id -o tsv
 if ($LASTEXITCODE -ne 0) { throw "Failed to get deployer principal ID" }
 
 $DeploymentName = "longevity-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
-
-try {
-    Write-Host "==> Generating workbook payload..." -ForegroundColor Cyan
-    $WorkspaceParam =
-        if ($Params.parameters -is [hashtable] -and
-            $Params.parameters.ContainsKey('logAnalyticsWorkspaceName')) {
-            $Params.parameters['logAnalyticsWorkspaceName']
-        }
-        elseif ($Params.parameters -and
-            $Params.parameters.PSObject.Properties['logAnalyticsWorkspaceName']) {
-            $Params.parameters.logAnalyticsWorkspaceName
-        }
-        else {
-            $null
-        }
-
-    $WorkspaceName =
-        if ($WorkspaceParam -and
-            -not [string]::IsNullOrWhiteSpace($WorkspaceParam.value)) {
-            $WorkspaceParam.value
-        }
-        else {
-            $DefaultWorkspaceName
-        }
-
-    if ($WorkspaceName -eq $DefaultWorkspaceName) {
-        Write-Host (
-            "==> logAnalyticsWorkspaceName not set in parameters; using default " +
-            "'$DefaultWorkspaceName'"
-        ) -ForegroundColor DarkGray
-    }
-
-    $WorkspaceResourceId = "/subscriptions/$SubscriptionId/resourcegroups/$RgName/providers/microsoft.operationalinsights/workspaces/$WorkspaceName"
-    python3 $WorkbookBuilderFile $WorkbookConfigFile $WorkbookSerializedFile $WorkspaceResourceId
-    if ($LASTEXITCODE -ne 0) { throw "Workbook payload generation failed" }
 
     Write-Host "==> Deploying infrastructure with Bicep..." -ForegroundColor Cyan
     $Deployment = az deployment sub create `
