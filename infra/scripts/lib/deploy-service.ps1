@@ -23,10 +23,11 @@ $cfg = @{
 
 $Tag = if ($Tag) { $Tag }
        else {
-           $sha = git rev-parse --short HEAD
-           Write-Host "==> Using git SHA: $sha" `
-               -ForegroundColor Cyan
-           $sha
+           $sha  = git rev-parse --short HEAD
+           $ts   = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+           $tag  = "$sha-$ts"
+           Write-Host "==> Using tag: $tag" -ForegroundColor Cyan
+           $tag
        }
 
 $AcrImage = "$AcrName.azurecr.io/longevity-$Service"

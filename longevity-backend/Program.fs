@@ -12,6 +12,7 @@ let main args =
     let builder = WebApplication.CreateBuilder args
     builder.Services.AddOpenApi()    |> ignore
     builder.Services.AddHttpClient() |> ignore
+    builder.Services.AddAuthorization() |> ignore
 
     builder.Services
         .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
