@@ -2,7 +2,8 @@
 
 . $PSScriptRoot/config.ps1
 
-$WorkbookBuilderFile = "$InfraDir/azure/workbook/workbook-builder.py"
+$WorkbookBuilderFile = "$InfraDir/azure/workbook/builder.py"
+$WorkbookConfigFile = "$InfraDir/azure/workbook/workbook.yaml"
 $WorkbookSerializedFile = "$InfraDir/azure/modules/workbook.serialized.json"
 $DefaultWorkspaceName = 'longevity-workspace'
 
@@ -113,7 +114,7 @@ try {
     }
 
     $WorkspaceResourceId = "/subscriptions/$SubscriptionId/resourcegroups/$RgName/providers/microsoft.operationalinsights/workspaces/$WorkspaceName"
-    python3 $WorkbookBuilderFile $WorkbookSerializedFile $WorkspaceResourceId
+    python3 $WorkbookBuilderFile $WorkbookConfigFile $WorkbookSerializedFile $WorkspaceResourceId
     if ($LASTEXITCODE -ne 0) { throw "Workbook payload generation failed" }
 
     Write-Host "==> Deploying infrastructure with Bicep..." -ForegroundColor Cyan
