@@ -61,6 +61,7 @@ helm upgrade --install web-app `
     "$AppDir/web-helm-chart" `
     --namespace $Namespace `
     --create-namespace `
+    --reuse-values `
     --set $helmSet
 
 if ($LASTEXITCODE -ne 0) {
