@@ -68,12 +68,15 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 if ($Service -eq 'frontend') {
-    Write-Host "==> Waiting for TLS secret..." `
+    Write-Host "==> Waiting for TLS secret (cert-manager)..." `
         -ForegroundColor Cyan
-    kubectl wait externalsecret/web-tls-secret `
-        -n $Namespace `
-        --for=condition=Ready `
-        --timeout=300s
+    $deadline = (Get-Date).AddSeconds(300)
+    while ((Get-Date) -lt $deadline) {
+        $exists = kubectl get secret web-tls -n $Namespace 2>$null
+        if ($LASTEXITCODE -eq 0) { break }
+        Start-Sleep 5
+    }
+    if ($LASTEXITCODE -ne 0) { throw "TLS secret web-tls not ready after 300s" }
 }
 
 Write-Host "==> Waiting for $Service rollout..." `
