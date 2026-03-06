@@ -14,14 +14,19 @@ public sealed class AuthService(HttpClient http)
     {
         try
         {
-            var response = await http.GetAsync("/auth/me");
+            using var response = await http.GetAsync("/auth/me");
             if (!response.IsSuccessStatusCode)
             {
                 _state = new AuthState(false, null);
                 return;
             }
             var result = await response.Content.ReadFromJsonAsync<MeResponse>();
-            _state = new AuthState(true, result?.Email);
+            if (result is null)
+            {
+                _state = new AuthState(false, null);
+                return;
+            }
+            _state = new AuthState(true, result.Email);
         }
         catch
         {

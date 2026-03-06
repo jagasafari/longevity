@@ -129,6 +129,24 @@ pwsh scripts/deploy-app.ps1
 - Helm 3
 - Docker
 
+## Runtime Config
+
+The deployment scripts require these values at runtime:
+
+- `DnsLabel`
+- `IngressHostname`
+- `CertEmail`
+
+Fill in `infra/scripts/runtime.parameters.json` (gitignored — never committed):
+
+```json
+{
+    "dnsLabel": "REPLACE_ME",
+    "ingressHostname": "REPLACE_ME",
+    "certEmail": "REPLACE_ME"
+}
+```
+
 ## Related READMEs
 
 - [Project Root](../README.md)

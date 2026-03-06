@@ -56,13 +56,14 @@ if ($LASTEXITCODE -ne 0) {
 
 Write-Host "==> Deploying $Service (tag: $Tag)..." `
     -ForegroundColor Cyan
-$helmSet = "$($cfg.HelmSet)=$Tag"
+$helmSetTag = "$($cfg.HelmSet)=$Tag"
+$helmSetTls = "ingress.tlsSecretName=$TlsSecretName"
 helm upgrade --install web-app `
     "$AppDir/web-helm-chart" `
     --namespace $Namespace `
     --create-namespace `
-    --reuse-values `
-    --set $helmSet
+    --set $helmSetTag `
+    --set $helmSetTls
 
 if ($LASTEXITCODE -ne 0) {
     throw "Helm deployment failed"
@@ -73,11 +74,13 @@ if ($Service -eq 'frontend') {
         -ForegroundColor Cyan
     $deadline = (Get-Date).AddSeconds(300)
     while ((Get-Date) -lt $deadline) {
-        $exists = kubectl get secret web-tls -n $Namespace 2>$null
+        kubectl get secret $TlsSecretName -n $Namespace *> $null
         if ($LASTEXITCODE -eq 0) { break }
         Start-Sleep 5
     }
-    if ($LASTEXITCODE -ne 0) { throw "TLS secret web-tls not ready after 300s" }
+    if ($LASTEXITCODE -ne 0) {
+        throw "TLS secret $TlsSecretName not ready after 300s"
+    }
 }
 
 Write-Host "==> Waiting for $Service rollout..." `

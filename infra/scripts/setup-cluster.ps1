@@ -50,9 +50,39 @@ if ($LASTEXITCODE -ne 0) { throw "Ingress NGINX installation failed" }
 
 # --- Assign DNS label to ingress public IP ---
 Write-Host "==> Assigning DNS label to ingress public IP..." -ForegroundColor Cyan
-$ingressIp = kubectl get svc ingress-nginx-controller -n ingress-nginx `
-    -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
-if (-not $ingressIp) { throw "Ingress load balancer IP not assigned yet — is ingress-nginx running?" }
+$ingressIp = $null
+$maxIngressIpAttempts = 30
+$ingressIpPollDelaySeconds = 10
+
+for (
+    $attempt = 1;
+    $attempt -le $maxIngressIpAttempts -and -not $ingressIp;
+    $attempt++
+) {
+    $ingressIp = kubectl get svc ingress-nginx-controller -n ingress-nginx `
+        -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
+
+    if ($ingressIp) {
+        break
+    }
+
+    Write-Host (
+        "Ingress load balancer IP not assigned yet " +
+        "(attempt $attempt of $maxIngressIpAttempts), " +
+        "waiting $ingressIpPollDelaySeconds seconds..."
+    ) -ForegroundColor Yellow
+
+    Start-Sleep -Seconds $ingressIpPollDelaySeconds
+}
+
+if (-not $ingressIp) {
+    $timeoutSeconds = $maxIngressIpAttempts * $ingressIpPollDelaySeconds
+    throw (
+        "Ingress load balancer IP not assigned after $timeoutSeconds " +
+        "seconds - is ingress-nginx running and is the LoadBalancer " +
+        "provisioning healthy?"
+    )
+}
 
 $mcRg = az aks show --resource-group $RgName --name $ClusterName `
     --query nodeResourceGroup -o tsv
