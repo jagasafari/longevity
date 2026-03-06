@@ -1,8 +1,16 @@
 controller:
-  podAnnotations:
-    kubectl.kubernetes.io/restartedAt: 1769874737
+  config:
+    ssl-redirect: "true"   # redirect HTTP → HTTPS (except ACME challenges)
+    # Block known scanner/attack user agents and common attack paths
+    server-snippet: |
+      if ($http_user_agent ~* "(zgrab|masscan|nmap|shodan|censys|Go-http-client|internet-measurement|visionheight|sqlmap)" ) {
+        return 403;
+      }
+      location ~* ^/(cgi-bin|\.git|\.github|\.svn|\.env|autodiscover|owa|actuator|SDK|wp-admin|phpmyadmin|xmlrpc) {
+        return 404;
+      }
   service:
     annotations:
       service.beta.kubernetes.io/azure-load-balancer-health-probe-request-path: /healthz
-    enableHttp: false
+    enableHttp: true   # required for cert-manager HTTP-01 challenge
     enableHttps: true

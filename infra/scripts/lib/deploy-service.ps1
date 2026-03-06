@@ -23,10 +23,11 @@ $cfg = @{
 
 $Tag = if ($Tag) { $Tag }
        else {
-           $sha = git rev-parse --short HEAD
-           Write-Host "==> Using git SHA: $sha" `
-               -ForegroundColor Cyan
-           $sha
+           $sha  = git rev-parse --short HEAD
+           $ts   = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+           $tag  = "$sha-$ts"
+           Write-Host "==> Using tag: $tag" -ForegroundColor Cyan
+           $tag
        }
 
 $AcrImage = "$AcrName.azurecr.io/longevity-$Service"
@@ -55,24 +56,31 @@ if ($LASTEXITCODE -ne 0) {
 
 Write-Host "==> Deploying $Service (tag: $Tag)..." `
     -ForegroundColor Cyan
-$helmSet = "$($cfg.HelmSet)=$Tag"
+$helmSetTag = "$($cfg.HelmSet)=$Tag"
+$helmSetTls = "ingress.tlsSecretName=$TlsSecretName"
 helm upgrade --install web-app `
     "$AppDir/web-helm-chart" `
     --namespace $Namespace `
     --create-namespace `
-    --set $helmSet
+    --set $helmSetTag `
+    --set $helmSetTls
 
 if ($LASTEXITCODE -ne 0) {
     throw "Helm deployment failed"
 }
 
 if ($Service -eq 'frontend') {
-    Write-Host "==> Waiting for TLS secret..." `
+    Write-Host "==> Waiting for TLS secret (cert-manager)..." `
         -ForegroundColor Cyan
-    kubectl wait externalsecret/web-tls-secret `
-        -n $Namespace `
-        --for=condition=Ready `
-        --timeout=300s
+    $deadline = (Get-Date).AddSeconds(300)
+    while ((Get-Date) -lt $deadline) {
+        kubectl get secret $TlsSecretName -n $Namespace *> $null
+        if ($LASTEXITCODE -eq 0) { break }
+        Start-Sleep 5
+    }
+    if ($LASTEXITCODE -ne 0) {
+        throw "TLS secret $TlsSecretName not ready after 300s"
+    }
 }
 
 Write-Host "==> Waiting for $Service rollout..." `

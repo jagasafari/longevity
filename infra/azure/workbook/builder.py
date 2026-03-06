@@ -26,6 +26,8 @@ def query_item(i, spec):
             "showAnalytics": True,
             "title": spec["title"],
             "timeContext": {"durationMs": cfg["time_context_ms"]},
+            "showRefreshButton": True,
+            "showExportToExcel": True,
             "queryType": 0,
             "resourceType": cfg["resource_type"],
             "visualization": spec["visualization"],
@@ -37,6 +39,7 @@ workbook = {
     "version": cfg["workbook_version"],
     "items": [query_item(i, s) for i, s in enumerate(cfg["queries"])],
     "isLocked": False,
+    "autoRefresh": {"enabled": True, "interval": 5},
     **({"fallbackResourceIds": [workspace_id]} if workspace_id else {}),
     "$schema": cfg["schema"],
 }
