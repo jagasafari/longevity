@@ -1,6 +1,6 @@
 # Usage: pwsh deploy-workbook.ps1
 
-. $PSScriptRoot/config.ps1
+. $PSScriptRoot/../config.ps1
 
 $WorkbookBicepFile = "$InfraDir/azure/workbook-only.bicep"
 $WorkbookBuilderFile = "$InfraDir/azure/workbook/builder.py"

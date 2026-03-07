@@ -20,7 +20,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\longevity-backend\longevity-backend.fsproj" />
+    <ProjectReference Include="..\..\src\longevity-backend\longevity-backend.fsproj" />
   </ItemGroup>
 
 </Project>

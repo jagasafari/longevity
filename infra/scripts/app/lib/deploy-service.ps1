@@ -8,7 +8,7 @@ param(
     [string]$Tag
 )
 
-. $PSScriptRoot/../config.ps1
+. $PSScriptRoot/../../config.ps1
 
 $cfg = @{
     frontend = @{
@@ -32,7 +32,7 @@ $Tag = if ($Tag) { $Tag }
 
 $AcrImage = "$AcrName.azurecr.io/longevity-$Service"
 $Full     = "${AcrImage}:${Tag}"
-$SrcDir   = "$AppDir/longevity-$Service"
+$SrcDir   = "$AppDir/src/longevity-$Service"
 
 Write-Host "==> Logging in to ACR..." `
     -ForegroundColor Cyan
@@ -59,7 +59,7 @@ Write-Host "==> Deploying $Service (tag: $Tag)..." `
 $helmSetTag = "$($cfg.HelmSet)=$Tag"
 $helmSetTls = "ingress.tlsSecretName=$TlsSecretName"
 helm upgrade --install web-app `
-    "$AppDir/web-helm-chart" `
+    "$InfraDir/k8s/web-helm-chart" `
     --namespace $Namespace `
     --create-namespace `
     --set $helmSetTag `

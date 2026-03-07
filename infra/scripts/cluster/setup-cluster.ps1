@@ -1,6 +1,6 @@
 # Usage: pwsh setup-cluster.ps1
 
-. $PSScriptRoot/config.ps1
+. $PSScriptRoot/../config.ps1
 
 Write-Host "==> Getting AKS credentials..." -ForegroundColor Cyan
 az aks get-credentials `
@@ -24,7 +24,7 @@ helm upgrade --install external-secrets external-secrets/external-secrets `
 if ($LASTEXITCODE -ne 0) { throw "ESO installation failed" }
 
 Write-Host "==> Applying ClusterSecretStore..." -ForegroundColor Cyan
-kubectl apply -f "$InfraDir/k8s/cluster-secret-store.yaml"
+kubectl apply -f "$InfraDir/k8s/external-secrets/cluster-secret-store.yaml"
 kubectl wait clustersecretstore/azure-keyvault `
     --for=condition=Ready `
     --timeout=180s
@@ -32,7 +32,7 @@ kubectl wait clustersecretstore/azure-keyvault `
 if ($LASTEXITCODE -ne 0) { throw "ClusterSecretStore not ready" }
 
 Write-Host "==> Applying Container Insights log filter config..." -ForegroundColor Cyan
-kubectl apply -f "$InfraDir/k8s/container-insights-agentconfig.yaml"
+kubectl apply -f "$InfraDir/k8s/monitoring/container-insights-agentconfig.yaml"
 if ($LASTEXITCODE -ne 0) { throw "Container Insights agent config apply failed" }
 
 # --- Ingress NGINX ---
@@ -43,7 +43,7 @@ helm repo update
 helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx `
     --namespace ingress-nginx `
     --create-namespace `
-    -f "$InfraDir/k8s/ingress-nginx-values.yaml" `
+    -f "$InfraDir/k8s/ingress-nginx/values.yaml" `
     --wait
 
 if ($LASTEXITCODE -ne 0) { throw "Ingress NGINX installation failed" }
@@ -118,7 +118,7 @@ if ($LASTEXITCODE -ne 0) { throw "cert-manager installation failed" }
 
 # --- Let's Encrypt ClusterIssuer ---
 Write-Host "==> Applying Let's Encrypt ClusterIssuer..." -ForegroundColor Cyan
-$issuerYaml = Get-Content "$InfraDir/k8s/cluster-issuer.yaml" -Raw
+$issuerYaml = Get-Content "$InfraDir/k8s/cert-manager/cluster-issuer.yaml" -Raw
 $issuerYaml = $issuerYaml -replace 'CERT_EMAIL_PLACEHOLDER', $CertEmail
 $issuerYaml | kubectl apply -f -
 
