@@ -32,6 +32,7 @@ class MediaObserverService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        SecurePrefs.get(this).edit().putBoolean(SecurePrefs.KEY_SYNC_SERVICE_RUNNING, true).apply()
         Log.d(TAG, "Service onCreate")
         createNotificationChannel()
         startForeground(NOTIFICATION_ID, buildNotification())
@@ -77,6 +78,7 @@ class MediaObserverService : Service() {
 
     override fun onDestroy() {
         Log.d(TAG, "Service onDestroy")
+        SecurePrefs.get(this).edit().putBoolean(SecurePrefs.KEY_SYNC_SERVICE_RUNNING, false).apply()
         contentResolver.unregisterContentObserver(observer)
         super.onDestroy()
     }

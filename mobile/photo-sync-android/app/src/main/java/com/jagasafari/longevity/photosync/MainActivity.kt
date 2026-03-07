@@ -68,17 +68,23 @@ class MainActivity : AppCompatActivity() {
             return
         }
         ContextCompat.startForegroundService(this, Intent(this, MediaObserverService::class.java))
-        statusText.text = "Sync running"
+        statusText.text = "Starting sync..."
     }
 
     private fun stopSyncService() {
         stopService(Intent(this, MediaObserverService::class.java))
-        statusText.text = "Sync stopped"
+        SecurePrefs.get(this).edit().putBoolean(SecurePrefs.KEY_SYNC_SERVICE_RUNNING, false).apply()
+        updateStatus()
     }
 
     private fun updateStatus() {
         val prefs = SecurePrefs.get(this)
         val hasSas = !prefs.getString("sas_token", null).isNullOrBlank()
-        statusText.text = if (hasSas) "Ready — press Start" else "Set SAS token in Settings"
+        val isRunning = prefs.getBoolean(SecurePrefs.KEY_SYNC_SERVICE_RUNNING, false)
+        statusText.text = when {
+            !hasSas -> "Set SAS token in Settings"
+            isRunning -> "Sync running"
+            else -> "Ready — press Start"
+        }
     }
 }

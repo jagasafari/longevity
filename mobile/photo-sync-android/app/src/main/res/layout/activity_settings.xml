@@ -8,7 +8,7 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Azure Blob Storage Settings"
+        android:text="@string/settings_title"
         android:textSize="20sp"
         android:textStyle="bold"
         android:layout_marginBottom="24dp" />
@@ -17,7 +17,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginBottom="16dp"
-        android:hint="Storage Account Name">
+        android:hint="@string/settings_storage_account_hint">
 
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/storage_account_input"
@@ -30,7 +30,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginBottom="16dp"
-        android:hint="Container Name">
+        android:hint="@string/settings_container_hint">
 
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/container_input"
@@ -43,20 +43,20 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginBottom="24dp"
-        android:hint="SAS Token">
+        android:hint="@string/settings_sas_token_hint">
 
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/sas_token_input"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:inputType="textMultiLine"
-            android:minLines="3" />
+            android:inputType="textNoSuggestions|textPassword"
+            android:importantForAutofill="no" />
     </com.google.android.material.textfield.TextInputLayout>
 
     <Button
         android:id="@+id/save_button"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Save" />
+        android:text="@string/settings_save_button" />
 
 </LinearLayout>
