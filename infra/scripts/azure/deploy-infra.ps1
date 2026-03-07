@@ -1,6 +1,6 @@
 # Usage: pwsh deploy-infra.ps1
 
-. $PSScriptRoot/config.ps1
+. $PSScriptRoot/../config.ps1
 
 function Get-ProviderState {
     param([string]$Namespace)

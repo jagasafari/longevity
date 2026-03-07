@@ -12,14 +12,14 @@ $ScriptDir = $PSScriptRoot
 
 if (-not $SkipInfra) {
     Write-Host "`n========== INFRASTRUCTURE ==========" -ForegroundColor Magenta
-    & "$ScriptDir/deploy-infra.ps1"
+    & "$ScriptDir/azure/deploy-infra.ps1"
 } else {
     Write-Host "==> Skipping infrastructure deployment" -ForegroundColor Yellow
 }
 
 if (-not $SkipCluster) {
     Write-Host "`n========== CLUSTER SERVICES ==========" -ForegroundColor Magenta
-    & "$ScriptDir/setup-cluster.ps1"
+    & "$ScriptDir/cluster/setup-cluster.ps1"
 } else {
     Write-Host "==> Skipping cluster setup" -ForegroundColor Yellow
 }
@@ -28,7 +28,7 @@ if (-not $SkipApp) {
     Write-Host "`n========== APPLICATION ==========" -ForegroundColor Magenta
     $appParams = @{}
     if ($Tag) { $appParams['Tag'] = $Tag }
-    & "$ScriptDir/deploy-app.ps1" @appParams
+    & "$ScriptDir/app/deploy-app.ps1" @appParams
 } else {
     Write-Host "==> Skipping app deployment" -ForegroundColor Yellow
 }

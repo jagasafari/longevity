@@ -66,17 +66,17 @@ graph TB
 graph LR
     subgraph Repository
         ROOT[longevity-app]
-        FE[longevity-frontend/]
-        BE[longevity-backend/]
-        TESTS[longevity-backend.tests/]
-        HELM[web-helm-chart/]
+        FE[src/longevity-frontend/]
+        BE[src/longevity-backend/]
+        TESTS[tests/longevity-backend.tests/]
+        HELM[infra/k8s/web-helm-chart/]
         INFRA[infra/]
     end
 
     ROOT --- FE
     ROOT --- BE
     ROOT --- TESTS
-    ROOT --- HELM
+    INFRA --- HELM
     ROOT --- INFRA
 
     FE -.- FED[Blazor WASM + nginx]
@@ -165,25 +165,25 @@ sequenceDiagram
 pwsh infra/scripts/deploy-all.ps1
 
 # Deploy only backend
-pwsh infra/scripts/deploy-backend.ps1
+pwsh infra/scripts/app/deploy-backend.ps1
 
 # Deploy only frontend
-pwsh infra/scripts/deploy-frontend.ps1
+pwsh infra/scripts/app/deploy-frontend.ps1
 
 # Run backend locally
-cd longevity-backend && dotnet run
+cd src/longevity-backend && dotnet run
 
 # Run frontend locally
-cd longevity-frontend && dotnet run
+cd src/longevity-frontend && dotnet run
 ```
 
 See individual READMEs for details:
-- [Backend](longevity-backend/README.md) — API routes, OAuth flow
-- [Frontend](longevity-frontend/README.md) — SPA architecture, request flow
+- [Backend](src/longevity-backend/README.md) — API routes, OAuth flow
+- [Frontend](src/longevity-frontend/README.md) — SPA architecture, request flow
 - [Infrastructure](infra/README.md) — Azure resources, deployment pipeline, ingress routing
 
 ## Related READMEs
 
-- [Backend](longevity-backend/README.md)
-- [Frontend](longevity-frontend/README.md)
+- [Backend](src/longevity-backend/README.md)
+- [Frontend](src/longevity-frontend/README.md)
 - [Infrastructure](infra/README.md)

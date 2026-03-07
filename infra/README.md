@@ -117,9 +117,9 @@ pwsh scripts/deploy-all.ps1
 ## Deploy individually
 
 ```powershell
-pwsh scripts/deploy-infra.ps1
-pwsh scripts/setup-cluster.ps1
-pwsh scripts/deploy-app.ps1
+pwsh scripts/azure/deploy-infra.ps1
+pwsh scripts/cluster/setup-cluster.ps1
+pwsh scripts/app/deploy-app.ps1
 ```
 
 ## Prerequisites
@@ -150,5 +150,5 @@ Fill in `infra/scripts/runtime.parameters.json` (gitignored — never committed)
 ## Related READMEs
 
 - [Project Root](../README.md)
-- [Backend](../longevity-backend/README.md)
-- [Frontend](../longevity-frontend/README.md)
+- [Backend](../src/longevity-backend/README.md)
+- [Frontend](../src/longevity-frontend/README.md)
