@@ -1,5 +1,5 @@
 KubePodInventory
-| where TimeGenerated > ago(24h)
+| where TimeGenerated {TimeRange}
 | where Namespace == "longevity"
 | summarize arg_max(TimeGenerated, *) by Name
 | project TimeGenerated, Name, PodStatus, ContainerName, ContainerStatusReason, Computer

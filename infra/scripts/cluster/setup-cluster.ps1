@@ -2,6 +2,10 @@
 
 . $PSScriptRoot/../config.ps1
 
+$DnsLabel = Get-RequiredConfigValue -Name 'DnsLabel' -ParamName 'dnsLabel'
+$IngressHostname = Get-RequiredConfigValue -Name 'IngressHostname' -ParamName 'ingressHostname'
+$CertEmail = Get-RequiredConfigValue -Name 'CertEmail' -ParamName 'certEmail'
+
 Write-Host "==> Getting AKS credentials..." -ForegroundColor Cyan
 az aks get-credentials `
     --resource-group $RgName `

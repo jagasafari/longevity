@@ -57,3 +57,9 @@ infra/azure/modules/workbook.json
 
 # Local runtime parameters (contains PII / env-specific values — never commit)
 infra/scripts/runtime.parameters.json
+
+# Android build outputs and local config
+mobile/**/build/
+mobile/**/local.properties
+mobile/**/gradle/gradle-daemon-jvm.properties
+mobile/**/.gradle/

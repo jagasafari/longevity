@@ -2,13 +2,40 @@ workbook_version: "Notebook/1.0"
 kql_item_version: "KqlItem/1.0"
 resource_type: "microsoft.operationalinsights/workspaces"
 schema: "https://github.com/Microsoft/Application-Insights-Workbooks/blob/master/schema/workbook.json"
-time_context_ms: 86400000
 queries_dir: queries
+
+parameters:
+  - name: TimeRange
+    type: 4
+    required: true
+    style: pills
+    default_duration_ms: 86400000
+    allow_custom: true
+    selectable_values_ms:
+      - 300000
+      - 900000
+      - 1800000
+      - 3600000
+      - 14400000
+      - 43200000
+      - 86400000
+      - 172800000
+      - 259200000
+      - 604800000
+      - 1209600000
+      - 2419200000
+      - 2592000000
+      - 5184000000
+      - 7776000000
 
 queries:
   - file: 01-ingress-requests-all.kql
     title: All Incoming Requests (Ingress)
     visualization: table
+    column_formatters:
+      TimeGenerated: "20ch"
+      LogEntry: "500ch"
+    sort_by: TimeGenerated
 
   - file: 02-route-split.kql
     title: Traffic Split (Frontend vs Backend)
@@ -25,7 +52,20 @@ queries:
   - file: 05-pod-health.kql
     title: Pod Health Snapshot
     visualization: table
+    column_formatters:
+      TimeGenerated: "20ch"
+      Name: "30ch"
+      PodStatus: "15ch"
+      ContainerName: "30ch"
+    sort_by: TimeGenerated
 
   - file: 06-kube-events.kql
     title: Kubernetes Events
     visualization: table
+    column_formatters:
+      TimeGenerated: "20ch"
+      Name: "20ch"
+      Reason: "15ch"
+      Type: "10ch"
+      Message: "500ch"
+    sort_by: TimeGenerated

@@ -48,13 +48,4 @@ $ClusterName = $Params.parameters.aksConfig.value.clusterName
 $KeyVaultName = $Params.parameters.keyVaultName.value
 $AcrName = "longevityacr"
 $Namespace = "longevity"
-$DnsLabel = Get-RequiredConfigValue `
-	-Name 'DnsLabel' `
-	-ParamName 'dnsLabel'
-$IngressHostname = Get-RequiredConfigValue `
-	-Name 'IngressHostname' `
-	-ParamName 'ingressHostname'
-$TlsSecretName = "web-tls"
-$CertEmail = Get-RequiredConfigValue `
-	-Name 'CertEmail' `
-	-ParamName 'certEmail'
+

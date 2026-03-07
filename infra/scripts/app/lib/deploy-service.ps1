@@ -10,6 +10,9 @@ param(
 
 . $PSScriptRoot/../../config.ps1
 
+$TlsSecretName = "web-tls"
+$IngressHostname = Get-RequiredConfigValue -Name 'IngressHostname' -ParamName 'ingressHostname'
+
 $cfg = @{
     frontend = @{
         HelmSet    = "frontend.image.tag"

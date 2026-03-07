@@ -1,6 +1,16 @@
 controller:
   config:
     ssl-redirect: "true"   # redirect HTTP → HTTPS (except ACME challenges)
+    # ModSecurity WAF with OWASP CRS
+    enable-modsecurity: "true"
+    enable-owasp-modsecurity-crs: "true"
+    modsecurity-snippet: |
+      SecRuleEngine On
+      SecRequestBodyAccess On
+      SecAuditEngine RelevantOnly
+      SecAuditLogParts ABIJDEFHZ
+      # Blazor WASM loads large binaries — exclude from inspection to avoid false positives
+      SecRule REQUEST_URI "@beginsWith /_framework/" "id:1000,phase:1,pass,nolog,ctl:ruleEngine=Off"
     # Block known scanner/attack user agents and common attack paths
     server-snippet: |
       if ($http_user_agent ~* "(zgrab|masscan|nmap|shodan|censys|Go-http-client|internet-measurement|visionheight|sqlmap)" ) {

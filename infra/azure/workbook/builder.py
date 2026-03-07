@@ -1,5 +1,5 @@
 # Usage: python builder.py [workbook.yaml] [output_path] [workspace_resource_id]
-import json, subprocess, sys
+import json, subprocess, sys, uuid
 from pathlib import Path
 
 args        = sys.argv[1:]
@@ -15,8 +15,53 @@ default_out  = config_path.parent.parent / "modules" / "workbook.serialized.json
 output_path  = Path(args[1]) if len(args) > 1 else Path(cfg.get("output", default_out))
 workspace_id = args[2] if len(args) > 2 else ""
 
-def query_item(i, spec):
+def param_item(params):
+    parameters = [
+        {
+            "id": str(uuid.uuid4()),
+            "version": cfg["kql_item_version"],
+            "name": p["name"],
+            "type": p["type"],
+            "isRequired": p.get("required", True),
+            "typeSettings": {
+                "selectableValues": [{"durationMs": ms} for ms in p.get("selectable_values_ms", [])],
+                "allowCustom": p.get("allow_custom", True),
+            },
+            "timeContext": {"durationMs": p.get("default_duration_ms", 86400000)},
+            "value": {"durationMs": p.get("default_duration_ms", 86400000)},
+        }
+        for p in params
+    ]
+    return {
+        "type": 9,
+        "content": {
+            "version": cfg["kql_item_version"],
+            "parameters": parameters,
+            "style": params[0].get("style", "pills"),
+            "queryType": 0,
+            "resourceType": cfg["resource_type"],
+        },
+        "name": "parameters - 0",
+    }
+
+def query_item(i, spec, time_param_name):
     query = (queries_dir / spec["file"]).read_text().strip()
+    column_formatters = spec.get("column_formatters") or {}
+    sort_by_col = spec.get("sort_by")
+    grid_settings = {}
+    if column_formatters or sort_by_col:
+        grid_settings["gridSettings"] = {
+            **({
+                "formatters": [
+                    {"columnMatch": col, "formatter": 0, "formatOptions": {"customColumnWidthSetting": width}}
+                    for col, width in column_formatters.items()
+                ]
+            } if column_formatters else {}),
+            **({
+                "sortBy": [{"itemKey": sort_by_col, "sortOrder": 2}]
+            } if sort_by_col else {}),
+        }
+    sort_by = ({"sortBy": [{"itemKey": sort_by_col, "sortOrder": 2}]} if sort_by_col else {})
     return {
         "type": 3,
         "content": {
@@ -25,19 +70,29 @@ def query_item(i, spec):
             "size": 0,
             "showAnalytics": True,
             "title": spec["title"],
-            "timeContext": {"durationMs": cfg["time_context_ms"]},
+            "timeContext": {"durationMs": 0},
+            "timeContextFromParameter": time_param_name,
             "showRefreshButton": True,
             "showExportToExcel": True,
             "queryType": 0,
             "resourceType": cfg["resource_type"],
             "visualization": spec["visualization"],
+            **grid_settings,
+            **sort_by,
         },
         "name": f"query - {i} - {spec['title']}",
     }
 
+params = cfg.get("parameters", [])
+time_param_name = params[0]["name"] if params else None
+items = []
+if params:
+    items.append(param_item(params))
+items.extend(query_item(i, s, time_param_name) for i, s in enumerate(cfg["queries"]))
+
 workbook = {
     "version": cfg["workbook_version"],
-    "items": [query_item(i, s) for i, s in enumerate(cfg["queries"])],
+    "items": items,
     "isLocked": False,
     "autoRefresh": {"enabled": True, "interval": 5},
     **({"fallbackResourceIds": [workspace_id]} if workspace_id else {}),

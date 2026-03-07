@@ -1,5 +1,5 @@
 InsightsMetrics
-| where TimeGenerated > ago(24h)
+| where TimeGenerated {TimeRange}
 | where Namespace == "container.azm.ms/net"
 | where Name == "recv_bytes"
 | extend MetricTags = todynamic(Tags)

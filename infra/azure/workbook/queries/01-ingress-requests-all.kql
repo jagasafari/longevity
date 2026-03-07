@@ -1,5 +1,5 @@
 ContainerLog
-| where TimeGenerated > ago(24h)
+| where TimeGenerated {TimeRange}
 | where LogEntry has "HTTP/"
 | where LogEntry has_any ("GET ", "POST ", "PUT ", "PATCH ", "DELETE ")
 | project TimeGenerated, LogEntry
