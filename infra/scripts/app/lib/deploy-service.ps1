@@ -65,6 +65,7 @@ helm upgrade --install web-app `
     "$InfraDir/k8s/web-helm-chart" `
     --namespace $Namespace `
     --create-namespace `
+    --reuse-values `
     --set $helmSetTag `
     --set $helmSetTls
 
