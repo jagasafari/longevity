@@ -1,0 +1,8 @@
+ContainerLog
+| where TimeGenerated {TimeRange}
+| where LogEntry has "ModSecurity"
+| parse LogEntry with * "ModSecurity: " Action ". " RuleMessage "[id \"" RuleId "\"]" *
+| parse LogEntry with * "[uri \"" Uri "\"]" *
+| parse LogEntry with * "[client " ClientIp "]" *
+| project TimeGenerated, Action, RuleId, RuleMessage, Uri, ClientIp
+| order by TimeGenerated desc

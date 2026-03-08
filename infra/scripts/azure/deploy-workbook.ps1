@@ -1,6 +1,14 @@
 # Usage: pwsh deploy-workbook.ps1
 
-. $PSScriptRoot/../config.ps1
+$ErrorActionPreference = 'Stop'
+$ScriptsDir = Resolve-Path "$PSScriptRoot/.."
+$InfraDir   = Resolve-Path "$ScriptsDir/.."
+$Config     = Get-Content "$ScriptsDir/env.json" -Raw |
+              ConvertFrom-Json
+
+$SubscriptionId = $Config.subscriptionId
+$RgName         = $Config.rgName
+$RgLocation     = $Config.rgLocation
 
 $WorkbookBicepFile = "$InfraDir/azure/workbook-only.bicep"
 $WorkbookBuilderFile = "$InfraDir/azure/workbook/builder.py"
