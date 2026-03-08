@@ -1,14 +1,17 @@
 controller:
   config:
     ssl-redirect: "true"
-    # Rate limiting — 10 req/s per IP, burst 20, then 429
+    # Rate limiting response codes (limits are set on Ingress annotations)
     limit-req-status-code: "429"
     limit-connections-status-code: "429"
     # ModSecurity WAF with OWASP CRS
+    # Running in DetectionOnly: logs matches but does NOT block.
+    # Review /var/log/modsec_audit.log for false positives before switching
+    # SecRuleEngine to "On" (blocking mode).
     enable-modsecurity: "true"
     enable-owasp-modsecurity-crs: "true"
     modsecurity-snippet: |
-      SecRuleEngine On
+      SecRuleEngine DetectionOnly
       SecRequestBodyAccess On
       SecAuditEngine RelevantOnly
       SecAuditLogParts ABIJDEFHZ

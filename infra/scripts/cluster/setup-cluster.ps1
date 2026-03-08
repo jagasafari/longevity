@@ -1,10 +1,30 @@
 # Usage: pwsh setup-cluster.ps1
 
-. $PSScriptRoot/../config.ps1
+$ErrorActionPreference = 'Stop'
+$ScriptsDir = Resolve-Path "$PSScriptRoot/.."
+$InfraDir   = Resolve-Path "$ScriptsDir/.."
+$Config     = Get-Content "$ScriptsDir/env.json" -Raw |
+              ConvertFrom-Json
 
-$DnsLabel = Get-RequiredConfigValue -Name 'DnsLabel' -ParamName 'dnsLabel'
-$IngressHostname = Get-RequiredConfigValue -Name 'IngressHostname' -ParamName 'ingressHostname'
-$CertEmail = Get-RequiredConfigValue -Name 'CertEmail' -ParamName 'certEmail'
+function Assert-NotPlaceholder {
+    param([string]$Name, [string]$Value)
+    $pattern = '^(REPLACE_ME|CHANGE_ME|TODO|YOUR_|<)'
+    if ([string]::IsNullOrWhiteSpace($Value) -or
+        $Value -match $pattern) {
+        throw "Missing '$Name' in env.json"
+    }
+}
+
+$RgName          = $Config.rgName
+$ClusterName     = $Config.clusterName
+$Namespace       = $Config.namespace
+$DnsLabel        = $Config.dnsLabel
+$IngressHostname = $Config.ingressHostname
+$CertEmail       = $Config.certEmail
+
+Assert-NotPlaceholder 'dnsLabel' $DnsLabel
+Assert-NotPlaceholder 'ingressHostname' $IngressHostname
+Assert-NotPlaceholder 'certEmail' $CertEmail
 
 Write-Host "==> Getting AKS credentials..." -ForegroundColor Cyan
 az aks get-credentials `
@@ -106,6 +126,14 @@ $fqdn = az network public-ip show `
     --query dnsSettings.fqdn -o tsv
 
 Write-Host "==> Ingress hostname: $fqdn" -ForegroundColor Green
+
+if ($fqdn -ne $IngressHostname) {
+    throw (
+        "Computed FQDN '$fqdn' does not match expected " +
+        "IngressHostname '$IngressHostname'. Update " +
+        "'ingressHostname' in env.json."
+    )
+}
 
 # --- cert-manager ---
 Write-Host "==> Installing cert-manager..." -ForegroundColor Cyan

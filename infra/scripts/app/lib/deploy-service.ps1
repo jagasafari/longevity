@@ -8,10 +8,16 @@ param(
     [string]$Tag
 )
 
-. $PSScriptRoot/../../config.ps1
+$ErrorActionPreference = 'Stop'
+$ScriptsDir = Resolve-Path "$PSScriptRoot/../.."
+$InfraDir   = Resolve-Path "$ScriptsDir/.."
+$RepoDir    = Resolve-Path "$InfraDir/.."
+$Config     = Get-Content "$ScriptsDir/env.json" -Raw |
+              ConvertFrom-Json
 
+$AcrName       = $Config.acrName
+$Namespace     = $Config.namespace
 $TlsSecretName = "web-tls"
-$IngressHostname = Get-RequiredConfigValue -Name 'IngressHostname' -ParamName 'ingressHostname'
 
 $cfg = @{
     frontend = @{
@@ -35,7 +41,7 @@ $Tag = if ($Tag) { $Tag }
 
 $AcrImage = "$AcrName.azurecr.io/longevity-$Service"
 $Full     = "${AcrImage}:${Tag}"
-$SrcDir   = "$AppDir/src/longevity-$Service"
+$SrcDir   = "$RepoDir/src/longevity-$Service"
 
 Write-Host "==> Logging in to ACR..." `
     -ForegroundColor Cyan

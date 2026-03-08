@@ -2,6 +2,12 @@
 import json, subprocess, sys, uuid
 from pathlib import Path
 
+PARAMETER_ID_NAMESPACE = uuid.UUID("9c7d99ff-bdcf-4f07-a4f5-0019e3034f64")
+
+
+def stable_parameter_id(name):
+    return str(uuid.uuid5(PARAMETER_ID_NAMESPACE, name))
+
 args        = sys.argv[1:]
 config_path = Path(args[0]) if args else Path(__file__).parent / "workbook.yaml"
 
@@ -18,7 +24,7 @@ workspace_id = args[2] if len(args) > 2 else ""
 def param_item(params):
     parameters = [
         {
-            "id": str(uuid.uuid4()),
+            "id": stable_parameter_id(p["name"]),
             "version": cfg["kql_item_version"],
             "name": p["name"],
             "type": p["type"],
@@ -71,7 +77,8 @@ def query_item(i, spec, time_param_name):
             "showAnalytics": True,
             "title": spec["title"],
             "timeContext": {"durationMs": 0},
-            "timeContextFromParameter": time_param_name,
+            **({"timeContextFromParameter": time_param_name}
+               if time_param_name else {}),
             "showRefreshButton": True,
             "showExportToExcel": True,
             "queryType": 0,
@@ -83,12 +90,30 @@ def query_item(i, spec, time_param_name):
         "name": f"query - {i} - {spec['title']}",
     }
 
+
+def group_item(i, spec, query):
+    return {
+        "type": 12,
+        "content": {
+            "version": "NotebookGroup/1.0",
+            "groupType": "editable",
+            "loadType": "explicit",
+            "loadButtonText": spec.get("load_button_text", "Show section"),
+            "title": spec["title"],
+            "items": [query],
+        },
+        "name": f"group - {i} - {spec['title']}",
+    }
+
 params = cfg.get("parameters", [])
 time_param_name = params[0]["name"] if params else None
+foldable_sections = cfg.get("foldable_sections", False)
 items = []
 if params:
     items.append(param_item(params))
-items.extend(query_item(i, s, time_param_name) for i, s in enumerate(cfg["queries"]))
+for i, spec in enumerate(cfg["queries"]):
+    query = query_item(i, spec, time_param_name)
+    items.append(group_item(i, spec, query) if foldable_sections else query)
 
 workbook = {
     "version": cfg["workbook_version"],

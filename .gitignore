@@ -55,8 +55,8 @@ infra/azure/modules/workbook.serialized.json
 # Local Bicep build output
 infra/azure/modules/workbook.json
 
-# Local runtime parameters (contains PII / env-specific values — never commit)
-infra/scripts/runtime.parameters.json
+# Local environment config (contains PII / env-specific values — never commit)
+infra/scripts/env.json
 
 # Android build outputs and local config
 mobile/**/build/

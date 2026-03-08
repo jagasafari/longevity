@@ -3,6 +3,7 @@ kql_item_version: "KqlItem/1.0"
 resource_type: "microsoft.operationalinsights/workspaces"
 schema: "https://github.com/Microsoft/Application-Insights-Workbooks/blob/master/schema/workbook.json"
 queries_dir: queries
+foldable_sections: true
 
 parameters:
   - name: TimeRange
@@ -29,6 +30,18 @@ parameters:
       - 7776000000
 
 queries:
+  - file: 07-waf-detections.kql
+    title: WAF Detections (ModSecurity)
+    visualization: table
+    column_formatters:
+      TimeGenerated: "20ch"
+      Action: "15ch"
+      RuleId: "10ch"
+      RuleMessage: "200ch"
+      Uri: "40ch"
+      ClientIp: "15ch"
+    sort_by: TimeGenerated
+
   - file: 01-ingress-requests-all.kql
     title: All Incoming Requests (Ingress)
     visualization: table
@@ -69,3 +82,4 @@ queries:
       Type: "10ch"
       Message: "500ch"
     sort_by: TimeGenerated
+
