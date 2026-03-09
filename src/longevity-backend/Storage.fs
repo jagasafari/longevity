@@ -5,6 +5,7 @@ open System.Threading.Tasks
 open Azure.Identity
 open Azure.Storage.Blobs
 open Azure.Storage.Sas
+open Azure.Storage.Blobs.Models
 
 type StorageConfig =
     { AccountName: string
@@ -59,10 +60,23 @@ let private listBlobsAsync (container: BlobContainerClient) = task {
     return blobs :> seq<string * DateTimeOffset>
 }
 
-let listRecentPhotos (config: StorageConfig) (count: int) = task {
+let private getClients (config: StorageConfig) =
     let serviceUri = Uri $"https://{config.AccountName}.blob.core.windows.net"
     let service = BlobServiceClient(serviceUri, DefaultAzureCredential())
     let container = service.GetBlobContainerClient config.ContainerName
+    service, container
+
+let deletePhoto (config: StorageConfig) (blobName: string) = task {
+    let _, container = getClients config
+    let! response =
+        container.DeleteBlobIfExistsAsync(
+            blobName,
+            DeleteSnapshotsOption.IncludeSnapshots)
+    return response.Value
+}
+
+let listRecentPhotos (config: StorageConfig) (count: int) = task {
+    let service, container = getClients config
     let expiry = DateTimeOffset.UtcNow.AddHours 1.0
     let! delegationKeyResponse = service.GetUserDelegationKeyAsync(Nullable(), expiry)
     let delegationKey = delegationKeyResponse.Value

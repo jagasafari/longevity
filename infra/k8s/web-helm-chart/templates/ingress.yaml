@@ -1,4 +1,5 @@
 {{- if .Values.ingress.enabled }}
+{{- $rateLimit := .Values.ingress.rateLimit | default (dict "enabled" true "rps" 120 "burstMultiplier" 3 "connections" 200) }}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -6,10 +7,12 @@ metadata:
   namespace: {{ .Values.namespace }}
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-prod
-    # Rate limiting: 10 req/s with burst up to 20 requests
-    nginx.ingress.kubernetes.io/limit-rps: "10"
-    nginx.ingress.kubernetes.io/limit-burst-multiplier: "2"
-    nginx.ingress.kubernetes.io/limit-connections: "20"
+{{- if $rateLimit.enabled }}
+    # Rate limiting tuned for Blazor startup asset bursts
+    nginx.ingress.kubernetes.io/limit-rps: "{{ $rateLimit.rps }}"
+    nginx.ingress.kubernetes.io/limit-burst-multiplier: "{{ $rateLimit.burstMultiplier }}"
+    nginx.ingress.kubernetes.io/limit-connections: "{{ $rateLimit.connections }}"
+{{- end }}
 
 spec:
   ingressClassName: {{ .Values.ingress.className }}
@@ -25,6 +28,13 @@ spec:
             port:
               number: {{ .Values.backend.service.port }}
       - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: backend-svc
+            port:
+              number: {{ .Values.backend.service.port }}
+      - path: /hubs
         pathType: Prefix
         backend:
           service:

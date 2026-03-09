@@ -40,13 +40,13 @@ output storageAccountId string = storageAccount.id
 
 var storageScopeId = storageAccount.id
 
-resource blobDataReader 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(storageScopeId, backendPrincipalId, 'Storage Blob Data Reader')
+resource blobDataContributor 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(storageScopeId, backendPrincipalId, 'Storage Blob Data Contributor')
   scope: storageAccount
   properties: {
     roleDefinitionId: subscriptionResourceId(
       'Microsoft.Authorization/roleDefinitions',
-      '2a2b9908-6ea1-4ae2-8e65-a410df84e7d1') // Storage Blob Data Reader
+      'ba92f5b4-2d11-453d-a403-e96b0029c9fe') // Storage Blob Data Contributor
     principalId: backendPrincipalId
     principalType: 'ServicePrincipal'
   }

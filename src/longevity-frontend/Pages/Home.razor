@@ -1,7 +1,10 @@
 ﻿@page "/"
+@implements IAsyncDisposable
+@using Microsoft.AspNetCore.SignalR.Client
 @using longevity_frontend.Services
 @inject AuthService Auth
 @inject PhotoService Photos
+@inject NavigationManager Navigation
 
 <PageTitle>Home</PageTitle>
 
@@ -25,6 +28,7 @@
                 <div class="photo-card">
                     <img src="@photo.Url" alt="@photo.Name" loading="lazy" />
                     <span>@photo.Name</span>
+                    <button class="delete-btn" aria-label="Delete @photo.Name" @onclick="() => DeletePhoto(photo)">Delete</button>
                 </div>
             }
         </div>
@@ -33,12 +37,42 @@
 
 @code {
     private PhotoInfo[]? _photos;
+    private HubConnection? _hubConnection;
 
     protected override async Task OnInitializedAsync()
     {
         if (Auth.State.IsAuthenticated)
         {
             _photos = await Photos.LoadRecentAsync();
+
+            _hubConnection = new HubConnectionBuilder()
+                .WithUrl(Navigation.ToAbsoluteUri("/hubs/photos"))
+                .WithAutomaticReconnect()
+                .Build();
+
+            _hubConnection.On("PhotosChanged", async () =>
+            {
+                _photos = await Photos.LoadRecentAsync();
+                await InvokeAsync(StateHasChanged);
+            });
+
+            await _hubConnection.StartAsync();
+        }
+    }
+
+    private async Task DeletePhoto(PhotoInfo photo)
+    {
+        if (await Photos.DeleteAsync(photo.Name))
+        {
+            _photos = _photos?.Where(p => p.Name != photo.Name).ToArray();
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_hubConnection is not null)
+        {
+            await _hubConnection.DisposeAsync();
         }
     }
 }

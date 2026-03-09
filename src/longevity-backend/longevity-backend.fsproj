@@ -14,6 +14,8 @@
     <Compile Include="AuthLogin.fs" />
     <Compile Include="AuthCallback.fs" />
     <Compile Include="Storage.fs" />
+    <Compile Include="PhotoHub.fs" />
+    <Compile Include="PhotoWatcher.fs" />
     <Compile Include="Config.fs" />
     <Compile Include="Routes.fs" />
     <Compile Include="Program.fs" />
@@ -22,6 +24,7 @@
   <ItemGroup>
     <PackageReference Include="Azure.Identity" Version="1.18.0" />
     <PackageReference Include="Azure.Storage.Blobs" Version="12.27.0" />
+    <PackageReference Include="FSharp.Control.AsyncSeq" Version="4.8.0" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.2" />
   </ItemGroup>
 

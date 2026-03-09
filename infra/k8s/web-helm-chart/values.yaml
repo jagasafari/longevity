@@ -25,3 +25,8 @@ ingress:
   className: nginx
   tlsSecretName: web-tls
   host: longevity.eastus2.cloudapp.azure.com
+  rateLimit:
+    enabled: true
+    rps: 120
+    burstMultiplier: 3
+    connections: 200

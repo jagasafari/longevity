@@ -63,3 +63,5 @@ mobile/**/build/
 mobile/**/local.properties
 mobile/**/gradle/gradle-daemon-jvm.properties
 mobile/**/.gradle/
+
+.local
