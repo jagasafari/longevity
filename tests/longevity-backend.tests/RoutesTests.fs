@@ -89,12 +89,10 @@ let tests = testList "Routes" [
             test <@ status = Nullable 404 @>
 
         testCase "passes blob name to delete function" <| fun () ->
-            let mutable captured = ""
             let delete name =
-                captured <- name
+                test <@ name = "my-photo.jpg" @>
                 Task.FromResult true
             (Routes.deletePhoto delete stubHub "my-photo.jpg").Result |> ignore
-            test <@ captured = "my-photo.jpg" @>
 
         testCase "returns 400 when blob name missing" <| fun () ->
             let delete _ = failwith "delete should not be called for missing name"

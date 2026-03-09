@@ -28,7 +28,7 @@
                 <div class="photo-card">
                     <img src="@photo.Url" alt="@photo.Name" loading="lazy" />
                     <span>@photo.Name</span>
-                    <button class="delete-btn" @onclick="() => DeletePhoto(photo)">Delete</button>
+                    <button class="delete-btn" aria-label="Delete @photo.Name" @onclick="() => DeletePhoto(photo)">Delete</button>
                 </div>
             }
         </div>

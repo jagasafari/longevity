@@ -60,10 +60,14 @@ let private listBlobsAsync (container: BlobContainerClient) = task {
     return blobs :> seq<string * DateTimeOffset>
 }
 
-let deletePhoto (config: StorageConfig) (blobName: string) = task {
+let private getClients (config: StorageConfig) =
     let serviceUri = Uri $"https://{config.AccountName}.blob.core.windows.net"
     let service = BlobServiceClient(serviceUri, DefaultAzureCredential())
     let container = service.GetBlobContainerClient config.ContainerName
+    service, container
+
+let deletePhoto (config: StorageConfig) (blobName: string) = task {
+    let _, container = getClients config
     let! response =
         container.DeleteBlobIfExistsAsync(
             blobName,
@@ -72,9 +76,7 @@ let deletePhoto (config: StorageConfig) (blobName: string) = task {
 }
 
 let listRecentPhotos (config: StorageConfig) (count: int) = task {
-    let serviceUri = Uri $"https://{config.AccountName}.blob.core.windows.net"
-    let service = BlobServiceClient(serviceUri, DefaultAzureCredential())
-    let container = service.GetBlobContainerClient config.ContainerName
+    let service, container = getClients config
     let expiry = DateTimeOffset.UtcNow.AddHours 1.0
     let! delegationKeyResponse = service.GetUserDelegationKeyAsync(Nullable(), expiry)
     let delegationKey = delegationKeyResponse.Value
