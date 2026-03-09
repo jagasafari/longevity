@@ -1,10 +1,11 @@
-# Usage: pwsh deploy-all.ps1 [-SkipInfra] [-SkipCluster] [-SkipApp] [-Tag <string>]
+# Usage: pwsh deploy-all.ps1 [-SkipInfra] [-SkipCluster] [-SkipApp] [-Tag <string>] [-IncludeIngress]
 
 param(
     [switch]$SkipInfra,
     [switch]$SkipCluster,
     [switch]$SkipApp,
-    [string]$Tag
+    [string]$Tag,
+    [switch]$IncludeIngress
 )
 
 $ErrorActionPreference = 'Stop'
@@ -28,6 +29,7 @@ if (-not $SkipApp) {
     Write-Host "`n========== APPLICATION ==========" -ForegroundColor Magenta
     $appParams = @{}
     if ($Tag) { $appParams['Tag'] = $Tag }
+    if ($IncludeIngress) { $appParams['IncludeIngress'] = $true }
     & "$ScriptDir/app/deploy-app.ps1" @appParams
 } else {
     Write-Host "==> Skipping app deployment" -ForegroundColor Yellow

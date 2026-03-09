@@ -6,7 +6,7 @@ let private require key (section: IConfigurationSection) =
     section.[key]
     |> Option.ofObj
     |> Option.filter (fun s -> s.Length > 0)
-    |> Option.defaultWith (fun () -> failwith $"Missing config: GoogleOAuth:{key}")
+  |> Option.defaultWith (fun () -> failwith $"Missing config: {section.Path}:{key}")
 
 let loadGoogleOAuth (cfg: IConfiguration) : Auth.GoogleOAuth =
     let s = cfg.GetSection "GoogleOAuth"
@@ -14,3 +14,12 @@ let loadGoogleOAuth (cfg: IConfiguration) : Auth.GoogleOAuth =
       ClientSecret = require "ClientSecret" s |> Auth.ClientSecret
       RedirectUri  = s["RedirectUri"]  |> Auth.requireHttpsUri "GoogleOAuth:RedirectUri"
       AllowedEmail = s["AllowedEmail"] |> Auth.requireEmail "GoogleOAuth:AllowedEmail" }
+
+let loadStorage (cfg: IConfiguration) : Storage.StorageConfig =
+    let s = cfg.GetSection "Storage"
+    { AccountName = require "AccountName" s
+      ContainerName =
+        s["ContainerName"]
+        |> Option.ofObj
+        |> Option.filter (fun v -> v.Length > 0)
+        |> Option.defaultValue "photos" }

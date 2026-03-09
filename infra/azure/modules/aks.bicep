@@ -29,6 +29,14 @@ resource aks 'Microsoft.ContainerService/managedClusters@2024-02-01' = {
       networkPlugin: 'azure'
       loadBalancerSku: 'standard'
     }
+    oidcIssuerProfile: {
+      enabled: true
+    }
+    securityProfile: {
+      workloadIdentity: {
+        enabled: true
+      }
+    }
     addonProfiles: {
       azureKeyvaultSecretsProvider: {
         enabled: true
@@ -49,3 +57,4 @@ resource aks 'Microsoft.ContainerService/managedClusters@2024-02-01' = {
 
 output principalId string = aks.identity.principalId
 output kubeletIdentityObjectId string = aks.properties.identityProfile.kubeletidentity.objectId
+output oidcIssuerUrl string = aks.properties.oidcIssuerProfile.issuerURL

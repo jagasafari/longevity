@@ -12,10 +12,11 @@ spec:
     metadata:
       labels:
         app: backend
+        azure.workload.identity/use: "true"
     spec:
+      serviceAccountName: backend-sa
       containers:
-      - image: >-
-          {{ .Values.backend.image.repository }}:{{ default .Values.frontend.image.tag .Values.backend.image.tag }}
+      - image: {{ printf "%s:%s" .Values.backend.image.repository (required "backend.image.tag is required" .Values.backend.image.tag) | quote }}
         name: backend
         ports:
         - containerPort: {{ .Values.backend.service.targetPort }}

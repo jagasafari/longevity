@@ -1,5 +1,44 @@
 ﻿@page "/"
+@using longevity_frontend.Services
+@inject AuthService Auth
+@inject PhotoService Photos
 
 <PageTitle>Home</PageTitle>
 
 <h1>Longevity</h1>
+
+@if (Auth.State.IsAuthenticated)
+{
+    @if (_photos is null)
+    {
+        <p>Loading photos...</p>
+    }
+    else if (_photos.Length == 0)
+    {
+        <p>No photos yet.</p>
+    }
+    else
+    {
+        <div class="photo-grid">
+            @foreach (var photo in _photos)
+            {
+                <div class="photo-card">
+                    <img src="@photo.Url" alt="@photo.Name" loading="lazy" />
+                    <span>@photo.Name</span>
+                </div>
+            }
+        </div>
+    }
+}
+
+@code {
+    private PhotoInfo[]? _photos;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Auth.State.IsAuthenticated)
+        {
+            _photos = await Photos.LoadRecentAsync();
+        }
+    }
+}

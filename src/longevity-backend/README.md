@@ -180,6 +180,110 @@ graph TB
 | GET | `/auth/me` | Cookie | Return `{ email }` or 401 |
 | POST | `/auth/logout` | Cookie | Expire cookie → redirect `/` |
 | GET | `/api/weatherforecast` | — | Sample data |
+| GET | `/api/photos` | Cookie | Return 10 most recent photos with SAS URLs |
+
+## User Delegation SAS — Photo Serving Flow
+
+No storage account keys are used. The backend authenticates to Azure
+Storage with **Managed Identity** and issues short-lived **User
+Delegation SAS** tokens so the browser can fetch images directly from
+Blob Storage.
+
+```mermaid
+sequenceDiagram
+    box rgb(170,255,200) SPA
+    participant SPA as Blazor SPA
+    end
+    box rgb(255,180,180) Backend
+    participant App as Backend (F# API)
+    end
+    box rgb(180,200,255) Azure
+    participant AAD as Entra ID
+    participant Blob as Blob Storage
+    end
+
+    rect rgb(40, 40, 60)
+    Note over SPA,Blob: 1 — Authenticated request for photos
+
+    SPA->>App: GET /api/photos (Cookie)
+    App->>App: RequireAuthorization() validates cookie
+    end
+
+    rect rgb(40, 60, 40)
+    Note over SPA,Blob: 2 — Managed Identity authenticates to Storage
+
+    App->>AAD: DefaultAzureCredential()
+    Note right of App: AKS workload identity or<br/>local Azure CLI credentials
+    AAD-->>App: OAuth2 token (Storage scope)
+    end
+
+    rect rgb(60, 40, 40)
+    Note over SPA,Blob: 3 — List blobs + generate User Delegation SAS
+
+    App->>Blob: GetBlobs() with Bearer token
+    Note right of App: Requires role: Storage Blob Data Reader
+    Blob-->>App: Blob list (name, lastModified, ...)
+
+    App->>App: Sort by lastModified desc, take 10
+
+    App->>Blob: GetUserDelegationKey(expiry=1h)
+    Note right of App: Requires role: Storage Blob Delegator
+    Blob-->>App: UserDelegationKey (signed by Entra ID)
+
+    App->>App: For each blob: BlobSasBuilder<br/>+ ToSasQueryParameters(delegationKey)
+    Note right of App: Produces read-only URL per blob<br/>valid for 1 hour, scoped to that blob
+    end
+
+    rect rgb(40, 50, 60)
+    Note over SPA,Blob: 4 — SPA loads images directly from Blob Storage
+
+    App-->>SPA: JSON array of { name, url, lastModified }
+    Note right of App: Each url contains ?sv=...&sig=... SAS token
+
+    loop For each photo
+        SPA->>Blob: GET blob URL with SAS token
+        Note right of SPA: img src= triggers browser fetch<br/>no cookie or backend involved
+        Blob-->>SPA: Image bytes
+    end
+    end
+```
+
+### Required RBAC Roles
+
+| Role | Scope | Purpose |
+|------|-------|---------|
+| **Storage Blob Data Reader** | Storage account or container | List and read blob content |
+| **Storage Blob Delegator** | Storage account | Request a user delegation key for SAS signing |
+
+### Why User Delegation SAS?
+
+```mermaid
+graph TB
+    subgraph "Account Key SAS (not used)"
+        A1[Storage account key] -->|signs| A2[SAS token]
+        A1 -->|if leaked| A3[Full account access]
+        style A1 fill:#8a5a44,color:#fff
+        style A3 fill:#8a5a44,color:#fff
+    end
+
+    subgraph "User Delegation SAS (used)"
+        B1[Managed Identity] -->|authenticates via| B2[Entra ID]
+        B2 -->|issues| B3[UserDelegationKey]
+        B3 -->|signs| B4[SAS token]
+        B4 -->|scoped| B5[Read-only, 1 blob, 1 hour]
+        style B1 fill:#2d8659,color:#fff
+        style B4 fill:#2d8659,color:#fff
+        style B5 fill:#4a6fa5,color:#fff
+    end
+```
+
+| Property | Value |
+|----------|-------|
+| **No secrets in config** | Only `Storage:AccountName` — no keys or connection strings |
+| **Least privilege** | SAS grants read-only access to a single blob |
+| **Short-lived** | SAS expires after 1 hour — limits blast radius |
+| **Revocable** | Revoking the managed identity's RBAC instantly invalidates new SAS tokens |
+| **Direct download** | Browser fetches images from Blob Storage — backend is not a proxy |
 
 | Phase | What happens | Credential |
 |-------|--------------|--------------------|
