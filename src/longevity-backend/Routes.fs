@@ -59,3 +59,8 @@ let authLogout (ctx: HttpContext) = task {
 
 let photos config () =
     Storage.listRecentPhotos config 10
+
+let deletePhoto (delete: string -> Task<bool>) (name: string) = task {
+    let! deleted = delete name
+    return if deleted then Results.NoContent() else Results.NotFound()
+}

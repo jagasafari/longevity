@@ -17,4 +17,10 @@ public sealed class PhotoService(HttpClient http)
             return [];
         }
     }
+
+    public async Task<bool> DeleteAsync(string name)
+    {
+        var response = await http.DeleteAsync($"/api/photos/{Uri.EscapeDataString(name)}");
+        return response.IsSuccessStatusCode;
+    }
 }

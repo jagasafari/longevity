@@ -1,4 +1,5 @@
 ﻿@page "/"
+@implements IAsyncDisposable
 @using longevity_frontend.Services
 @inject AuthService Auth
 @inject PhotoService Photos
@@ -25,6 +26,7 @@
                 <div class="photo-card">
                     <img src="@photo.Url" alt="@photo.Name" loading="lazy" />
                     <span>@photo.Name</span>
+                    <button class="delete-btn" @onclick="() => DeletePhoto(photo)">Delete</button>
                 </div>
             }
         </div>
@@ -33,12 +35,79 @@
 
 @code {
     private PhotoInfo[]? _photos;
+    private CancellationTokenSource? _pollingCancellation;
+    private Task? _pollingTask;
 
     protected override async Task OnInitializedAsync()
     {
         if (Auth.State.IsAuthenticated)
         {
             _photos = await Photos.LoadRecentAsync();
+            _pollingCancellation = new CancellationTokenSource();
+            _pollingTask = PollForUpdatesAsync(_pollingCancellation.Token);
+        }
+    }
+
+    private async Task PollForUpdatesAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var timer = new PeriodicTimer(TimeSpan.FromSeconds(8));
+
+            while (await timer.WaitForNextTickAsync(cancellationToken))
+            {
+                var latest = await Photos.LoadRecentAsync();
+
+                if (_photos is null || HasPhotoListChanged(_photos, latest))
+                {
+                    _photos = latest;
+                    await InvokeAsync(StateHasChanged);
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
+    private static bool HasPhotoListChanged(PhotoInfo[] current, PhotoInfo[] latest)
+    {
+        if (current.Length != latest.Length)
+        {
+            return true;
+        }
+
+        for (var i = 0; i < current.Length; i++)
+        {
+            if (current[i].Name != latest[i].Name ||
+                current[i].LastModified != latest[i].LastModified)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private async Task DeletePhoto(PhotoInfo photo)
+    {
+        if (await Photos.DeleteAsync(photo.Name))
+        {
+            _photos = _photos?.Where(p => p.Name != photo.Name).ToArray();
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_pollingCancellation is not null)
+        {
+            await _pollingCancellation.CancelAsync();
+            _pollingCancellation.Dispose();
+        }
+
+        if (_pollingTask is not null)
+        {
+            await _pollingTask;
         }
     }
 }

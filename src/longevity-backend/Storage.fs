@@ -59,6 +59,14 @@ let private listBlobsAsync (container: BlobContainerClient) = task {
     return blobs :> seq<string * DateTimeOffset>
 }
 
+let deletePhoto (config: StorageConfig) (blobName: string) = task {
+    let serviceUri = Uri $"https://{config.AccountName}.blob.core.windows.net"
+    let service = BlobServiceClient(serviceUri, DefaultAzureCredential())
+    let container = service.GetBlobContainerClient config.ContainerName
+    let! response = container.DeleteBlobIfExistsAsync blobName
+    return response.Value
+}
+
 let listRecentPhotos (config: StorageConfig) (count: int) = task {
     let serviceUri = Uri $"https://{config.AccountName}.blob.core.windows.net"
     let service = BlobServiceClient(serviceUri, DefaultAzureCredential())

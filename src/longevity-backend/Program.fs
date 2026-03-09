@@ -61,5 +61,10 @@ let main args =
         .RequireAuthorization()
     |> ignore
 
+    app.MapDelete("/api/photos/{name}",
+        Func<string, _>(Routes.deletePhoto (Storage.deletePhoto storage)))
+        .RequireAuthorization()
+    |> ignore
+
     app.Run()
     0
