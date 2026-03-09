@@ -23,6 +23,8 @@ controller:
       SecAuditLogParts ABIJDEFHZ
       # Blazor WASM loads large binaries — exclude from inspection to avoid false positives
       SecRule REQUEST_URI "@beginsWith /_framework/" "id:1000,phase:1,pass,nolog,ctl:ruleEngine=Off"
+      # CRS rule 911100 only allows GET/HEAD/POST/OPTIONS — skip it for RESTful methods
+      SecRule REQUEST_METHOD "@rx ^(PUT|PATCH|DELETE)$" "id:1001,phase:1,pass,nolog,ctl:ruleRemoveById=911100"
     # Block known scanner/attack user agents and common attack paths
     server-snippet: |
       add_header X-Frame-Options "SAMEORIGIN" always;

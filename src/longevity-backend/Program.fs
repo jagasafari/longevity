@@ -4,6 +4,7 @@ open System.Threading.Tasks
 open Microsoft.AspNetCore.Authentication.Cookies
 open Microsoft.AspNetCore.Builder
 open Microsoft.AspNetCore.Http
+open Microsoft.AspNetCore.SignalR
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Hosting
 
@@ -13,6 +14,7 @@ let main args =
     builder.Services.AddOpenApi()    |> ignore
     builder.Services.AddHttpClient() |> ignore
     builder.Services.AddAuthorization() |> ignore
+    builder.Services.AddSignalR()    |> ignore
 
     builder.Services
         .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
@@ -24,9 +26,13 @@ let main args =
                 Task.CompletedTask)
     |> ignore
 
-    let app     = builder.Build()
-    let oauth   = Config.loadGoogleOAuth app.Configuration
-    let storage = Config.loadStorage app.Configuration
+    let oauth   = Config.loadGoogleOAuth builder.Configuration
+    let storage = Config.loadStorage builder.Configuration
+
+    builder.Services.AddSingleton(storage) |> ignore
+    builder.Services.AddHostedService<PhotoWatcher.PhotoWatcherService>() |> ignore
+
+    let app = builder.Build()
 
     if app.Environment.IsDevelopment() then
         app.MapOpenApi() |> ignore
@@ -34,6 +40,8 @@ let main args =
     app.UseHttpsRedirection() |> ignore
     app.UseAuthentication()   |> ignore
     app.UseAuthorization()    |> ignore
+
+    app.MapHub<PhotoHub.PhotoHub>("/hubs/photos") |> ignore
 
     app.MapGet("/api/weatherforecast",
         Func<_>(Routes.weatherForecast))
@@ -62,7 +70,14 @@ let main args =
     |> ignore
 
     app.MapDelete("/api/photos/{name}",
-        Func<string, _>(Routes.deletePhoto (Storage.deletePhoto storage)))
+        Func<HttpContext, IHubContext<PhotoHub.PhotoHub>, _>(
+            fun ctx hub ->
+                let name =
+                    match ctx.Request.RouteValues.TryGetValue("name") with
+                    | true, value -> string value
+                    | _ -> ""
+
+                Routes.deletePhoto (Storage.deletePhoto storage) hub name))
         .RequireAuthorization()
     |> ignore
 

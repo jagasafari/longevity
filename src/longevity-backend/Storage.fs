@@ -5,6 +5,7 @@ open System.Threading.Tasks
 open Azure.Identity
 open Azure.Storage.Blobs
 open Azure.Storage.Sas
+open Azure.Storage.Blobs.Models
 
 type StorageConfig =
     { AccountName: string
@@ -63,7 +64,10 @@ let deletePhoto (config: StorageConfig) (blobName: string) = task {
     let serviceUri = Uri $"https://{config.AccountName}.blob.core.windows.net"
     let service = BlobServiceClient(serviceUri, DefaultAzureCredential())
     let container = service.GetBlobContainerClient config.ContainerName
-    let! response = container.DeleteBlobIfExistsAsync blobName
+    let! response =
+        container.DeleteBlobIfExistsAsync(
+            blobName,
+            DeleteSnapshotsOption.IncludeSnapshots)
     return response.Value
 }
 

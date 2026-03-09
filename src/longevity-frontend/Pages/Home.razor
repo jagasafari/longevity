@@ -1,8 +1,10 @@
 ﻿@page "/"
 @implements IAsyncDisposable
+@using Microsoft.AspNetCore.SignalR.Client
 @using longevity_frontend.Services
 @inject AuthService Auth
 @inject PhotoService Photos
+@inject NavigationManager Navigation
 
 <PageTitle>Home</PageTitle>
 
@@ -35,58 +37,27 @@
 
 @code {
     private PhotoInfo[]? _photos;
-    private CancellationTokenSource? _pollingCancellation;
-    private Task? _pollingTask;
+    private HubConnection? _hubConnection;
 
     protected override async Task OnInitializedAsync()
     {
         if (Auth.State.IsAuthenticated)
         {
             _photos = await Photos.LoadRecentAsync();
-            _pollingCancellation = new CancellationTokenSource();
-            _pollingTask = PollForUpdatesAsync(_pollingCancellation.Token);
-        }
-    }
 
-    private async Task PollForUpdatesAsync(CancellationToken cancellationToken)
-    {
-        try
-        {
-            using var timer = new PeriodicTimer(TimeSpan.FromSeconds(8));
+            _hubConnection = new HubConnectionBuilder()
+                .WithUrl(Navigation.ToAbsoluteUri("/hubs/photos"))
+                .WithAutomaticReconnect()
+                .Build();
 
-            while (await timer.WaitForNextTickAsync(cancellationToken))
+            _hubConnection.On("PhotosChanged", async () =>
             {
-                var latest = await Photos.LoadRecentAsync();
+                _photos = await Photos.LoadRecentAsync();
+                await InvokeAsync(StateHasChanged);
+            });
 
-                if (_photos is null || HasPhotoListChanged(_photos, latest))
-                {
-                    _photos = latest;
-                    await InvokeAsync(StateHasChanged);
-                }
-            }
+            await _hubConnection.StartAsync();
         }
-        catch (OperationCanceledException)
-        {
-        }
-    }
-
-    private static bool HasPhotoListChanged(PhotoInfo[] current, PhotoInfo[] latest)
-    {
-        if (current.Length != latest.Length)
-        {
-            return true;
-        }
-
-        for (var i = 0; i < current.Length; i++)
-        {
-            if (current[i].Name != latest[i].Name ||
-                current[i].LastModified != latest[i].LastModified)
-            {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     private async Task DeletePhoto(PhotoInfo photo)
@@ -99,15 +70,9 @@
 
     public async ValueTask DisposeAsync()
     {
-        if (_pollingCancellation is not null)
+        if (_hubConnection is not null)
         {
-            await _pollingCancellation.CancelAsync();
-            _pollingCancellation.Dispose();
-        }
-
-        if (_pollingTask is not null)
-        {
-            await _pollingTask;
+            await _hubConnection.DisposeAsync();
         }
     }
 }

@@ -4,9 +4,11 @@ open System
 open System.Net.Http
 open System.Security.Claims
 open System.Threading.Tasks
+open Azure
 open Microsoft.AspNetCore.Authentication
 open Microsoft.AspNetCore.Authentication.Cookies
 open Microsoft.AspNetCore.Http
+open Microsoft.AspNetCore.SignalR
 
 let weatherForecast () =
     DateOnly.FromDateTime DateTime.Now |> fun today -> Weather.generateRandom today 5
@@ -60,7 +62,33 @@ let authLogout (ctx: HttpContext) = task {
 let photos config () =
     Storage.listRecentPhotos config 10
 
-let deletePhoto (delete: string -> Task<bool>) (name: string) = task {
-    let! deleted = delete name
-    return if deleted then Results.NoContent() else Results.NotFound()
+let private validName = function
+    | null -> None
+    | name when String.IsNullOrWhiteSpace name -> None
+    | name -> Some name
+
+let private toDeleteResult = function
+    | None -> Results.BadRequest {| error = "missing_photo_name" |}
+    | Some true -> Results.NoContent()
+    | Some false -> Results.NotFound()
+
+let private notifyOnDelete (hub: IHubContext<PhotoHub.PhotoHub>) = function
+    | true -> hub.Clients.All.SendAsync("PhotosChanged")
+    | false -> Task.CompletedTask
+
+let deletePhoto (delete: string -> Task<bool>) (hub: IHubContext<PhotoHub.PhotoHub>) (name: string) = task {
+    match validName name with
+    | None -> return toDeleteResult None
+    | Some blobName ->
+        try
+            let! deleted = delete blobName
+            do! notifyOnDelete hub deleted
+            return toDeleteResult (Some deleted)
+        with
+        | :? RequestFailedException as ex when ex.Status = 403 ->
+            return Results.StatusCode 403
+        | :? RequestFailedException as ex when ex.Status = 404 ->
+            return Results.NotFound()
+        | :? RequestFailedException as ex when ex.Status = 409 ->
+            return Results.StatusCode 409
 }
