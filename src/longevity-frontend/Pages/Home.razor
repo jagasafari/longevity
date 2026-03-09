@@ -36,7 +36,6 @@
 
     protected override async Task OnInitializedAsync()
     {
-        await Auth.CheckAsync();
         if (Auth.State.IsAuthenticated)
         {
             _photos = await Photos.LoadRecentAsync();

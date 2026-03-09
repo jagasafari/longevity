@@ -1,4 +1,10 @@
 controller:
+  # Pins the controller image to the exact linux/amd64 bytes for v1.14.3.
+  # Prevents supply-chain tampering even if the tag is overwritten in the registry.
+  # To update: docker buildx imagetools inspect registry.k8s.io/ingress-nginx/controller:<tag>
+  # and copy the linux/amd64 manifest digest.
+  image:
+    digest: "sha256:82917be97c0939f6ada1717bb39aa7e66c229d6cfb10dcfc8f1bd42f9efe0f81"
   config:
     ssl-redirect: "true"
     # Rate limiting response codes (limits are set on Ingress annotations)

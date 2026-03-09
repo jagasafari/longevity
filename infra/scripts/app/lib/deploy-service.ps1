@@ -16,10 +16,10 @@ $Config     = Get-Content "$ScriptsDir/env.json" -Raw |
 
 $Namespace = $Config.namespace
 
-. $PSScriptRoot/lib/resolve-tag.ps1
+. $PSScriptRoot/resolve-tag.ps1
 $Tag = Resolve-Tag $Tag
 
-& $PSScriptRoot/lib/build-push.ps1 -Service $Service -Tag $Tag
+& $PSScriptRoot/build-push.ps1 -Service $Service -Tag $Tag
 
 helm upgrade --install web-app `
     "$InfraDir/k8s/web-helm-chart" `

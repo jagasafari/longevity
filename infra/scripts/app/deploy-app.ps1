@@ -27,6 +27,7 @@ if ($IncludeIngress) {
         -ForegroundColor Magenta
     helm upgrade --install ingress-nginx `
         ingress-nginx/ingress-nginx `
+        --version $Config.ingressNginxChartVersion `
         --namespace ingress-nginx `
         -f "$InfraDir/k8s/ingress-nginx/values.yaml" `
         --wait

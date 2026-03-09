@@ -65,6 +65,7 @@ helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
 helm repo update
 
 helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx `
+    --version $Config.ingressNginxChartVersion `
     --namespace ingress-nginx `
     --create-namespace `
     -f "$InfraDir/k8s/ingress-nginx/values.yaml" `

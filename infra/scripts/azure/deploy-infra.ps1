@@ -6,8 +6,6 @@ $InfraDir   = Resolve-Path "$ScriptsDir/.."
 $Config     = Get-Content "$ScriptsDir/env.json" -Raw |
               ConvertFrom-Json
 
-. "$ScriptsDir/lib/ensure-providers.ps1"
-
 $SubscriptionId = $Config.subscriptionId
 $RgName         = $Config.rgName
 $RgLocation     = $Config.rgLocation
@@ -21,9 +19,18 @@ $WorkspaceName          = 'longevity-workspace'
 
 Write-Host "==> Ensuring Azure providers..." `
     -ForegroundColor Cyan
-Ensure-Providers `
-    -Namespaces $Config.requiredProviders `
-    -SubscriptionId $SubscriptionId
+foreach ($ns in $Config.requiredProviders) {
+    Write-Host "  Ensuring: $ns" -ForegroundColor Cyan
+    az provider register `
+        --namespace $ns `
+        --subscription $SubscriptionId `
+        --wait `
+        --only-show-errors | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        throw "Provider registration failed: $ns"
+    }
+    Write-Host "  Provider OK: $ns" -ForegroundColor Green
+}
 
 Write-Host "==> Getting deployer principal ID..." `
     -ForegroundColor Cyan
