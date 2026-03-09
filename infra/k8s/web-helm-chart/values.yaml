@@ -4,13 +4,14 @@ frontend:
   replicaCount: 1
   image:
     repository: longevityacr.azurecr.io/longevity-frontend
-    tag: 5258fe7
+    tag: ""
   service:
     port: 80
     targetPort: 80
 
 backend:
   replicaCount: 1
+  workloadIdentityClientId: "5e35af52-d86b-4942-992e-b41069dc54db"
   image:
     repository: longevityacr.azurecr.io/longevity-backend
     tag: ""

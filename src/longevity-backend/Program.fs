@@ -24,8 +24,9 @@ let main args =
                 Task.CompletedTask)
     |> ignore
 
-    let app   = builder.Build()
-    let oauth = Config.loadGoogleOAuth app.Configuration
+    let app     = builder.Build()
+    let oauth   = Config.loadGoogleOAuth app.Configuration
+    let storage = Config.loadStorage app.Configuration
 
     if app.Environment.IsDevelopment() then
         app.MapOpenApi() |> ignore
@@ -53,6 +54,11 @@ let main args =
 
     app.MapPost("/auth/logout",
         Func<HttpContext, Task<IResult>>(Routes.authLogout))
+    |> ignore
+
+    app.MapGet("/api/photos",
+        Func<_>(Routes.photos storage))
+        .RequireAuthorization()
     |> ignore
 
     app.Run()

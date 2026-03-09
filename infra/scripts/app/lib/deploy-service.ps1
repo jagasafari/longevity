@@ -1,5 +1,5 @@
-# Usage: pwsh deploy-service.ps1 -Service frontend [-Tag x]
-#        pwsh deploy-service.ps1 -Service backend  [-Tag x]
+# Usage: pwsh deploy-service.ps1 -Service frontend [-Tag <string>]
+#        pwsh deploy-service.ps1 -Service backend  [-Tag <string>]
 
 param(
     [Parameter(Mandatory)]
@@ -9,98 +9,22 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$ScriptsDir = Resolve-Path "$PSScriptRoot/../.."
+$ScriptsDir = Resolve-Path "$PSScriptRoot/.."
 $InfraDir   = Resolve-Path "$ScriptsDir/.."
-$RepoDir    = Resolve-Path "$InfraDir/.."
 $Config     = Get-Content "$ScriptsDir/env.json" -Raw |
               ConvertFrom-Json
 
-$AcrName       = $Config.acrName
-$Namespace     = $Config.namespace
-$TlsSecretName = "web-tls"
+$Namespace = $Config.namespace
 
-$cfg = @{
-    frontend = @{
-        HelmSet    = "frontend.image.tag"
-        Deployment = "frontend-deployment"
-    }
-    backend  = @{
-        HelmSet    = "backend.image.tag"
-        Deployment = "backend-deployment"
-    }
-}[$Service]
+. $PSScriptRoot/lib/resolve-tag.ps1
+$Tag = Resolve-Tag $Tag
 
-$Tag = if ($Tag) { $Tag }
-       else {
-           $sha  = git rev-parse --short HEAD
-           $ts   = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
-           $tag  = "$sha-$ts"
-           Write-Host "==> Using tag: $tag" -ForegroundColor Cyan
-           $tag
-       }
+& $PSScriptRoot/lib/build-push.ps1 -Service $Service -Tag $Tag
 
-$AcrImage = "$AcrName.azurecr.io/longevity-$Service"
-$Full     = "${AcrImage}:${Tag}"
-$SrcDir   = "$RepoDir/src/longevity-$Service"
-
-Write-Host "==> Logging in to ACR..." `
-    -ForegroundColor Cyan
-az acr login --name $AcrName
-if ($LASTEXITCODE -ne 0) { throw "ACR login failed" }
-
-Write-Host "==> Building $Service image..." `
-    -ForegroundColor Cyan
-docker build --platform linux/amd64 `
-    -t $Full $SrcDir
-if ($LASTEXITCODE -ne 0) {
-    throw "$Service build failed"
-}
-
-Write-Host "==> Pushing $Service image..." `
-    -ForegroundColor Cyan
-docker push $Full
-if ($LASTEXITCODE -ne 0) {
-    throw "$Service push failed"
-}
-
-Write-Host "==> Deploying $Service (tag: $Tag)..." `
-    -ForegroundColor Cyan
-$helmSetTag = "$($cfg.HelmSet)=$Tag"
-$helmSetTls = "ingress.tlsSecretName=$TlsSecretName"
 helm upgrade --install web-app `
     "$InfraDir/k8s/web-helm-chart" `
     --namespace $Namespace `
     --create-namespace `
     --reuse-values `
-    --set $helmSetTag `
-    --set $helmSetTls
-
-if ($LASTEXITCODE -ne 0) {
-    throw "Helm deployment failed"
-}
-
-if ($Service -eq 'frontend') {
-    Write-Host "==> Waiting for TLS secret (cert-manager)..." `
-        -ForegroundColor Cyan
-    $deadline = (Get-Date).AddSeconds(300)
-    while ((Get-Date) -lt $deadline) {
-        kubectl get secret $TlsSecretName -n $Namespace *> $null
-        if ($LASTEXITCODE -eq 0) { break }
-        Start-Sleep 5
-    }
-    if ($LASTEXITCODE -ne 0) {
-        throw "TLS secret $TlsSecretName not ready after 300s"
-    }
-}
-
-Write-Host "==> Waiting for $Service rollout..." `
-    -ForegroundColor Cyan
-kubectl rollout status `
-    "deployment/$($cfg.Deployment)" `
-    -n $Namespace --timeout=300s
-if ($LASTEXITCODE -ne 0) {
-    throw "$Service rollout failed"
-}
-
-Write-Host "==> $Service deployed (tag: $Tag)" `
-    -ForegroundColor Green
+    --set "$Service.image.tag=$Tag"
+if ($LASTEXITCODE -ne 0) { throw "Helm deployment failed" }

@@ -56,3 +56,6 @@ let authLogout (ctx: HttpContext) = task {
     do! ctx.SignOutAsync()
     return Results.Redirect "/"
 }
+
+let photos config () =
+    Storage.listRecentPhotos config 10

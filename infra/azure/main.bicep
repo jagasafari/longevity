@@ -88,12 +88,22 @@ module acrPull './modules/acr-pull-assignment.bicep' = {
   }
 }
 
+module backendIdentity './modules/backend-identity.bicep' = {
+  name: 'backend-identity-deployment'
+  scope: rg
+  params: {
+    location: resourceLocation
+    oidcIssuerUrl: aks.outputs.oidcIssuerUrl
+  }
+}
+
 module storage './modules/storage.bicep' = {
   name: 'storage-deployment'
   scope: rg
   params: {
     storageAccountName: storageAccountName
     location: rgLocation
+    backendPrincipalId: backendIdentity.outputs.principalId
   }
 }
 
@@ -111,6 +121,7 @@ output keyVaultName string = kv.outputs.keyVaultName
 output aksClusterName string = aksConfig.clusterName
 output acrLoginServer string = acr.outputs.acrLoginServer
 output storageAccountName string = storage.outputs.storageAccountName
+output backendIdentityClientId string = backendIdentity.outputs.clientId
 output logAnalyticsWorkspaceId string = logAnalytics.outputs.workspaceId
 output workbookId string = workbook.outputs.workbookId
 output workbookUrl string = workbook.outputs.workbookPortalUrl
