@@ -7,6 +7,9 @@ param containerName string = 'photos'
 @description('Principal ID of the backend managed identity (for RBAC role assignments).')
 param backendPrincipalId string
 
+@description('Principal ID of the thumbnail worker managed identity (for RBAC role assignments).')
+param thumbnailWorkerPrincipalId string
+
 resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
   name: storageAccountName
   location: location
@@ -35,11 +38,31 @@ resource photosContainer 'Microsoft.Storage/storageAccounts/blobServices/contain
   }
 }
 
+resource thumbnailsContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2023-01-01' = {
+  parent: blobService
+  name: 'thumbnails'
+  properties: {
+    publicAccess: 'None'
+  }
+}
+
+resource queueService 'Microsoft.Storage/storageAccounts/queueServices@2023-01-01' = {
+  parent: storageAccount
+  name: 'default'
+}
+
+resource thumbnailEventsQueue 'Microsoft.Storage/storageAccounts/queueServices/queues@2023-01-01' = {
+  parent: queueService
+  name: 'thumbnail-events'
+}
+
 output storageAccountName string = storageAccount.name
 output storageAccountId string = storageAccount.id
+output thumbnailEventsQueueName string = thumbnailEventsQueue.name
 
 var storageScopeId = storageAccount.id
 
+// Backend: read/write/delete blobs + issue SAS tokens — no queue access
 resource blobDataContributor 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   name: guid(storageScopeId, backendPrincipalId, 'Storage Blob Data Contributor')
   scope: storageAccount
@@ -60,6 +83,31 @@ resource blobDelegator 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
       'Microsoft.Authorization/roleDefinitions',
       'db58b8e5-c6ad-4a2a-8342-4190687cbf4a') // Storage Blob Delegator
     principalId: backendPrincipalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+// Worker: read/write blobs (original + thumbnail) + consume queue — no SAS delegation
+resource workerBlobContributor 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(storageScopeId, thumbnailWorkerPrincipalId, 'Storage Blob Data Contributor')
+  scope: storageAccount
+  properties: {
+    roleDefinitionId: subscriptionResourceId(
+      'Microsoft.Authorization/roleDefinitions',
+      'ba92f5b4-2d11-453d-a403-e96b0029c9fe') // Storage Blob Data Contributor
+    principalId: thumbnailWorkerPrincipalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+resource workerQueueProcessor 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(storageScopeId, thumbnailWorkerPrincipalId, 'Storage Queue Data Message Processor')
+  scope: storageAccount
+  properties: {
+    roleDefinitionId: subscriptionResourceId(
+      'Microsoft.Authorization/roleDefinitions',
+      '8a0f0c08-91a1-4084-bc3d-661d67233fed') // Storage Queue Data Message Processor
+    principalId: thumbnailWorkerPrincipalId
     principalType: 'ServicePrincipal'
   }
 }

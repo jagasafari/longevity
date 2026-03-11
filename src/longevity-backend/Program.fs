@@ -69,6 +69,21 @@ let main args =
         .RequireAuthorization()
     |> ignore
 
+    app.MapGet("/api/photo-groups",
+        Func<_>(PhotoGroups.listPhotoGroups storage))
+        .RequireAuthorization()
+    |> ignore
+
+    app.MapPost("/api/photo-groups/group",
+        Func<Routes.GroupPhotosRequest, IHubContext<PhotoHub.PhotoHub>, _>(
+            fun request hub ->
+                Routes.groupPhotos
+                    (PhotoGroups.groupPhotos storage)
+                    hub
+                    request))
+        .RequireAuthorization()
+    |> ignore
+
     app.MapDelete("/api/photos/{name}",
         Func<HttpContext, IHubContext<PhotoHub.PhotoHub>, _>(
             fun ctx hub ->
@@ -77,7 +92,13 @@ let main args =
                     | true, value -> string value
                     | _ -> ""
 
-                Routes.deletePhoto (Storage.deletePhoto storage) hub name))
+                Routes.deletePhoto
+                    (Storage.deletePhoto storage)
+                    (fun photoName ->
+                        PhotoGroups.removePhotoFromGroups storage photoName
+                        :> Task)
+                    hub
+                    name))
         .RequireAuthorization()
     |> ignore
 

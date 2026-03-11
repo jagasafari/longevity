@@ -7,14 +7,14 @@ open Azure.Storage.Blobs
 open Azure.Storage.Sas
 open Azure.Storage.Blobs.Models
 
-type StorageConfig =
-    { AccountName: string
-      ContainerName: string }
+type StorageConfig = PhotoGroups.ContainerRef
 
 type PhotoInfo =
     { Name: string
       Url: string
+      ThumbnailUrl: string
       LastModified: DateTimeOffset }
+let private metadataBlobName = PhotoGroups.groupsBlobName
 
 let private lastModified (b: Azure.Storage.Blobs.Models.BlobItem) =
     b.Properties.LastModified
@@ -33,7 +33,7 @@ let private buildSasUrl (service: BlobServiceClient) delegationKey containerName
     uriBuilder.Sas <- builder.ToSasQueryParameters(delegationKey, service.AccountName)
     string (uriBuilder.ToUri())
 
-let selectRecent (toUrl: string -> string) (blobs: seq<string * DateTimeOffset>) (count: int) =
+let selectRecent (toUrl: string -> string) (toThumbnailUrl: string -> string) (blobs: seq<string * DateTimeOffset>) (count: int) =
     let insert top item =
         item :: top
         |> List.sortByDescending snd
@@ -42,7 +42,7 @@ let selectRecent (toUrl: string -> string) (blobs: seq<string * DateTimeOffset>)
     blobs
     |> Seq.fold insert []
     |> List.map (fun (name, modified) ->
-        { Name = name; Url = toUrl name; LastModified = modified })
+        { Name = name; Url = toUrl name; ThumbnailUrl = toThumbnailUrl name; LastModified = modified })
     |> List.toArray
 
 let private listBlobsAsync (container: BlobContainerClient) = task {
@@ -75,14 +75,32 @@ let deletePhoto (config: StorageConfig) (blobName: string) = task {
     return response.Value
 }
 
+let private thumbnailContainerName = "thumbnails"
+
 let listRecentPhotos (config: StorageConfig) (count: int) = task {
     let service, container = getClients config
+    let thumbnailContainer = service.GetBlobContainerClient thumbnailContainerName
     let expiry = DateTimeOffset.UtcNow.AddHours 1.0
     let! delegationKeyResponse = service.GetUserDelegationKeyAsync(Nullable(), expiry)
     let delegationKey = delegationKeyResponse.Value
     let! blobs = listBlobsAsync container
 
+    let! thumbnailNames =
+        task {
+            try
+                let! thumbBlobs = listBlobsAsync thumbnailContainer
+                return thumbBlobs |> Seq.map fst |> Set.ofSeq
+            with _ -> return Set.empty
+        }
+
+    let photoBlobs = blobs |> Seq.filter (fun (name, _) -> name <> metadataBlobName)
     let toUrl = buildSasUrl service delegationKey config.ContainerName expiry
 
-    return selectRecent toUrl blobs count
+    let toThumbnailUrl name =
+        if Set.contains name thumbnailNames then
+            buildSasUrl service delegationKey thumbnailContainerName expiry name
+        else
+            toUrl name
+
+    return selectRecent toUrl toThumbnailUrl photoBlobs count
 }

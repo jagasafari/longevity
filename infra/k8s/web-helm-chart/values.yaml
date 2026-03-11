@@ -20,6 +20,13 @@ backend:
     targetPort: 8080
   healthPath: /api/weatherforecast
 
+worker:
+  replicaCount: 1
+  workloadIdentityClientId: "1d8c230c-695f-4550-a78b-c454a9d93242"
+  image:
+    repository: longevityacr.azurecr.io/thumbnail-worker
+    tag: ""
+
 ingress:
   enabled: true
   className: nginx

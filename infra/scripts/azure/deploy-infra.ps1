@@ -63,15 +63,19 @@ try {
 
     Write-Host "==> Deploying infrastructure with Bicep..." `
         -ForegroundColor Cyan
-    $Deployment = az deployment sub create `
-        --name $DeploymentName `
-        --location $RgLocation `
-        --template-file $BicepFile `
-        --parameters $ParamsFile `
-        --parameters deployerPrincipalId=$DeployerPrincipalId `
-        --subscription $SubscriptionId `
-        -o json | ConvertFrom-Json
 
+    $DeployArgs = @(
+        'deployment', 'sub', 'create',
+        '--name', $DeploymentName,
+        '--location', $RgLocation,
+        '--template-file', $BicepFile,
+        '--parameters', $ParamsFile,
+        '--parameters', "deployerPrincipalId=$DeployerPrincipalId",
+        '--subscription', $SubscriptionId,
+        '-o', 'json'
+    )
+
+    $Deployment = az @DeployArgs | ConvertFrom-Json
     if ($LASTEXITCODE -ne 0) { throw "Bicep deployment failed" }
 
     $WorkbookUrl =

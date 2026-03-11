@@ -3,7 +3,7 @@
 
 param(
     [Parameter(Mandatory)]
-    [ValidateSet('frontend', 'backend')]
+    [ValidateSet('frontend', 'backend', 'worker')]
     [string]$Service,
     [string]$Tag
 )

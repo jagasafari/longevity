@@ -76,14 +76,16 @@ let tests = testList "Routes" [
 
         testCase "returns 204 when blob deleted" <| fun () ->
             let delete _ = Task.FromResult true
-            let result = (Routes.deletePhoto delete stubHub "photo.jpg").Result
+            let removeFromGroups _ = Task.CompletedTask
+            let result = (Routes.deletePhoto delete removeFromGroups stubHub "photo.jpg").Result
             test <@ result :? IStatusCodeHttpResult @>
             let status = (result :?> IStatusCodeHttpResult).StatusCode
             test <@ status = Nullable 204 @>
 
         testCase "returns 404 when blob not found" <| fun () ->
             let delete _ = Task.FromResult false
-            let result = (Routes.deletePhoto delete stubHub "missing.jpg").Result
+            let removeFromGroups _ = Task.CompletedTask
+            let result = (Routes.deletePhoto delete removeFromGroups stubHub "missing.jpg").Result
             test <@ result :? IStatusCodeHttpResult @>
             let status = (result :?> IStatusCodeHttpResult).StatusCode
             test <@ status = Nullable 404 @>
@@ -92,18 +94,21 @@ let tests = testList "Routes" [
             let delete name =
                 test <@ name = "my-photo.jpg" @>
                 Task.FromResult true
-            (Routes.deletePhoto delete stubHub "my-photo.jpg").Result |> ignore
+            let removeFromGroups _ = Task.CompletedTask
+            (Routes.deletePhoto delete removeFromGroups stubHub "my-photo.jpg").Result |> ignore
 
         testCase "returns 400 when blob name missing" <| fun () ->
             let delete _ = failwith "delete should not be called for missing name"
-            let result = (Routes.deletePhoto delete stubHub "").Result
+            let removeFromGroups _ = Task.CompletedTask
+            let result = (Routes.deletePhoto delete removeFromGroups stubHub "").Result
             test <@ result :? IStatusCodeHttpResult @>
             let status = (result :?> IStatusCodeHttpResult).StatusCode
             test <@ status = Nullable 400 @>
 
         testCase "returns 400 when blob name null" <| fun () ->
             let delete _ = failwith "delete should not be called for null name"
-            let result = (Routes.deletePhoto delete stubHub null).Result
+            let removeFromGroups _ = Task.CompletedTask
+            let result = (Routes.deletePhoto delete removeFromGroups stubHub null).Result
             test <@ result :? IStatusCodeHttpResult @>
             let status = (result :?> IStatusCodeHttpResult).StatusCode
             test <@ status = Nullable 400 @>
