@@ -44,6 +44,29 @@ class BlobUploader(
     fun shouldRetry(httpCode: Int): Boolean =
         httpCode >= 500 || httpCode == 408 || httpCode == 429
 
+    fun blobExists(config: UploadConfig, filename: String): Boolean {
+        val validationError = validateConfig(config)
+        if (validationError != null) {
+            logger.e(TAG, "blobExists: $validationError")
+            return false
+        }
+        val url = buildUrl(config, filename)
+        return try {
+            val connection = connectionFactory(URL(url))
+            try {
+                connection.requestMethod = "HEAD"
+                connection.connectTimeout = 10000
+                connection.readTimeout = 10000
+                connection.responseCode == 200
+            } finally {
+                connection.disconnect()
+            }
+        } catch (ex: Exception) {
+            logger.e(TAG, "blobExists exception filename=$filename", ex)
+            false
+        }
+    }
+
     fun upload(
         config: UploadConfig,
         filename: String,
