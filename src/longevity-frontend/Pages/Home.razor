@@ -21,7 +21,7 @@
     }
     else
     {
-        <div class="day-picker" role="listbox" aria-label="Last 30 days">
+        <div class="day-picker" aria-label="Last 30 days">
             <button class="day-btn @DayButtonClass(null)" @onclick="() => SelectDate(null)">All</button>
             @foreach (var day in Last30Days())
             {
@@ -89,7 +89,7 @@
 @if (_lightboxPhoto is not null)
 {
     <div class="lightbox" @onclick="CloseLightbox">
-        <button class="lightbox-close" aria-label="Close" @onclick="CloseLightbox">&times;</button>
+        <button class="lightbox-close" aria-label="Close" @onclick="CloseLightbox" @onclick:stopPropagation>&times;</button>
         <img src="@_lightboxPhoto.Url" alt="@_lightboxPhoto.Name" @onclick:stopPropagation />
     </div>
 }
@@ -104,6 +104,7 @@
 
     protected override async Task OnInitializedAsync()
     {
+        await Auth.CheckAsync();
         if (Auth.State.IsAuthenticated)
         {
             await ReloadAsync();
@@ -230,6 +231,7 @@
     {
         if (string.IsNullOrWhiteSpace(_draggedPhotoName) || _draggedPhotoName == targetName)
         {
+            _draggedPhotoName = null;
             return;
         }
 

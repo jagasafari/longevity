@@ -129,7 +129,15 @@ let groupPhotos
         | Error code ->
             return Results.BadRequest {| error = code |}
         | Ok (source, target) ->
-            do! group source target
-            do! hub.Clients.All.SendAsync("PhotosChanged")
-            return Results.NoContent()
+            try
+                do! group source target
+                do! hub.Clients.All.SendAsync("PhotosChanged")
+                return Results.NoContent()
+            with
+            | :? RequestFailedException as ex when ex.Status = 403 ->
+                return Results.StatusCode 403
+            | :? RequestFailedException as ex when ex.Status = 404 ->
+                return Results.NotFound()
+            | :? RequestFailedException as ex when ex.Status = 409 ->
+                return Results.StatusCode 409
     }

@@ -5,6 +5,7 @@ open System.IO
 open System.Text.Json
 open Azure.Identity
 open Azure.Storage.Blobs
+open Azure.Storage.Blobs.Models
 open Azure.Storage.Queues
 open Azure.Storage.Queues.Models
 open SixLabors.ImageSharp
@@ -56,7 +57,8 @@ let private resizeAndUpload (source: BlobContainerClient) (target: BlobContainer
     output.Position <- 0L
 
     let targetBlob = target.GetBlobClient blobName
-    let! _ = targetBlob.UploadAsync(output, overwrite = true)
+    let headers = BlobHttpHeaders(ContentType = "image/jpeg")
+    let! _ = targetBlob.UploadAsync(output, httpHeaders = headers, overwrite = true)
     ()
 }
 

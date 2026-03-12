@@ -1,6 +1,7 @@
 module PhotoGroups
 
 open System
+open System.Collections.Generic
 open System.Text.Json
 open System.Threading.Tasks
 open Azure.Identity
@@ -18,8 +19,9 @@ let private getContainerClient (ref: ContainerRef) =
 
 let private parseGroups (json: string) =
     try
-        JsonSerializer.Deserialize<Map<string, string> option>(json)
-        |> Option.defaultValue Map.empty
+        let dict = JsonSerializer.Deserialize<Dictionary<string, string>>(json)
+        if dict = null then Map.empty
+        else dict |> Seq.map (fun kv -> kv.Key, kv.Value) |> Map.ofSeq
     with
     | _ -> Map.empty
 
@@ -35,7 +37,8 @@ let private readGroups (container: BlobContainerClient) = task {
 
 let private writeGroups (container: BlobContainerClient) (groups: Map<string, string>) = task {
     let blob = container.GetBlobClient groupsBlobName
-    let json = JsonSerializer.Serialize(groups)
+    let dict = Dictionary<string, string>(groups)
+    let json = JsonSerializer.Serialize(dict)
     let! _ = blob.UploadAsync(BinaryData.FromString(json), true)
     return ()
 }
