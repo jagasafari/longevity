@@ -88,12 +88,27 @@ module acrPull './modules/acr-pull-assignment.bicep' = {
   }
 }
 
-module backendIdentity './modules/backend-identity.bicep' = {
+module backendIdentity './modules/workload-identity.bicep' = {
   name: 'backend-identity-deployment'
   scope: rg
   params: {
     location: resourceLocation
     oidcIssuerUrl: aks.outputs.oidcIssuerUrl
+    identityName: 'longevity-backend-identity'
+    credentialLabel: 'backend'
+    k8sServiceAccountName: 'backend-sa'
+  }
+}
+
+module thumbnailWorkerIdentity './modules/workload-identity.bicep' = {
+  name: 'thumbnail-worker-identity-deployment'
+  scope: rg
+  params: {
+    location: resourceLocation
+    oidcIssuerUrl: aks.outputs.oidcIssuerUrl
+    identityName: 'longevity-thumbnail-worker-identity'
+    credentialLabel: 'thumbnail-worker'
+    k8sServiceAccountName: 'thumbnail-worker-sa'
   }
 }
 
@@ -104,6 +119,19 @@ module storage './modules/storage.bicep' = {
     storageAccountName: storageAccountName
     location: rgLocation
     backendPrincipalId: backendIdentity.outputs.principalId
+    thumbnailWorkerPrincipalId: thumbnailWorkerIdentity.outputs.principalId
+  }
+}
+
+module photoEvents './modules/photo-events.bicep' = {
+  name: 'photo-events-deployment'
+  scope: rg
+  params: {
+    location: rgLocation
+    storageAccountId: storage.outputs.storageAccountId
+    storageAccountName: storageAccountName
+    sourceContainerName: 'photos'
+    queueName: storage.outputs.thumbnailEventsQueueName
   }
 }
 
@@ -122,6 +150,7 @@ output aksClusterName string = aksConfig.clusterName
 output acrLoginServer string = acr.outputs.acrLoginServer
 output storageAccountName string = storage.outputs.storageAccountName
 output backendIdentityClientId string = backendIdentity.outputs.clientId
+output thumbnailWorkerIdentityClientId string = thumbnailWorkerIdentity.outputs.clientId
 output logAnalyticsWorkspaceId string = logAnalytics.outputs.workspaceId
 output workbookId string = workbook.outputs.workbookId
 output workbookUrl string = workbook.outputs.workbookPortalUrl

@@ -19,15 +19,30 @@ When responding:
 - No code comments — code should be self-documenting via clear naming
 - Keep script usage comments (e.g. `# Usage: pwsh script.ps1 [-Flag]`)
 - Inject side effects (randomness, IO, time) as function parameters
+- Group function inputs that share the same lifecycle together
+  (tuple/record) instead of passing many separate parameters
 - Pass only what a function needs — never forward an entire record when a subset suffices
 - Make illegal states unrepresentable: encode domain rules in types, not runtime checks
   - Use discriminated unions / sum types instead of booleans or string flags
   - Use `option`/`Result` instead of nulls or exceptions
   - Prefer narrowing inputs to the smallest valid type over defensive validation
 
+### F#
+- Keep lines to a maximum of 80 characters
+- Avoid noisy pass-through wrappers
+- If a function only calls another function with the same inputs and
+  output, remove the wrapper and use the target function directly
+- Prefer direct composition/partial application to keep code short and
+  clean
+- Group inputs that share the same lifecycle into tuple/record
+  parameters instead of many separate arguments
+- Prefer pattern matching over if/else when possible
+
 ### PowerShell
 - Keep lines to a maximum of 94 characters
 - Extract variables instead of using long inline expressions
+- Group inputs that share the same lifecycle into hashtables/objects
+  instead of many separate parameters
 - Prefer functional style (inspired by F#/Haskell):
   - Avoid mutable variables; derive state from data
   - Use pipelines (`|`) instead of loops where possible

@@ -3,7 +3,7 @@
 
 param(
     [Parameter(Mandatory)]
-    [ValidateSet('frontend', 'backend')]
+    [ValidateSet('frontend', 'backend', 'worker')]
     [string]$Service,
     [string]$Tag
 )
@@ -16,9 +16,12 @@ $Config     = Get-Content "$ScriptsDir/env.json" -Raw |
               ConvertFrom-Json
 
 $AcrName  = $Config.acrName
-$AcrImage = "$AcrName.azurecr.io/longevity-$Service"
+$ImageName = if ($Service -eq 'worker') { 'thumbnail-worker' }
+             else { "longevity-$Service" }
+$AcrImage = "$AcrName.azurecr.io/$ImageName"
 $Full     = "${AcrImage}:${Tag}"
-$SrcDir   = "$RepoDir/src/longevity-$Service"
+$SrcDir   = if ($Service -eq 'worker') { "$RepoDir/src/thumbnail-worker" }
+            else { "$RepoDir/src/longevity-$Service" }
 
 Write-Host "==> Logging in to ACR..." -ForegroundColor Cyan
 az acr login --name $AcrName

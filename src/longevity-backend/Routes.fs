@@ -10,6 +10,12 @@ open Microsoft.AspNetCore.Authentication.Cookies
 open Microsoft.AspNetCore.Http
 open Microsoft.AspNetCore.SignalR
 
+[<CLIMutable>]
+type GroupPhotosRequest = {
+    SourceName: string
+    TargetName: string
+}
+
 let weatherForecast () =
     DateOnly.FromDateTime DateTime.Now |> fun today -> Weather.generateRandom today 5
 
@@ -76,12 +82,19 @@ let private notifyOnDelete (hub: IHubContext<PhotoHub.PhotoHub>) = function
     | true -> hub.Clients.All.SendAsync("PhotosChanged")
     | false -> Task.CompletedTask
 
-let deletePhoto (delete: string -> Task<bool>) (hub: IHubContext<PhotoHub.PhotoHub>) (name: string) = task {
+let deletePhoto
+    (delete: string -> Task<bool>)
+    (removeFromGroups: string -> Task)
+    (hub: IHubContext<PhotoHub.PhotoHub>)
+    (name: string) = task {
     match validName name with
     | None -> return toDeleteResult None
     | Some blobName ->
         try
             let! deleted = delete blobName
+            if deleted then
+                do! removeFromGroups blobName
+
             do! notifyOnDelete hub deleted
             return toDeleteResult (Some deleted)
         with
@@ -92,3 +105,39 @@ let deletePhoto (delete: string -> Task<bool>) (hub: IHubContext<PhotoHub.PhotoH
         | :? RequestFailedException as ex when ex.Status = 409 ->
             return Results.StatusCode 409
 }
+
+let groupPhotos
+    (group: string -> string -> Task<unit>)
+    (hub: IHubContext<PhotoHub.PhotoHub>)
+    (request: GroupPhotosRequest) =
+    let validate req =
+        let normalize =
+            Option.ofObj
+            >> Option.map (fun (s: string) -> s.Trim())
+            >> Option.defaultValue ""
+        let source = normalize req.SourceName
+        let target = normalize req.TargetName
+
+        match source, target with
+        | s, t when String.IsNullOrWhiteSpace s || String.IsNullOrWhiteSpace t ->
+            Error "missing_photo_name"
+        | s, t when s = t -> Error "source_and_target_must_differ"
+        | s, t -> Ok (s, t)
+
+    task {
+        match validate request with
+        | Error code ->
+            return Results.BadRequest {| error = code |}
+        | Ok (source, target) ->
+            try
+                do! group source target
+                do! hub.Clients.All.SendAsync("PhotosChanged")
+                return Results.NoContent()
+            with
+            | :? RequestFailedException as ex when ex.Status = 403 ->
+                return Results.StatusCode 403
+            | :? RequestFailedException as ex when ex.Status = 404 ->
+                return Results.NotFound()
+            | :? RequestFailedException as ex when ex.Status = 409 ->
+                return Results.StatusCode 409
+    }

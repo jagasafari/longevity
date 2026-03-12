@@ -1,14 +1,77 @@
+.day-picker {
+    display: flex;
+    gap: 0.5rem;
+    overflow-x: auto;
+    padding: 0.25rem 0 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.day-btn {
+    min-width: 52px;
+    border: 1px solid #cbd5e1;
+    border-radius: 10px;
+    background: #fff;
+    color: #1f2937;
+    padding: 0.4rem 0.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    line-height: 1.1;
+}
+
+.day-btn small {
+    color: #64748b;
+    font-size: 0.7rem;
+}
+
+.day-btn.is-selected {
+    background: #1d4ed8;
+    border-color: #1d4ed8;
+    color: #fff;
+}
+
+.day-btn.is-selected small {
+    color: #dbeafe;
+}
+
+.grouping-hint {
+    margin: 0 0 1rem;
+    color: #475569;
+}
+
+.group-section {
+    margin-bottom: 2rem;
+}
+
+.group-section h2 {
+    margin: 0 0 0.75rem;
+    font-size: 1rem;
+    font-weight: 700;
+    color: #1f2937;
+}
+
 .photo-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
     gap: 1rem;
-    margin-top: 1rem;
+}
+
+.photo-card {
+    padding: 0.25rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    background: #fff;
+}
+
+.photo-card:hover {
+    border-color: #93c5fd;
 }
 
 .photo-card img {
     width: 100%;
     height: auto;
     border-radius: 8px;
+    cursor: pointer;
 }
 
 .photo-card span {
@@ -34,4 +97,34 @@
 
 .delete-btn:hover {
     background-color: #bb2d3b;
+}
+
+.lightbox {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.92);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    cursor: pointer;
+}
+
+.lightbox img {
+    max-width: 95vw;
+    max-height: 95vh;
+    object-fit: contain;
+    cursor: default;
+}
+
+.lightbox-close {
+    position: absolute;
+    top: 1rem;
+    right: 1.5rem;
+    font-size: 2.5rem;
+    color: #fff;
+    background: none;
+    border: none;
+    cursor: pointer;
+    line-height: 1;
 }

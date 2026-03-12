@@ -13,6 +13,7 @@
     <Compile Include="Auth.fs" />
     <Compile Include="AuthLogin.fs" />
     <Compile Include="AuthCallback.fs" />
+    <Compile Include="PhotoGroups.fs" />
     <Compile Include="Storage.fs" />
     <Compile Include="PhotoHub.fs" />
     <Compile Include="PhotoWatcher.fs" />

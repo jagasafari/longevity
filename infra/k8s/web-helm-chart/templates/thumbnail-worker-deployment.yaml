@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: thumbnail-worker-deployment
+  namespace: {{ .Values.namespace }}
+spec:
+  replicas: {{ .Values.worker.replicaCount }}
+  selector:
+    matchLabels:
+      app: thumbnail-worker
+  template:
+    metadata:
+      labels:
+        app: thumbnail-worker
+        azure.workload.identity/use: "true"
+    spec:
+      serviceAccountName: thumbnail-worker-sa
+      containers:
+      - image: {{ printf "%s:%s" .Values.worker.image.repository (required "worker.image.tag is required" .Values.worker.image.tag) | quote }}
+        name: thumbnail-worker
+        env:
+        - name: Storage__AccountName
+          valueFrom:
+            secretKeyRef:
+              name: oauth-secret
+              key: Storage__AccountName
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"

@@ -2,13 +2,12 @@
 @implements IAsyncDisposable
 @using Microsoft.AspNetCore.SignalR.Client
 @using longevity_frontend.Services
+@using System.Globalization
 @inject AuthService Auth
 @inject PhotoService Photos
 @inject NavigationManager Navigation
 
 <PageTitle>Home</PageTitle>
-
-<h1>Longevity</h1>
 
 @if (Auth.State.IsAuthenticated)
 {
@@ -22,28 +21,93 @@
     }
     else
     {
-        <div class="photo-grid">
-            @foreach (var photo in _photos)
+        <div class="day-picker" aria-label="Last 30 days">
+            <button class="day-btn @DayButtonClass(null)" @onclick="() => SelectDate(null)">All</button>
+            @foreach (var day in Last30Days())
             {
-                <div class="photo-card">
-                    <img src="@photo.Url" alt="@photo.Name" loading="lazy" />
-                    <span>@photo.Name</span>
-                    <button class="delete-btn" aria-label="Delete @photo.Name" @onclick="() => DeletePhoto(photo)">Delete</button>
-                </div>
+                <button class="day-btn @DayButtonClass(day)" @onclick="() => SelectDate(day)">
+                    <span>@day.ToString("dd")</span>
+                    <small>@day.ToString("ddd", CultureInfo.InvariantCulture)</small>
+                </button>
             }
         </div>
+
+        <p class="grouping-hint">Drag a photo onto another photo to group them.</p>
+
+        @if (VisiblePhotos().Length == 0)
+        {
+            <p>No photos for selected day.</p>
+            return;
+        }
+
+        @foreach (var group in GroupedPhotos())
+        {
+            <section class="group-section">
+                <h2>Group</h2>
+                <div class="photo-grid">
+                    @foreach (var photo in group)
+                    {
+                        <div class="photo-card"
+                             draggable="true"
+                             @ondragstart="() => StartDrag(photo.Name)"
+                             @ondragover:preventDefault
+                             @ondrop="() => DropOn(photo.Name)">
+                            <img src="@(photo.ThumbnailUrl ?? photo.Url)" alt="@photo.Name" loading="lazy"
+                                 @onclick="() => OpenLightbox(photo)" @onclick:stopPropagation />
+                            <span>@photo.Name</span>
+                            <button class="delete-btn" aria-label="Delete @photo.Name" @onclick="() => DeletePhoto(photo)">Delete</button>
+                        </div>
+                    }
+                </div>
+            </section>
+        }
+
+        @if (UngroupedPhotos().Length > 0)
+        {
+            <section class="group-section">
+                <h2>Ungrouped</h2>
+                <div class="photo-grid">
+                    @foreach (var photo in UngroupedPhotos())
+                    {
+                        <div class="photo-card"
+                             draggable="true"
+                             @ondragstart="() => StartDrag(photo.Name)"
+                             @ondragover:preventDefault
+                             @ondrop="() => DropOn(photo.Name)">
+                            <img src="@(photo.ThumbnailUrl ?? photo.Url)" alt="@photo.Name" loading="lazy"
+                                 @onclick="() => OpenLightbox(photo)" @onclick:stopPropagation />
+                            <span>@photo.Name</span>
+                            <button class="delete-btn" aria-label="Delete @photo.Name" @onclick="() => DeletePhoto(photo)">Delete</button>
+                        </div>
+                    }
+                </div>
+            </section>
+        }
     }
+}
+
+@if (_lightboxPhoto is not null)
+{
+    <div class="lightbox" @onclick="CloseLightbox">
+        <button class="lightbox-close" aria-label="Close" @onclick="CloseLightbox" @onclick:stopPropagation>&times;</button>
+        <img src="@_lightboxPhoto.Url" alt="@_lightboxPhoto.Name" @onclick:stopPropagation />
+    </div>
 }
 
 @code {
     private PhotoInfo[]? _photos;
     private HubConnection? _hubConnection;
+    private Dictionary<string, string> _groups = [];
+    private string? _draggedPhotoName;
+    private DateTime? _selectedDay;
+    private PhotoInfo? _lightboxPhoto;
 
     protected override async Task OnInitializedAsync()
     {
+        await Auth.CheckAsync();
         if (Auth.State.IsAuthenticated)
         {
-            _photos = await Photos.LoadRecentAsync();
+            await ReloadAsync();
 
             _hubConnection = new HubConnectionBuilder()
                 .WithUrl(Navigation.ToAbsoluteUri("/hubs/photos"))
@@ -52,7 +116,7 @@
 
             _hubConnection.On("PhotosChanged", async () =>
             {
-                _photos = await Photos.LoadRecentAsync();
+                await ReloadAsync();
                 await InvokeAsync(StateHasChanged);
             });
 
@@ -60,11 +124,131 @@
         }
     }
 
+    private async Task ReloadAsync()
+    {
+        _photos = await Photos.LoadRecentAsync();
+        _groups = await Photos.LoadGroupsAsync();
+    }
+
+    private IEnumerable<PhotoInfo[]> GroupedPhotos()
+    {
+        var photos = VisiblePhotos();
+
+        var groups = photos
+            .Where(photo => _groups.ContainsKey(photo.Name))
+            .GroupBy(photo => _groups[photo.Name])
+            .Select(group => group.OrderByDescending(photo => photo.LastModified).ToArray())
+            .Where(group => group.Length > 1)
+            .OrderByDescending(group => group[0].LastModified);
+
+        return groups;
+    }
+
+    private PhotoInfo[] UngroupedPhotos()
+    {
+        var groupedNames = GroupedPhotos()
+            .SelectMany(group => group)
+            .Select(photo => photo.Name)
+            .ToHashSet(StringComparer.Ordinal);
+
+        return VisiblePhotos()
+            .Where(photo => !groupedNames.Contains(photo.Name))
+            .OrderByDescending(photo => photo.LastModified)
+            .ToArray();
+    }
+
+    private PhotoInfo[] VisiblePhotos()
+    {
+        var photos = _photos ?? [];
+        if (_selectedDay is null)
+        {
+            return photos;
+        }
+
+        return photos
+            .Where(photo => PhotoDate(photo) == _selectedDay.Value.Date)
+            .ToArray();
+    }
+
+    private static DateTime PhotoDate(PhotoInfo photo)
+    {
+        if (photo.Name.Length >= 8
+            && DateTime.TryParseExact(
+                photo.Name[..8],
+                "yyyyMMdd",
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.None,
+                out var fromName))
+        {
+            return fromName.Date;
+        }
+
+        return photo.LastModified.ToLocalTime().Date;
+    }
+
+    private IEnumerable<DateTime> Last30Days()
+    {
+        var today = DateTime.Today;
+        return Enumerable.Range(0, 30).Select(offset => today.AddDays(-offset));
+    }
+
+    private string DayButtonClass(DateTime? day)
+    {
+        if (day is null && _selectedDay is null)
+        {
+            return "is-selected";
+        }
+
+        if (day is not null && _selectedDay is not null && day.Value.Date == _selectedDay.Value.Date)
+        {
+            return "is-selected";
+        }
+
+        return string.Empty;
+    }
+
+    private void SelectDate(DateTime? day)
+    {
+        _selectedDay = day?.Date;
+    }
+
+    private void OpenLightbox(PhotoInfo photo)
+    {
+        _lightboxPhoto = photo;
+    }
+
+    private void CloseLightbox()
+    {
+        _lightboxPhoto = null;
+    }
+
+    private void StartDrag(string photoName)
+    {
+        _draggedPhotoName = photoName;
+    }
+
+    private async Task DropOn(string targetName)
+    {
+        if (string.IsNullOrWhiteSpace(_draggedPhotoName) || _draggedPhotoName == targetName)
+        {
+            _draggedPhotoName = null;
+            return;
+        }
+
+        var sourceName = _draggedPhotoName;
+        _draggedPhotoName = null;
+
+        if (await Photos.GroupAsync(sourceName, targetName))
+        {
+            await ReloadAsync();
+        }
+    }
+
     private async Task DeletePhoto(PhotoInfo photo)
     {
         if (await Photos.DeleteAsync(photo.Name))
         {
-            _photos = _photos?.Where(p => p.Name != photo.Name).ToArray();
+            await ReloadAsync();
         }
     }
 
