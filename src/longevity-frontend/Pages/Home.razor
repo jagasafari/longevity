@@ -21,9 +21,9 @@
     }
     else
     {
-        <div class="day-picker" aria-label="Last 30 days">
+        <div class="day-picker" aria-label="Recent photo days">
             <button class="day-btn @DayButtonClass(null)" @onclick="() => SelectDate(null)">All</button>
-            @foreach (var day in Last30Days())
+            @foreach (var day in _recentDaysWithPhotos)
             {
                 <button class="day-btn @DayButtonClass(day)" @onclick="() => SelectDate(day)">
                     <span>@day.ToString("dd")</span>
@@ -100,6 +100,7 @@
     private Dictionary<string, string> _groups = [];
     private string? _draggedPhotoName;
     private DateTime? _selectedDay;
+    private DateTime[] _recentDaysWithPhotos = [];
     private PhotoInfo? _lightboxPhoto;
 
     protected override async Task OnInitializedAsync()
@@ -128,6 +129,19 @@
     {
         _photos = await Photos.LoadRecentAsync();
         _groups = await Photos.LoadGroupsAsync();
+
+        _recentDaysWithPhotos = (_photos ?? [])
+            .Select(PhotoDate)
+            .Distinct()
+            .OrderByDescending(day => day)
+            .Take(10)
+            .ToArray();
+
+        if (_selectedDay is not null
+            && !_recentDaysWithPhotos.Contains(_selectedDay.Value.Date))
+        {
+            _selectedDay = null;
+        }
     }
 
     private IEnumerable<PhotoInfo[]> GroupedPhotos()
@@ -184,12 +198,6 @@
         }
 
         return photo.LastModified.ToLocalTime().Date;
-    }
-
-    private IEnumerable<DateTime> Last30Days()
-    {
-        var today = DateTime.Today;
-        return Enumerable.Range(0, 30).Select(offset => today.AddDays(-offset));
     }
 
     private string DayButtonClass(DateTime? day)

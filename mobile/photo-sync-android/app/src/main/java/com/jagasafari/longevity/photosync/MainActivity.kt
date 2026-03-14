@@ -1,6 +1,8 @@
 package com.jagasafari.longevity.photosync
 
 import android.Manifest
+import android.app.ActivityManager
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
@@ -67,24 +69,36 @@ class MainActivity : AppCompatActivity() {
             statusText.text = "Configure SAS token in Settings first"
             return
         }
+        prefs.edit().putBoolean(SecurePrefs.KEY_SYNC_ENABLED, true).apply()
         ContextCompat.startForegroundService(this, Intent(this, MediaObserverService::class.java))
-        statusText.text = "Starting sync..."
+        updateStatus()
     }
 
     private fun stopSyncService() {
         stopService(Intent(this, MediaObserverService::class.java))
-        SecurePrefs.get(this).edit().putBoolean(SecurePrefs.KEY_SYNC_SERVICE_RUNNING, false).apply()
+        SecurePrefs.get(this).edit().putBoolean(SecurePrefs.KEY_SYNC_ENABLED, false).apply()
         updateStatus()
     }
 
     private fun updateStatus() {
         val prefs = SecurePrefs.get(this)
         val hasSas = !prefs.getString("sas_token", null).isNullOrBlank()
-        val isRunning = prefs.getBoolean(SecurePrefs.KEY_SYNC_SERVICE_RUNNING, false)
+        val isRunning = isServiceRunning(MediaObserverService::class.java)
+        
         statusText.text = when {
             !hasSas -> "Set SAS token in Settings"
             isRunning -> "Sync running"
             else -> "Ready — press Start"
         }
+    }
+
+    private fun isServiceRunning(serviceClass: Class<*>): Boolean {
+        val manager = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        for (service in manager.getRunningServices(Int.MAX_VALUE)) {
+            if (serviceClass.name == service.service.className) {
+                return true
+            }
+        }
+        return false
     }
 }

@@ -7,6 +7,7 @@ foldable_sections: true
 
 parameters:
   - name: TimeRange
+    kind: timerange
     type: 4
     required: true
     style: pills
@@ -29,7 +30,40 @@ parameters:
       - 5184000000
       - 7776000000
 
+  - name: Namespace
+    kind: dropdown
+    values:
+      - longevity
+    default: longevity
+
+  - name: Container
+    kind: dropdown
+    multi_select: true
+    values:
+      - backend
+      - thumbnail-worker
+      - nginx
+    default: backend
+
 queries:
+  - file: 09-container-logs.kql
+    title: Container Logs (Filtered)
+    visualization: table
+    column_formatters:
+      TimeGenerated: "20ch"
+      Container: "20ch"
+      PodName: "35ch"
+      LogEntry: "500ch"
+    sort_by: TimeGenerated
+
+  - file: 01-ingress-requests-all.kql
+    title: All Incoming Requests (Ingress)
+    visualization: table
+    column_formatters:
+      TimeGenerated: "20ch"
+      LogEntry: "500ch"
+    sort_by: TimeGenerated
+
   - file: 07-waf-detections.kql
     title: WAF Detections (ModSecurity)
     visualization: table
@@ -40,14 +74,6 @@ queries:
       RuleMessage: "200ch"
       Uri: "40ch"
       ClientIp: "15ch"
-    sort_by: TimeGenerated
-
-  - file: 01-ingress-requests-all.kql
-    title: All Incoming Requests (Ingress)
-    visualization: table
-    column_formatters:
-      TimeGenerated: "20ch"
-      LogEntry: "500ch"
     sort_by: TimeGenerated
 
   - file: 02-route-split.kql

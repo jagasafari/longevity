@@ -7,7 +7,7 @@ import androidx.security.crypto.MasterKey
 
 object SecurePrefs {
     private const val FILE_NAME = "photo_sync_prefs"
-    const val KEY_SYNC_SERVICE_RUNNING = "sync_service_running"
+    const val KEY_SYNC_ENABLED = "sync_enabled"
 
     fun get(context: Context): SharedPreferences {
         val masterKey = MasterKey.Builder(context)

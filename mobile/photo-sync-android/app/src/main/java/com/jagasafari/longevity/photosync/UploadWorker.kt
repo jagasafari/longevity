@@ -6,7 +6,7 @@ import android.provider.MediaStore
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 
-class UploadWorker(
+class UploadWorker @JvmOverloads constructor(
     ctx: Context,
     params: WorkerParameters,
     private val uploader: BlobUploader = BlobUploader(),

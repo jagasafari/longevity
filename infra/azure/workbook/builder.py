@@ -4,7 +4,6 @@ from pathlib import Path
 
 PARAMETER_ID_NAMESPACE = uuid.UUID("9c7d99ff-bdcf-4f07-a4f5-0019e3034f64")
 
-
 def stable_parameter_id(name):
     return str(uuid.uuid5(PARAMETER_ID_NAMESPACE, name))
 
@@ -21,23 +20,42 @@ default_out  = config_path.parent.parent / "modules" / "workbook.serialized.json
 output_path  = Path(args[1]) if len(args) > 1 else Path(cfg.get("output", default_out))
 workspace_id = args[2] if len(args) > 2 else ""
 
-def param_item(params):
-    parameters = [
-        {
+def build_param(p):
+    kind = p.get("kind", "timerange")
+    if kind == "dropdown":
+        multi = p.get("multi_select", False)
+        return {
             "id": stable_parameter_id(p["name"]),
             "version": cfg["kql_item_version"],
             "name": p["name"],
-            "type": p["type"],
+            "type": 2,
             "isRequired": p.get("required", True),
+            "multiSelect": multi,
+            **({"quote": "'"} if multi else {}),
+            **({"delimiter": ","} if multi else {}),
             "typeSettings": {
-                "selectableValues": [{"durationMs": ms} for ms in p.get("selectable_values_ms", [])],
-                "allowCustom": p.get("allow_custom", True),
+                "additionalResourceOptions": [],
+                "showDefault": False,
             },
-            "timeContext": {"durationMs": p.get("default_duration_ms", 86400000)},
-            "value": {"durationMs": p.get("default_duration_ms", 86400000)},
+            "jsonData": json.dumps([{"value": v, "label": v} for v in p["values"]]),
+            "value": p.get("default", p["values"][0]),
         }
-        for p in params
-    ]
+    return {
+        "id": stable_parameter_id(p["name"]),
+        "version": cfg["kql_item_version"],
+        "name": p["name"],
+        "type": p["type"],
+        "isRequired": p.get("required", True),
+        "typeSettings": {
+            "selectableValues": [{"durationMs": ms} for ms in p.get("selectable_values_ms", [])],
+            "allowCustom": p.get("allow_custom", True),
+        },
+        "timeContext": {"durationMs": p.get("default_duration_ms", 86400000)},
+        "value": {"durationMs": p.get("default_duration_ms", 86400000)},
+    }
+
+def param_item(params):
+    parameters = [build_param(p) for p in params]
     return {
         "type": 9,
         "content": {
@@ -90,7 +108,6 @@ def query_item(i, spec, time_param_name):
         "name": f"query - {i} - {spec['title']}",
     }
 
-
 def group_item(i, spec, query):
     return {
         "type": 12,
@@ -106,7 +123,10 @@ def group_item(i, spec, query):
     }
 
 params = cfg.get("parameters", [])
-time_param_name = params[0]["name"] if params else None
+time_param_name = next(
+    (p["name"] for p in params if p.get("kind", "timerange") == "timerange"),
+    None
+)
 foldable_sections = cfg.get("foldable_sections", False)
 items = []
 if params:
