@@ -6,12 +6,15 @@ import android.provider.MediaStore
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 
-class UploadWorker(
-    ctx: Context,
-    params: WorkerParameters,
-    private val uploader: BlobUploader = BlobUploader(),
-    private val logger: Logger = AndroidLogger
-) : CoroutineWorker(ctx, params) {
+class UploadWorker : CoroutineWorker {
+
+    private val uploader: BlobUploader
+    private val logger: Logger
+
+    constructor(ctx: Context, params: WorkerParameters) : super(ctx, params) {
+        uploader = BlobUploader()
+        logger = AndroidLogger
+    }
 
     override suspend fun doWork(): Result {
         return try {
@@ -48,10 +51,16 @@ class UploadWorker(
             }
 
             input.use { stream ->
-                when (val result = uploader.upload(config, filename, contentType, stream)) {
-                    is UploadResult.Success -> Result.success()
+                when (uploader.upload(config, filename, contentType, stream)) {
+                    is UploadResult.Success -> {
+                        SyncLog.add(filename, SyncStatus.UPLOADED)
+                        Result.success()
+                    }
                     is UploadResult.Retry -> Result.retry()
-                    is UploadResult.Failure -> Result.failure()
+                    is UploadResult.Failure -> {
+                        SyncLog.add(filename, SyncStatus.FAILED)
+                        Result.failure()
+                    }
                 }
             }
         } catch (ex: SecurityException) {
