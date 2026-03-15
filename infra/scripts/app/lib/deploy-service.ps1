@@ -25,6 +25,6 @@ helm upgrade --install web-app `
     "$InfraDir/k8s/web-helm-chart" `
     --namespace $Namespace `
     --create-namespace `
-    --reuse-values `
+    --reset-then-reuse-values `
     --set "$Service.image.tag=$Tag"
 if ($LASTEXITCODE -ne 0) { throw "Helm deployment failed" }

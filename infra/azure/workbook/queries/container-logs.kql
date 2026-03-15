@@ -2,10 +2,11 @@ ContainerLog
 | join kind=inner (
     KubePodInventory
     | where Namespace == "{Namespace}"
-    | distinct ContainerID, ContainerName, Name, PodStatus
+    | distinct ContainerID, ContainerName, PodStatus
 ) on ContainerID
 | extend Container = tostring(split(ContainerName, "/")[1])
 | where PodStatus == "Running"
 | where Container in ({Container})
-| project TimeGenerated, Container, PodName = Name, LogEntry
+| extend TraceId = extract(@"\[([0-9a-f]{32})\]", 1, LogEntry)
+| project TimeGenerated, Container, TraceId, LogEntry
 | order by TimeGenerated desc

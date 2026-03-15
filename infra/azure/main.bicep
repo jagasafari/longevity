@@ -120,6 +120,7 @@ module storage './modules/storage.bicep' = {
     location: rgLocation
     backendPrincipalId: backendIdentity.outputs.principalId
     thumbnailWorkerPrincipalId: thumbnailWorkerIdentity.outputs.principalId
+    logAnalyticsWorkspaceId: logAnalytics.outputs.workspaceId
   }
 }
 

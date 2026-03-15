@@ -23,6 +23,8 @@ spec:
         env:
         - name: ASPNETCORE_URLS
           value: http://+:{{ .Values.backend.service.targetPort }}
+        - name: Redis__ConnectionString
+          value: {{ .Values.redis.connectionString }}
         envFrom:
         - secretRef:
             name: oauth-secret

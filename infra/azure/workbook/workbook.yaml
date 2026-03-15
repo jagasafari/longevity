@@ -43,28 +43,59 @@ parameters:
       - backend
       - thumbnail-worker
       - nginx
+      - redis
     default: backend
 
 queries:
-  - file: 09-container-logs.kql
+  - file: container-logs.kql
     title: Container Logs (Filtered)
     visualization: table
     column_formatters:
       TimeGenerated: "20ch"
       Container: "20ch"
       PodName: "35ch"
+      TraceId: "36ch"
       LogEntry: "500ch"
     sort_by: TimeGenerated
 
-  - file: 01-ingress-requests-all.kql
+  - file: storage-blob-logs.kql
+    title: Storage Blob Logs
+    visualization: table
+    column_formatters:
+      TimeGenerated: "20ch"
+      ObjectKey: "60ch"
+      OperationName: "20ch"
+      Category: "14ch"
+      AuthenticationType: "20ch"
+      StatusCode: "12ch"
+      StatusText: "20ch"
+      CorrelationId: "40ch"
+    sort_by: TimeGenerated
+
+  - file: storage-queue-logs.kql
+    title: Storage Queue Logs
+    visualization: table
+    column_formatters:
+      TimeGenerated: "20ch"
+      OperationName: "20ch"
+      StatusCode: "12ch"
+      ObjectKey: "60ch"
+    sort_by: TimeGenerated
+
+  - file: ingress-requests-all.kql
     title: All Incoming Requests (Ingress)
     visualization: table
     column_formatters:
       TimeGenerated: "20ch"
-      LogEntry: "500ch"
+      Method: "8ch"
+      Path: "60ch"
+      Status: "8ch"
+      RequestTime: "12ch"
+      Upstream: "30ch"
+      TraceId: "36ch"
     sort_by: TimeGenerated
 
-  - file: 07-waf-detections.kql
+  - file: waf-detections.kql
     title: WAF Detections (ModSecurity)
     visualization: table
     column_formatters:
@@ -76,19 +107,11 @@ queries:
       ClientIp: "15ch"
     sort_by: TimeGenerated
 
-  - file: 02-route-split.kql
+  - file: route-split.kql
     title: Traffic Split (Frontend vs Backend)
     visualization: timechart
 
-  - file: 03-status-codes.kql
-    title: HTTP Status Code Distribution
-    visualization: barchart
-
-  - file: 04-pod-bytes-in.kql
-    title: Pod Network Bytes In
-    visualization: timechart
-
-  - file: 05-pod-health.kql
+  - file: pod-health.kql
     title: Pod Health Snapshot
     visualization: table
     column_formatters:
@@ -98,7 +121,7 @@ queries:
       ContainerName: "30ch"
     sort_by: TimeGenerated
 
-  - file: 06-kube-events.kql
+  - file: kube-events.kql
     title: Kubernetes Events
     visualization: table
     column_formatters:

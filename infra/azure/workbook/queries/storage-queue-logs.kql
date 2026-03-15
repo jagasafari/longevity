@@ -1,0 +1,5 @@
+StorageQueueLogs
+| where TimeGenerated {TimeRange}
+| where AccountName == "longevityphotos"
+| project TimeGenerated, OperationName, StatusCode, ObjectKey
+| order by TimeGenerated desc

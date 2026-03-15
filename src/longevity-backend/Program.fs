@@ -1,4 +1,5 @@
 open System
+open System.Diagnostics
 open System.Net.Http
 open System.Threading.Tasks
 open Microsoft.AspNetCore.Authentication.Cookies
@@ -7,6 +8,8 @@ open Microsoft.AspNetCore.Http
 open Microsoft.AspNetCore.SignalR
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Hosting
+open Microsoft.Extensions.Logging
+open StackExchange.Redis
 
 [<EntryPoint>]
 let main args =
@@ -29,8 +32,15 @@ let main args =
     let oauth   = Config.loadGoogleOAuth builder.Configuration
     let storage = Config.loadStorage builder.Configuration
 
+    let redisConn =
+        builder.Configuration["Redis:ConnectionString"]
+        |> Option.ofObj
+        |> Option.defaultValue "redis-svc:6379"
+
     builder.Services.AddSingleton(storage) |> ignore
-    builder.Services.AddHostedService<PhotoWatcher.PhotoWatcherService>() |> ignore
+    builder.Services.AddSingleton<IConnectionMultiplexer>(
+        ConnectionMultiplexer.Connect redisConn) |> ignore
+    builder.Services.AddHostedService<ThumbnailSubscriber.ThumbnailSubscriberService>() |> ignore
 
     let app = builder.Build()
 
@@ -38,6 +48,18 @@ let main args =
         app.MapOpenApi() |> ignore
 
     app.UseHttpsRedirection() |> ignore
+    app.Use(Func<HttpContext, RequestDelegate, Task>(fun ctx next -> task {
+        let traceId =
+            match Activity.Current with
+            | null -> "-"
+            | a -> a.TraceId.ToString()
+        let logger = ctx.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger("Request")
+        let path = ctx.Request.Path.Value
+        let method = ctx.Request.Method
+        logger.LogInformation("[{TraceId}] {Method} {Path}", [| traceId :> obj; method :> obj; path :> obj |])
+        do! next.Invoke ctx
+        logger.LogInformation("[{TraceId}] {Method} {Path} -> {Status}", [| traceId :> obj; method :> obj; path :> obj; ctx.Response.StatusCode :> obj |])
+    })) |> ignore
     app.UseAuthentication()   |> ignore
     app.UseAuthorization()    |> ignore
 

@@ -7,6 +7,18 @@ controller:
     digest: "sha256:82917be97c0939f6ada1717bb39aa7e66c229d6cfb10dcfc8f1bd42f9efe0f81"
   config:
     ssl-redirect: "true"
+    enable-opentelemetry: "true"
+    otlp-collector-host: otel-collector-svc.longevity.svc.cluster.local
+    otlp-collector-port: "4317"
+    opentelemetry-trust-incoming-span: "true"
+    opentelemetry-operation-name: "HTTP $request_method $service_name$request_uri"
+    log-format-upstream: >-
+      $remote_addr - $remote_user [$time_local] "$request"
+      $status $body_bytes_sent "$http_referer" "$http_user_agent"
+      $request_length $request_time
+      [$proxy_upstream_name] [$proxy_alternative_upstream_name]
+      $upstream_addr $upstream_response_length
+      $upstream_response_time $upstream_status $opentelemetry_trace_id
     # Rate limiting response codes (limits are set on Ingress annotations)
     limit-req-status-code: "429"
     limit-connections-status-code: "429"

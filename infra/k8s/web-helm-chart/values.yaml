@@ -27,6 +27,9 @@ worker:
     repository: longevityacr.azurecr.io/thumbnail-worker
     tag: ""
 
+redis:
+  connectionString: redis-svc:6379
+
 ingress:
   enabled: true
   className: nginx
