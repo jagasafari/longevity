@@ -16,7 +16,8 @@ type ProcessorConfig =
       SourceContainer: string
       ThumbnailContainer: string
       QueueName: string
-      MaxWidth: int }
+      MaxWidth: int
+      RedisConnectionString: string }
 
 let createClients (config: ProcessorConfig) =
     let cred = DefaultAzureCredential()
@@ -57,8 +58,8 @@ let private resizeAndUpload (source: BlobContainerClient) (target: BlobContainer
     output.Position <- 0L
 
     let targetBlob = target.GetBlobClient blobName
-    let headers = BlobHttpHeaders(ContentType = "image/jpeg")
-    let! _ = targetBlob.UploadAsync(output, httpHeaders = headers, overwrite = true)
+    let options = BlobUploadOptions(HttpHeaders = BlobHttpHeaders(ContentType = "image/jpeg"))
+    let! _ = targetBlob.UploadAsync(output, options)
     ()
 }
 

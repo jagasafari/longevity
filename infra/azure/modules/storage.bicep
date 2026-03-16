@@ -10,6 +10,9 @@ param backendPrincipalId string
 @description('Principal ID of the thumbnail worker managed identity (for RBAC role assignments).')
 param thumbnailWorkerPrincipalId string
 
+@description('Log Analytics workspace resource ID for diagnostic settings.')
+param logAnalyticsWorkspaceId string
+
 resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
   name: storageAccountName
   location: location
@@ -109,5 +112,63 @@ resource workerQueueProcessor 'Microsoft.Authorization/roleAssignments@2022-04-0
       '8a0f0c08-91a1-4084-bc3d-661d67233fed') // Storage Queue Data Message Processor
     principalId: thumbnailWorkerPrincipalId
     principalType: 'ServicePrincipal'
+  }
+}
+
+// Diagnostic settings — send blob logs + metrics to Log Analytics
+resource blobDiagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
+  name: 'blob-diagnostics'
+  scope: blobService
+  properties: {
+    workspaceId: logAnalyticsWorkspaceId
+    logs: [
+      {
+        category: 'StorageRead'
+        enabled: true
+      }
+      {
+        category: 'StorageWrite'
+        enabled: true
+      }
+      {
+        category: 'StorageDelete'
+        enabled: true
+      }
+    ]
+    metrics: [
+      {
+        category: 'Transaction'
+        enabled: true
+      }
+    ]
+  }
+}
+
+// Diagnostic settings — send queue logs + metrics to Log Analytics
+resource queueDiagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
+  name: 'queue-diagnostics'
+  scope: queueService
+  properties: {
+    workspaceId: logAnalyticsWorkspaceId
+    logs: [
+      {
+        category: 'StorageRead'
+        enabled: true
+      }
+      {
+        category: 'StorageWrite'
+        enabled: true
+      }
+      {
+        category: 'StorageDelete'
+        enabled: true
+      }
+    ]
+    metrics: [
+      {
+        category: 'Transaction'
+        enabled: true
+      }
+    ]
   }
 }

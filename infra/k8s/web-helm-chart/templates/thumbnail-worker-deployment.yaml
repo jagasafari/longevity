@@ -24,6 +24,8 @@ spec:
             secretKeyRef:
               name: oauth-secret
               key: Storage__AccountName
+        - name: Redis__ConnectionString
+          value: {{ .Values.redis.connectionString }}
         resources:
           requests:
             memory: "128Mi"

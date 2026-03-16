@@ -3,24 +3,34 @@ open System.Threading.Tasks
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Hosting
 open Microsoft.Extensions.Logging
+open StackExchange.Redis
 
-type ThumbnailWorker(logger: ILogger<ThumbnailWorker>, config: ThumbnailProcessor.ProcessorConfig) =
+type ThumbnailWorker(logger: ILogger<ThumbnailWorker>, config: ThumbnailProcessor.ProcessorConfig, redis: IConnectionMultiplexer) =
     inherit BackgroundService()
 
     let blobService, queue = ThumbnailProcessor.createClients config
+    let subscriber = redis.GetSubscriber()
+
+    let publishThumbnailReady blobName = task {
+        logger.LogInformation("Publishing thumbnail-ready for {BlobName} to Redis", [| blobName :> obj |])
+        try
+            let! receivers = subscriber.PublishAsync(RedisChannel("thumbnail-ready", RedisChannel.PatternMode.Literal), RedisValue blobName)
+            logger.LogInformation("Published to {ReceiverCount} subscribers", [| receivers :> obj |])
+        with ex ->
+            logger.LogError(ex, "Failed to publish to Redis")
+    }
 
     override _.ExecuteAsync(cancellationToken) = task {
-        logger.LogInformation "Thumbnail worker starting"
+        logger.LogInformation("Thumbnail worker starting, Redis connected: {IsConnected}", [| redis.IsConnected :> obj |])
 
-        // Catch up on photos uploaded before the worker was running
         try
             let! count = ThumbnailProcessor.catchUpThumbnails blobService config
             if count > 0 then
                 logger.LogInformation("Catch-up: processed {Count} existing photos", count)
+                do! publishThumbnailReady "catch-up"
         with ex ->
             logger.LogWarning(ex, "Catch-up scan failed")
 
-        // Process new uploads via Event Grid events on the queue
         try
             while not cancellationToken.IsCancellationRequested do
                 try
@@ -41,6 +51,7 @@ type ThumbnailWorker(logger: ILogger<ThumbnailWorker>, config: ThumbnailProcesso
                                     let! generated = ThumbnailProcessor.processBlobThumbnail blobService config blobName
                                     if generated then
                                         logger.LogInformation("Thumbnail created for {BlobName}", blobName)
+                                        do! publishThumbnailReady blobName
                                 do! queue.DeleteMessageAsync(msg.MessageId, msg.PopReceipt, cancellationToken)
                                    :> System.Threading.Tasks.Task
                             with ex ->
@@ -62,6 +73,11 @@ let main args =
         |> Option.filter (fun v -> v.Length > 0)
         |> Option.defaultWith (fun () -> failwith $"Missing config: Storage:{key}")
 
+    let redisConn =
+        builder.Configuration["Redis:ConnectionString"]
+        |> Option.ofObj
+        |> Option.defaultValue "redis-svc:6379"
+
     let config: ThumbnailProcessor.ProcessorConfig =
         { AccountName = require "AccountName"
           SourceContainer =
@@ -76,9 +92,12 @@ let main args =
             s["QueueName"]
             |> Option.ofObj
             |> Option.defaultValue "thumbnail-events"
-          MaxWidth = 400 }
+          MaxWidth = 400
+          RedisConnectionString = redisConn }
 
     builder.Services.AddSingleton(config) |> ignore
+    builder.Services.AddSingleton<IConnectionMultiplexer>(
+        ConnectionMultiplexer.Connect redisConn) |> ignore
     builder.Services.AddHostedService<ThumbnailWorker>() |> ignore
     builder.Build().Run()
     0

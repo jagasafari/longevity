@@ -8,8 +8,6 @@ DEFAULT_OUTPUT = Path(__file__).parent.parent / "modules" / "workbook.serialized
 QUERY_SPECS = [
     ("01-ingress-requests-all.kql", "All Incoming Requests (Ingress)",   "table"),
     ("02-route-split.kql",          "Traffic Split (Frontend vs Backend)", "timechart"),
-    ("03-status-codes.kql",         "HTTP Status Code Distribution",      "barchart"),
-    ("04-pod-bytes-in.kql",         "Pod Network Bytes In",               "timechart"),
     ("05-pod-health.kql",           "Pod Health Snapshot",                "table"),
     ("06-kube-events.kql",          "Kubernetes Events",                  "table"),
 ]

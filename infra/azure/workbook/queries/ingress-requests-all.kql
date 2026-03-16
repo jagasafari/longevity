@@ -1,0 +1,7 @@
+ContainerLog
+| where TimeGenerated {TimeRange}
+| where LogEntry has "HTTP/"
+| where LogEntry has_any ("GET ", "POST ", "PUT ", "PATCH ", "DELETE ")
+| parse LogEntry with RemoteAddr " - " * " [" * "] \"" Method " " Path " " * "\" " Status:int " " BodyBytes:int " \"" * "\" \"" * "\" " * " " RequestTime " [" Upstream "] " * " " TraceId
+| project TimeGenerated, Method, Path, Status, RequestTime, Upstream, TraceId
+| order by TimeGenerated desc

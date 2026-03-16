@@ -1,7 +1,0 @@
-ContainerLog
-| where TimeGenerated {TimeRange}
-| where LogEntry has "HTTP/"
-| parse LogEntry with * '" ' StatusCode:string ' ' *
-| where StatusCode matches regex @"^\d{3}$"
-| summarize Count = count() by StatusCode
-| order by StatusCode asc

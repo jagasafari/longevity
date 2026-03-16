@@ -1,0 +1,5 @@
+StorageBlobLogs
+| where AccountName == "longevityphotos"
+| where TimeGenerated {TimeRange}
+| project TimeGenerated, ObjectKey, OperationName, Category, AuthenticationType, StatusCode, StatusText, UserAgentHeader, CorrelationId
+| order by TimeGenerated desc
