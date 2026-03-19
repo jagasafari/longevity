@@ -8,7 +8,7 @@ controller:
   config:
     ssl-redirect: "true"
     enable-opentelemetry: "true"
-    otlp-collector-host: otel-collector-svc.longevity.svc.cluster.local
+    otlp-collector-host: otel-collector-svc.longevity.svc.cluster.local  # overridden by setup-cluster.ps1 via --set
     otlp-collector-port: "4317"
     opentelemetry-trust-incoming-span: "true"
     opentelemetry-operation-name: "HTTP $request_method $service_name$request_uri"

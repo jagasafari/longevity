@@ -25,16 +25,22 @@ public sealed class PhotoService(HttpClient http)
         return response.IsSuccessStatusCode;
     }
 
-    public async Task<Dictionary<string, string>> LoadGroupsAsync()
+    public async Task<Dictionary<string, string[]>> LoadGroupsAsync()
     {
         try
         {
-            return await http.GetFromJsonAsync<Dictionary<string, string>>("/api/photo-groups") ?? [];
+            return await http.GetFromJsonAsync<Dictionary<string, string[]>>("/api/photo-groups") ?? [];
         }
         catch
         {
             return [];
         }
+    }
+
+    public async Task<bool> UngroupAsync(string name)
+    {
+        var response = await http.DeleteAsync($"/api/photo-groups/{Uri.EscapeDataString(name)}");
+        return response.IsSuccessStatusCode;
     }
 
     public async Task<bool> GroupAsync(string sourceName, string targetName)

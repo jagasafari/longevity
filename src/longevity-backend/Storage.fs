@@ -7,15 +7,13 @@ open Azure.Storage.Blobs
 open Azure.Storage.Sas
 open Azure.Storage.Blobs.Models
 
-type StorageConfig = PhotoGroups.ContainerRef
+type StorageConfig = { AccountName: string; ContainerName: string }
 
 type PhotoInfo =
     { Name: string
       Url: string
       ThumbnailUrl: string
       LastModified: DateTimeOffset }
-let private metadataBlobName = PhotoGroups.groupsBlobName
-
 let private lastModified (b: Azure.Storage.Blobs.Models.BlobItem) =
     b.Properties.LastModified
     |> Option.ofNullable
@@ -93,7 +91,6 @@ let listRecentPhotos (config: StorageConfig) (count: int) = task {
             with _ -> return Set.empty
         }
 
-    let photoBlobs = blobs |> Seq.filter (fun (name, _) -> name <> metadataBlobName)
     let toUrl = buildSasUrl service delegationKey config.ContainerName expiry
 
     let toThumbnailUrl name =
@@ -102,5 +99,5 @@ let listRecentPhotos (config: StorageConfig) (count: int) = task {
         else
             toUrl name
 
-    return selectRecent toUrl toThumbnailUrl photoBlobs count
+    return selectRecent toUrl toThumbnailUrl blobs count
 }

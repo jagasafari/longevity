@@ -30,6 +30,9 @@ worker:
 redis:
   connectionString: redis-svc:6379
 
+postgres:
+  storageSize: 1Gi
+
 ingress:
   enabled: true
   className: nginx

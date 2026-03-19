@@ -49,6 +49,14 @@ resource thumbnailsContainer 'Microsoft.Storage/storageAccounts/blobServices/con
   }
 }
 
+resource metadataContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2023-01-01' = {
+  parent: blobService
+  name: 'metadata'
+  properties: {
+    publicAccess: 'None'
+  }
+}
+
 resource queueService 'Microsoft.Storage/storageAccounts/queueServices@2023-01-01' = {
   parent: storageAccount
   name: 'default'

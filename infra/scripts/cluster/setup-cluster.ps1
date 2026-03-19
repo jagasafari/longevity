@@ -69,6 +69,7 @@ helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx `
     --namespace ingress-nginx `
     --create-namespace `
     -f "$InfraDir/k8s/ingress-nginx/values.yaml" `
+    --set "controller.config.otlp-collector-host=otel-collector-svc.$Namespace.svc.cluster.local" `
     --wait
 
 if ($LASTEXITCODE -ne 0) { throw "Ingress NGINX installation failed" }
@@ -145,6 +146,7 @@ helm upgrade --install cert-manager jetstack/cert-manager `
     --namespace cert-manager `
     --create-namespace `
     --set crds.enabled=true `
+    --force-conflicts `
     --wait
 
 if ($LASTEXITCODE -ne 0) { throw "cert-manager installation failed" }
@@ -162,4 +164,49 @@ kubectl wait clusterissuer/letsencrypt-prod `
     --timeout=60s
 
 if ($LASTEXITCODE -ne 0) { throw "ClusterIssuer not ready" }
+
+# --- Postgres credentials in Key Vault (ESO syncs to cluster) ---
+Write-Host "==> Storing Postgres credentials in Key Vault..." `
+    -ForegroundColor Cyan
+$KvName = $Config.keyVaultName
+$PgSecretExists = az keyvault secret show `
+    --vault-name $KvName `
+    --name 'postgres-password' `
+    --subscription $Config.subscriptionId `
+    --query 'name' -o tsv 2>$null
+if (-not $PgSecretExists) {
+    $PgPassword = [Convert]::ToBase64String(
+        [System.Security.Cryptography.RandomNumberGenerator]::GetBytes(24)
+    ) -replace '[+/=]', ''
+    $PgConnStr = (
+        "Host=postgres-svc;" +
+        "Database=longevity;" +
+        "Username=longevity;" +
+        "Password=$PgPassword"
+    )
+    az keyvault secret set `
+        --vault-name $KvName `
+        --name 'postgres-password' `
+        --value $PgPassword `
+        --subscription $Config.subscriptionId `
+        --only-show-errors | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        throw "Failed to store postgres-password in Key Vault"
+    }
+    az keyvault secret set `
+        --vault-name $KvName `
+        --name 'postgres-connection-string' `
+        --value $PgConnStr `
+        --subscription $Config.subscriptionId `
+        --only-show-errors | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        throw "Failed to store postgres-connection-string in Key Vault"
+    }
+    Write-Host "==> Postgres credentials stored in Key Vault" `
+        -ForegroundColor Green
+} else {
+    Write-Host "==> Postgres credentials already in Key Vault, skipping" `
+        -ForegroundColor DarkGray
+}
+
 Write-Host "==> Cluster services configured successfully" -ForegroundColor Green

@@ -9,6 +9,7 @@ open Microsoft.AspNetCore.Authentication
 open Microsoft.AspNetCore.Authentication.Cookies
 open Microsoft.AspNetCore.Http
 open Microsoft.AspNetCore.SignalR
+open Npgsql
 
 [<CLIMutable>]
 type GroupPhotosRequest = {
@@ -66,7 +67,7 @@ let authLogout (ctx: HttpContext) = task {
 }
 
 let photos config () =
-    Storage.listRecentPhotos config 10
+    Storage.listRecentPhotos config 500
 
 let private validName = function
     | null -> None
@@ -140,4 +141,8 @@ let groupPhotos
                 return Results.NotFound()
             | :? RequestFailedException as ex when ex.Status = 409 ->
                 return Results.StatusCode 409
+            | :? PostgresException as ex when ex.SqlState = "23505" ->
+                return Results.Conflict {| error = "group_conflict" |}
+            | :? PostgresException ->
+                return Results.StatusCode 503
     }

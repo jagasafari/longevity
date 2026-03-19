@@ -25,6 +25,11 @@ spec:
           value: http://+:{{ .Values.backend.service.targetPort }}
         - name: Redis__ConnectionString
           value: {{ .Values.redis.connectionString }}
+        - name: Postgres__ConnectionString
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: connectionString
         envFrom:
         - secretRef:
             name: oauth-secret

@@ -6,6 +6,7 @@
 @inject AuthService Auth
 @inject PhotoService Photos
 @inject NavigationManager Navigation
+@inject IJSRuntime JS
 
 <PageTitle>Home</PageTitle>
 
@@ -21,18 +22,42 @@
     }
     else
     {
-        <div class="day-picker" aria-label="Recent photo days">
-            <button class="day-btn @DayButtonClass(null)" @onclick="() => SelectDate(null)">All</button>
-            @foreach (var day in _recentDaysWithPhotos)
+        <div class="calendar-toggle-row">
+            <button class="btn-all @(_selectedDay is null ? "active" : "")" @onclick="() => SelectDate(null)">All</button>
+            <button class="calendar-toggle" @onclick="ToggleCalendar">
+                @CalendarButtonLabel()
+            </button>
+
+            @if (_calendarOpen)
             {
-                <button class="day-btn @DayButtonClass(day)" @onclick="() => SelectDate(day)">
-                    <span>@day.ToString("dd")</span>
-                    <small>@day.ToString("ddd", CultureInfo.InvariantCulture)</small>
-                </button>
+                <div class="calendar-backdrop" @onclick="ToggleCalendar"></div>
+                <div class="calendar-popup">
+                    <div class="calendar-header">
+                        <button @onclick="PrevMonth" @onclick:stopPropagation>&lsaquo;</button>
+                        <span>@_calendarMonth.ToString("MMMM yyyy", CultureInfo.InvariantCulture)</span>
+                        <button @onclick="NextMonth" @onclick:stopPropagation>&rsaquo;</button>
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(7, 32px); gap: 2px; text-align: center; font-size: 0.7rem; color: #64748b; margin-bottom: 4px;">
+                        <span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span><span>Su</span>
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(7, 32px); gap: 2px;">
+                        @foreach (var cell in CalendarCells())
+                        {
+                            @if (cell is null)
+                            {
+                                <span style="width: 32px; height: 32px;"></span>
+                            }
+                            else
+                            {
+                                var day = cell.Value;
+                                var isSelected = _selectedDay is not null && day.Date == _selectedDay.Value.Date;
+                                <button style="@DayStyle(isSelected)" @onclick="() => SelectDate(day)" @onclick:stopPropagation>@day.Day</button>
+                            }
+                        }
+                    </div>
+                </div>
             }
         </div>
-
-        <p class="grouping-hint">Drag a photo onto another photo to group them.</p>
 
         @if (VisiblePhotos().Length == 0)
         {
@@ -48,6 +73,7 @@
                     @foreach (var photo in group)
                     {
                         <div class="photo-card"
+                             data-photo-name="@photo.Name"
                              draggable="true"
                              @ondragstart="() => StartDrag(photo.Name)"
                              @ondragover:preventDefault
@@ -55,7 +81,10 @@
                             <img src="@(photo.ThumbnailUrl ?? photo.Url)" alt="@photo.Name" loading="lazy"
                                  @onclick="() => OpenLightbox(photo)" @onclick:stopPropagation />
                             <span>@photo.Name</span>
-                            <button class="delete-btn" aria-label="Delete @photo.Name" @onclick="() => DeletePhoto(photo)">Delete</button>
+                            <div class="card-actions">
+                                <button class="ungroup-btn" aria-label="Ungroup @photo.Name" @onclick="() => UngroupPhoto(photo)">Ungroup</button>
+                                <button class="delete-btn" aria-label="Delete @photo.Name" @onclick="() => DeletePhoto(photo)">Delete</button>
+                            </div>
                         </div>
                     }
                 </div>
@@ -70,6 +99,7 @@
                     @foreach (var photo in UngroupedPhotos())
                     {
                         <div class="photo-card"
+                             data-photo-name="@photo.Name"
                              draggable="true"
                              @ondragstart="() => StartDrag(photo.Name)"
                              @ondragover:preventDefault
@@ -97,11 +127,14 @@
 @code {
     private PhotoInfo[]? _photos;
     private HubConnection? _hubConnection;
-    private Dictionary<string, string> _groups = [];
+    private Dictionary<string, string[]> _groups = [];
     private string? _draggedPhotoName;
     private DateTime? _selectedDay;
-    private DateTime[] _recentDaysWithPhotos = [];
     private PhotoInfo? _lightboxPhoto;
+    private IJSObjectReference? _touchModule;
+    private DotNetObjectReference<Home>? _dotNetRef;
+    private bool _calendarOpen;
+    private DateTime _calendarMonth = DateTime.Today;
 
     protected override async Task OnInitializedAsync()
     {
@@ -121,7 +154,30 @@
                 await InvokeAsync(StateHasChanged);
             });
 
-            await _hubConnection.StartAsync();
+            try { await _hubConnection.StartAsync(); }
+            catch { /* real-time updates unavailable but UI still works */ }
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        try
+        {
+            _dotNetRef = DotNetObjectReference.Create(this);
+            _touchModule = await JS.InvokeAsync<IJSObjectReference>("import", "./js/touch-drag.js");
+            await _touchModule.InvokeVoidAsync("init", _dotNetRef);
+        }
+        catch { /* touch-drag unavailable, tap-to-group disabled */ }
+    }
+
+    [JSInvokable]
+    public async Task DropOnFromTouch(string sourceName, string targetName)
+    {
+        if (await Photos.GroupAsync(sourceName, targetName))
+        {
+            await ReloadAsync();
+            await InvokeAsync(StateHasChanged);
         }
     }
 
@@ -129,40 +185,28 @@
     {
         _photos = await Photos.LoadRecentAsync();
         _groups = await Photos.LoadGroupsAsync();
-
-        _recentDaysWithPhotos = (_photos ?? [])
-            .Select(PhotoDate)
-            .Distinct()
-            .OrderByDescending(day => day)
-            .Take(10)
-            .ToArray();
-
-        if (_selectedDay is not null
-            && !_recentDaysWithPhotos.Contains(_selectedDay.Value.Date))
-        {
-            _selectedDay = null;
-        }
     }
 
     private IEnumerable<PhotoInfo[]> GroupedPhotos()
     {
         var photos = VisiblePhotos();
+        var photosByName = photos.ToDictionary(p => p.Name, StringComparer.Ordinal);
 
-        var groups = photos
-            .Where(photo => _groups.ContainsKey(photo.Name))
-            .GroupBy(photo => _groups[photo.Name])
-            .Select(group => group.OrderByDescending(photo => photo.LastModified).ToArray())
+        return _groups
+            .Select(kvp => kvp.Value
+                .Where(name => photosByName.ContainsKey(name))
+                .Select(name => photosByName[name])
+                .OrderByDescending(p => p.LastModified)
+                .ToArray())
             .Where(group => group.Length > 1)
             .OrderByDescending(group => group[0].LastModified);
-
-        return groups;
     }
 
     private PhotoInfo[] UngroupedPhotos()
     {
-        var groupedNames = GroupedPhotos()
-            .SelectMany(group => group)
-            .Select(photo => photo.Name)
+        var groupedNames = _groups.Values
+            .SelectMany(names => names)
+            .Where(name => _groups.Values.Any(g => g.Length > 1 && g.Contains(name)))
             .ToHashSet(StringComparer.Ordinal);
 
         return VisiblePhotos()
@@ -200,24 +244,45 @@
         return photo.LastModified.ToLocalTime().Date;
     }
 
-    private string DayButtonClass(DateTime? day)
+    private string CalendarButtonLabel()
     {
-        if (day is null && _selectedDay is null)
-        {
-            return "is-selected";
-        }
+        if (_selectedDay is not null)
+            return _selectedDay.Value.ToString("dd MMM yyyy", CultureInfo.InvariantCulture);
+        return "Calendar";
+    }
 
-        if (day is not null && _selectedDay is not null && day.Value.Date == _selectedDay.Value.Date)
-        {
-            return "is-selected";
-        }
+    private void ToggleCalendar() => _calendarOpen = !_calendarOpen;
 
-        return string.Empty;
+    private void PrevMonth() => _calendarMonth = _calendarMonth.AddMonths(-1);
+    private void NextMonth() => _calendarMonth = _calendarMonth.AddMonths(1);
+
+    private DateTime?[] CalendarCells()
+    {
+        var first = new DateTime(_calendarMonth.Year, _calendarMonth.Month, 1);
+        var offset = ((int)first.DayOfWeek + 6) % 7;
+        var daysInMonth = DateTime.DaysInMonth(first.Year, first.Month);
+        var cells = new DateTime?[offset + daysInMonth];
+        for (var i = 0; i < offset; i++) cells[i] = null;
+        for (var d = 1; d <= daysInMonth; d++) cells[offset + d - 1] = new DateTime(first.Year, first.Month, d);
+        return cells;
+    }
+
+    private static string DayStyle(bool isSelected)
+    {
+        var baseStyle = "all: unset; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 50%; font-size: 0.85rem; box-sizing: border-box; cursor: pointer;";
+        return isSelected
+            ? baseStyle + " background: #1d4ed8; color: #fff; font-weight: 700;"
+            : baseStyle + " color: #1f2937;";
     }
 
     private void SelectDate(DateTime? day)
     {
         _selectedDay = day?.Date;
+        if (day is not null)
+        {
+            _calendarMonth = new DateTime(day.Value.Year, day.Value.Month, 1);
+            _calendarOpen = false;
+        }
     }
 
     private void OpenLightbox(PhotoInfo photo)
@@ -260,8 +325,22 @@
         }
     }
 
+    private async Task UngroupPhoto(PhotoInfo photo)
+    {
+        if (await Photos.UngroupAsync(photo.Name))
+        {
+            await ReloadAsync();
+        }
+    }
+
     public async ValueTask DisposeAsync()
     {
+        if (_touchModule is not null)
+        {
+            await _touchModule.InvokeVoidAsync("dispose");
+            await _touchModule.DisposeAsync();
+        }
+        _dotNetRef?.Dispose();
         if (_hubConnection is not null)
         {
             await _hubConnection.DisposeAsync();

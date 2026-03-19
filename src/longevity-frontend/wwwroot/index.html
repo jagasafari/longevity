@@ -28,6 +28,21 @@
         <a href="." class="reload">Reload</a>
         <span class="dismiss">🗙</span>
     </div>
+    <script src="https://js.monitor.azure.com/scripts/b/ai.3.gbl.min.js"></script>
+    <script>
+        var appInsights = new Microsoft.ApplicationInsights.ApplicationInsights({
+            config: {
+                connectionString: "InstrumentationKey=93b2d4a3-ec74-4c8d-9ff7-81f149544183;IngestionEndpoint=https://eastus2-3.in.applicationinsights.azure.com/;LiveEndpoint=https://eastus2.livediagnostics.monitor.azure.com/;ApplicationId=52ca5d9d-a366-4c98-b663-96dd6f106816",
+                samplingPercentage: 100
+            }
+        });
+        appInsights.loadAppInsights();
+        appInsights.trackPageView();
+        window.onerror = function (msg, url, line, col, err) {
+            appInsights.trackException({ exception: err || new Error(msg) });
+        };
+        window.appInsights = appInsights;
+    </script>
     <script src="_framework/blazor.webassembly#[.{fingerprint}].js"></script>
 </body>
 

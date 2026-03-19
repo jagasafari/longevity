@@ -23,3 +23,9 @@ let loadStorage (cfg: IConfiguration) : Storage.StorageConfig =
         |> Option.ofObj
         |> Option.filter (fun v -> v.Length > 0)
         |> Option.defaultValue "photos" }
+
+let loadPostgres (cfg: IConfiguration) : string =
+    cfg["Postgres:ConnectionString"]
+    |> Option.ofObj
+    |> Option.filter (fun s -> s.Length > 0)
+    |> Option.defaultWith (fun () -> failwith "Missing config: Postgres:ConnectionString")

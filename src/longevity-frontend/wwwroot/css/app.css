@@ -105,6 +105,83 @@ code {
     color: #c02d76;
 }
 
+/* ── Calendar ─────────────────────────────────────── */
+.calendar-toggle-row {
+    position: relative;
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.btn-all {
+    all: unset;
+    padding: 0.4rem 0.75rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    background: #fff;
+    color: #1f2937;
+    font-size: 0.9rem;
+    cursor: pointer;
+    box-sizing: border-box;
+}
+
+.btn-all:hover { border-color: #93c5fd; }
+.btn-all.active { background: #1d4ed8; color: #fff; border-color: #1d4ed8; }
+
+.calendar-toggle {
+    all: unset;
+    padding: 0.4rem 0.75rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    background: #fff;
+    color: #1f2937;
+    font-size: 0.9rem;
+    cursor: pointer;
+    box-sizing: border-box;
+}
+
+.calendar-toggle:hover { border-color: #93c5fd; }
+
+.calendar-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 199;
+}
+
+.calendar-popup {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    z-index: 200;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 0.75rem;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+}
+
+.calendar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: #1f2937;
+}
+
+.calendar-header button {
+    all: unset;
+    font-size: 1.25rem;
+    cursor: pointer;
+    padding: 0 0.4rem;
+    color: #475569;
+    line-height: 1;
+}
+
+.calendar-header button:hover { color: #1d4ed8; }
+
 .form-floating > .form-control-plaintext::placeholder, .form-floating > .form-control::placeholder {
     color: var(--bs-secondary-color);
     text-align: end;
