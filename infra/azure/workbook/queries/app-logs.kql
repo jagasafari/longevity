@@ -1,11 +1,4 @@
-ContainerLog
-| join kind=inner (
-    KubePodInventory
-    | where Namespace == "longevity"
-    | distinct ContainerID, ContainerName, Name, PodStatus
-) on ContainerID
-| extend Container = tostring(split(ContainerName, "/")[1])
-| where PodStatus == "Running"
-| where Container in ("backend", "thumbnail-worker")
-| project TimeGenerated, Container, PodName = Name, LogEntry
+ContainerLogV2
+| where ContainerName in ("backend", "thumbnail-worker")
+| project TimeGenerated, Container = ContainerName, PodName, LogEntry = tostring(LogMessage)
 | order by TimeGenerated desc

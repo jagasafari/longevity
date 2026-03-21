@@ -29,7 +29,16 @@ if ($LASTEXITCODE -ne 0) { throw "ACR login failed" }
 
 Write-Host "==> Building $Service image (tag: $Tag)..." `
     -ForegroundColor Cyan
-docker build --platform linux/amd64 -t $Full $SrcDir
+$BuildArgs = @('--platform', 'linux/amd64', '-t', $Full)
+if ($Service -eq 'frontend') {
+    $ConnStr = az keyvault secret show `
+        --vault-name $Config.keyVaultName `
+        --name 'app-insights-connection-string' `
+        --query value -o tsv
+    if ($LASTEXITCODE -ne 0) { throw 'Failed to fetch App Insights connection string from KeyVault' }
+    $BuildArgs += '--build-arg', "APP_INSIGHTS_CONN_STR=$ConnStr"
+}
+docker build @BuildArgs $SrcDir
 if ($LASTEXITCODE -ne 0) { throw "$Service build failed" }
 
 Write-Host "==> Pushing $Service image..." -ForegroundColor Cyan

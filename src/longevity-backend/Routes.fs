@@ -66,8 +66,37 @@ let authLogout (ctx: HttpContext) = task {
     return Results.Redirect "/"
 }
 
-let photos config () =
-    Storage.listRecentPhotos config 500
+let private tryParseInt (s: string) =
+    match Int32.TryParse s with
+    | true, n -> Some n | _ -> None
+
+let private tryParseDate (s: string) =
+    match DateTimeOffset.TryParse s with
+    | true, dt -> Some dt | _ -> None
+
+let private isDatePrefix (s: string) =
+    s.Length = 8 && s |> Seq.forall Char.IsDigit
+
+let private qs (ctx: HttpContext) key =
+    match ctx.Request.Query.TryGetValue key with
+    | true, v -> Some (v.ToString())
+    | _ -> None
+
+let photos config (ctx: HttpContext) = task {
+    let q = qs ctx
+    let limit =
+        q "limit"
+        |> Option.bind tryParseInt
+        |> Option.filter (fun n -> n > 0 && n <= 200)
+        |> Option.defaultValue 50
+    let datePrefix = q "date"   |> Option.filter isDatePrefix
+    let before     = q "before" |> Option.bind tryParseDate
+    let! page = Storage.listPhotoPage config limit datePrefix before
+    return Results.Ok {|
+        items = page.Items
+        nextBefore = page.NextBefore |> Option.toObj
+    |}
+}
 
 let private validName = function
     | null -> None

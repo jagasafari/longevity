@@ -2,29 +2,40 @@ module PhotoGroups
 
 open System
 open System.Collections.Generic
+open System.Data
 open Dapper
 open Npgsql
 
 [<CLIMutable>]
 type private GroupPhoto = { group_id: string; photo_name: string }
 
-let initSchema (connStr: string) = task {
+type internal GroupChange =
+    | NoChange
+    | MergeGroups of sourceGroupId: string * targetGroupId: string
+    | AddPhotoToGroup of groupId: string * photoName: string
+    | CreateGroup of sourceName: string * targetName: string
+
+let internal planGroupChange sourceGroup targetGroup sourceName targetName =
+    match sourceGroup, targetGroup with
+    | Some sg, Some tg when sg = tg -> NoChange
+    | Some sg, Some tg -> MergeGroups (sg, tg)
+    | Some sg, None -> AddPhotoToGroup (sg, targetName)
+    | None, Some tg -> AddPhotoToGroup (tg, sourceName)
+    | None, None -> CreateGroup (sourceName, targetName)
+
+let internal shouldDeleteGroupAfterRemoval remainingCount = remainingCount <= 1
+
+let private withTransaction connStr work = task {
     use conn = new NpgsqlConnection(connStr)
-    let! _ = conn.ExecuteAsync("""
-        ALTER TABLE IF EXISTS group_photos
-            DROP CONSTRAINT IF EXISTS group_photos_group_id_fkey;
-
-        DROP TABLE IF EXISTS photo_groups;
-
-        CREATE TABLE IF NOT EXISTS group_photos (
-            group_id   TEXT NOT NULL,
-            photo_name TEXT NOT NULL,
-            PRIMARY KEY (group_id, photo_name)
-        );
-        CREATE INDEX IF NOT EXISTS idx_group_photos_photo
-            ON group_photos (photo_name);
-    """)
-    ()
+    do! conn.OpenAsync()
+    use! tx = conn.BeginTransactionAsync(IsolationLevel.Serializable)
+    try
+        let! result = work conn tx
+        do! tx.CommitAsync()
+        return result
+    with ex ->
+        do! tx.RollbackAsync()
+        return raise ex
 }
 
 let listPhotoGroups (connStr: string) () = task {
@@ -46,71 +57,79 @@ let listPhotoGroups (connStr: string) () = task {
     return result
 }
 
-let private findGroupId (conn: NpgsqlConnection) (photo: string) = task {
+let private findGroupId (conn: NpgsqlConnection) (tx: NpgsqlTransaction) (photo: string) = task {
     let! result =
         conn.ExecuteScalarAsync<string>(
-            "SELECT group_id FROM group_photos WHERE photo_name = @p",
-            {| p = photo |})
+            "SELECT group_id FROM group_photos WHERE photo_name = @p LIMIT 1",
+            {| p = photo |},
+            tx)
     return Option.ofObj result
 }
 
-let private insertPhoto (conn: NpgsqlConnection) gid photo = task {
+let private insertPhoto (conn: NpgsqlConnection) (tx: NpgsqlTransaction) gid photo = task {
     let! _ =
         conn.ExecuteAsync(
             "INSERT INTO group_photos (group_id, photo_name) VALUES (@g, @p)
              ON CONFLICT DO NOTHING",
-            {| g = gid; p = photo |})
+            {| g = gid; p = photo |},
+            tx)
     ()
 }
 
-let private movePhotos (conn: NpgsqlConnection) fromGid toGid = task {
+let private movePhotos (conn: NpgsqlConnection) (tx: NpgsqlTransaction) fromGid toGid = task {
     let! _ =
         conn.ExecuteAsync(
             """UPDATE group_photos SET group_id = @t
                WHERE group_id = @f
                AND photo_name NOT IN
                    (SELECT photo_name FROM group_photos WHERE group_id = @t)""",
-            {| t = toGid; f = fromGid |})
+            {| t = toGid; f = fromGid |},
+            tx)
     ()
 }
 
-let private deleteSingletonOrEmpty (conn: NpgsqlConnection) gid = task {
+let private deleteSingletonOrEmpty (conn: NpgsqlConnection) (tx: NpgsqlTransaction) gid = task {
     let! _ =
         conn.ExecuteAsync(
             """DELETE FROM group_photos WHERE group_id = @g
                AND (SELECT COUNT(*) FROM group_photos WHERE group_id = @g) <= 1""",
-            {| g = gid |})
+            {| g = gid |},
+            tx)
     ()
 }
 
-let groupPhotos (connStr: string) (sourceName: string) (targetName: string) = task {
-    use conn = new NpgsqlConnection(connStr)
-    let! sourceGroup = findGroupId conn sourceName
-    let! targetGroup = findGroupId conn targetName
-    match sourceGroup, targetGroup with
-    | Some sg, Some tg when sg = tg -> ()
-    | Some sg, Some tg ->
-        do! movePhotos conn sg tg
-        do! deleteSingletonOrEmpty conn sg
-    | Some sg, None ->
-        do! insertPhoto conn sg targetName
-    | None, Some tg ->
-        do! insertPhoto conn tg sourceName
-    | None, None ->
-        let gid = Guid.NewGuid().ToString("N")
-        do! insertPhoto conn gid sourceName
-        do! insertPhoto conn gid targetName
+let private deletePhoto (conn: NpgsqlConnection) (tx: NpgsqlTransaction) blobName = task {
+    let! _ =
+        conn.ExecuteAsync(
+            "DELETE FROM group_photos WHERE photo_name = @p",
+            {| p = blobName |},
+            tx)
+    ()
 }
 
-let removePhotoFromGroups (connStr: string) (blobName: string) = task {
-    use conn = new NpgsqlConnection(connStr)
-    let! gid = findGroupId conn blobName
-    match gid with
-    | None -> ()
-    | Some g ->
-        let! _ =
-            conn.ExecuteAsync(
-                "DELETE FROM group_photos WHERE photo_name = @p",
-                {| p = blobName |})
-        do! deleteSingletonOrEmpty conn g
-}
+let groupPhotos (connStr: string) (sourceName: string) (targetName: string) =
+    withTransaction connStr <| fun conn tx -> task {
+        let! sourceGroup = findGroupId conn tx sourceName
+        let! targetGroup = findGroupId conn tx targetName
+        match planGroupChange sourceGroup targetGroup sourceName targetName with
+        | NoChange -> ()
+        | MergeGroups (sourceGroupId, targetGroupId) ->
+            do! movePhotos conn tx sourceGroupId targetGroupId
+            do! deleteSingletonOrEmpty conn tx sourceGroupId
+        | AddPhotoToGroup (groupId, photoName) ->
+            do! insertPhoto conn tx groupId photoName
+        | CreateGroup (source, target) ->
+            let groupId = Guid.NewGuid().ToString("N")
+            do! insertPhoto conn tx groupId source
+            do! insertPhoto conn tx groupId target
+    }
+
+let removePhotoFromGroups (connStr: string) (blobName: string) =
+    withTransaction connStr <| fun conn tx -> task {
+        let! gid = findGroupId conn tx blobName
+        match gid with
+        | None -> ()
+        | Some g ->
+            do! deletePhoto conn tx blobName
+            do! deleteSingletonOrEmpty conn tx g
+    }

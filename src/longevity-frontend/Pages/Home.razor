@@ -7,6 +7,7 @@
 @inject PhotoService Photos
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
+@inject ILogger<Home> Logger
 
 <PageTitle>Home</PageTitle>
 
@@ -16,9 +17,9 @@
     {
         <p>Loading photos...</p>
     }
-    else if (_photos.Length == 0)
+    else if (_photos.Count == 0)
     {
-        <p>No photos yet.</p>
+        <p>@(_selectedDay is null ? "No photos yet." : "No photos for selected day.")</p>
     }
     else
     {
@@ -58,12 +59,6 @@
                 </div>
             }
         </div>
-
-        @if (VisiblePhotos().Length == 0)
-        {
-            <p>No photos for selected day.</p>
-            return;
-        }
 
         @foreach (var group in GroupedPhotos())
         {
@@ -113,6 +108,14 @@
                 </div>
             </section>
         }
+        @if (_nextBefore is not null)
+        {
+            <div style="text-align: center; margin-top: 1rem;">
+                <button class="btn-all" @onclick="LoadMoreAsync" disabled="@_loadingMore">
+                    @(_loadingMore ? "Loading..." : "Load more")
+                </button>
+            </div>
+        }
     }
 }
 
@@ -125,7 +128,9 @@
 }
 
 @code {
-    private PhotoInfo[]? _photos;
+    private List<PhotoInfo>? _photos;
+    private string? _nextBefore;
+    private bool _loadingMore;
     private HubConnection? _hubConnection;
     private Dictionary<string, string[]> _groups = [];
     private string? _draggedPhotoName;
@@ -155,7 +160,7 @@
             });
 
             try { await _hubConnection.StartAsync(); }
-            catch { /* real-time updates unavailable but UI still works */ }
+            catch (Exception ex) { Logger.LogWarning(ex, "SignalR hub connection failed; real-time updates unavailable"); }
         }
     }
 
@@ -168,7 +173,11 @@
             _touchModule = await JS.InvokeAsync<IJSObjectReference>("import", "./js/touch-drag.js");
             await _touchModule.InvokeVoidAsync("init", _dotNetRef);
         }
-        catch { /* touch-drag unavailable, tap-to-group disabled */ }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"touch-drag init failed: {ex.Message}");
+            _touchModule = null;
+        }
     }
 
     [JSInvokable]
@@ -181,9 +190,30 @@
         }
     }
 
+    private async Task LoadFirstPage(DateOnly? date = null)
+    {
+        _photos = null;
+        _nextBefore = null;
+        var page = await Photos.LoadPageAsync(date: date);
+        _photos = [..page.Items];
+        _nextBefore = page.NextBefore;
+    }
+
+    private async Task LoadMoreAsync()
+    {
+        if (_nextBefore is null || _loadingMore) return;
+        _loadingMore = true;
+        var date = _selectedDay.HasValue ? DateOnly.FromDateTime(_selectedDay.Value) : (DateOnly?)null;
+        var page = await Photos.LoadPageAsync(before: _nextBefore, date: date);
+        _photos!.AddRange(page.Items);
+        _nextBefore = page.NextBefore;
+        _loadingMore = false;
+    }
+
     private async Task ReloadAsync()
     {
-        _photos = await Photos.LoadRecentAsync();
+        var date = _selectedDay.HasValue ? DateOnly.FromDateTime(_selectedDay.Value) : (DateOnly?)null;
+        await LoadFirstPage(date);
         _groups = await Photos.LoadGroupsAsync();
     }
 
@@ -205,8 +235,8 @@
     private PhotoInfo[] UngroupedPhotos()
     {
         var groupedNames = _groups.Values
-            .SelectMany(names => names)
-            .Where(name => _groups.Values.Any(g => g.Length > 1 && g.Contains(name)))
+            .Where(g => g.Length > 1)
+            .SelectMany(g => g)
             .ToHashSet(StringComparer.Ordinal);
 
         return VisiblePhotos()
@@ -215,18 +245,7 @@
             .ToArray();
     }
 
-    private PhotoInfo[] VisiblePhotos()
-    {
-        var photos = _photos ?? [];
-        if (_selectedDay is null)
-        {
-            return photos;
-        }
-
-        return photos
-            .Where(photo => PhotoDate(photo) == _selectedDay.Value.Date)
-            .ToArray();
-    }
+    private PhotoInfo[] VisiblePhotos() => _photos?.ToArray() ?? [];
 
     private static DateTime PhotoDate(PhotoInfo photo)
     {
@@ -275,7 +294,7 @@
             : baseStyle + " color: #1f2937;";
     }
 
-    private void SelectDate(DateTime? day)
+    private async Task SelectDate(DateTime? day)
     {
         _selectedDay = day?.Date;
         if (day is not null)
@@ -283,6 +302,8 @@
             _calendarMonth = new DateTime(day.Value.Year, day.Value.Month, 1);
             _calendarOpen = false;
         }
+        var date = _selectedDay.HasValue ? DateOnly.FromDateTime(_selectedDay.Value) : (DateOnly?)null;
+        await LoadFirstPage(date);
     }
 
     private void OpenLightbox(PhotoInfo photo)

@@ -93,7 +93,8 @@ function onTouchEnd(e) {
     const targetName = targetCard?.dataset.photoName;
 
     if (targetName && targetName !== dragging) {
-        dotNetRef.invokeMethodAsync('DropOnFromTouch', dragging, targetName);
+        dotNetRef?.invokeMethodAsync('DropOnFromTouch', dragging, targetName)
+            ?.catch(() => {});
     }
     endDrag();
 }

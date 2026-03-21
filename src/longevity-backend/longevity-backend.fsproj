@@ -13,6 +13,7 @@
     <Compile Include="Auth.fs" />
     <Compile Include="AuthLogin.fs" />
     <Compile Include="AuthCallback.fs" />
+    <Compile Include="DbMigrations.fs" />
     <Compile Include="PhotoGroups.fs" />
     <Compile Include="Storage.fs" />
     <Compile Include="PhotoHub.fs" />
@@ -23,11 +24,17 @@
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="Migrations/*.sql" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Azure.Identity" Version="1.18.0" />
     <PackageReference Include="Azure.Storage.Blobs" Version="12.27.0" />
     <PackageReference Include="Microsoft.AspNetCore.DataProtection.StackExchangeRedis" Version="10.0.2" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.2" />
     <PackageReference Include="Dapper" Version="2.1.35" />
+    <PackageReference Include="dbup-core" Version="6.0.4" />
+    <PackageReference Include="dbup-postgresql" Version="6.0.3" />
     <PackageReference Include="Npgsql" Version="9.0.3" />
     <PackageReference Include="StackExchange.Redis" Version="2.8.41" />
   </ItemGroup>

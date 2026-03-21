@@ -1,5 +1,6 @@
-ContainerLog
+ContainerLogV2
 | where TimeGenerated {TimeRange}
+| extend LogEntry = tostring(LogMessage)
 | where LogEntry has "HTTP/"
 | where LogEntry has_any ("GET ", "POST ", "PUT ", "PATCH ", "DELETE ")
 | parse LogEntry with RemoteAddr " - " * " [" * "] \"" Method " " Path " " * "\" " Status:int " " BodyBytes:int " \"" * "\" \"" * "\" " * " " RequestTime " [" Upstream "] " * " " TraceId

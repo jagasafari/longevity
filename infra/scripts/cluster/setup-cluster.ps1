@@ -21,10 +21,12 @@ $Namespace       = $Config.namespace
 $DnsLabel        = $Config.dnsLabel
 $IngressHostname = $Config.ingressHostname
 $CertEmail       = $Config.certEmail
+$KvName          = $Config.keyVaultName
 
 Assert-NotPlaceholder 'dnsLabel' $DnsLabel
 Assert-NotPlaceholder 'ingressHostname' $IngressHostname
 Assert-NotPlaceholder 'certEmail' $CertEmail
+Assert-NotPlaceholder 'keyVaultName' $KvName
 
 Write-Host "==> Getting AKS credentials..." -ForegroundColor Cyan
 az aks get-credentials `
@@ -168,7 +170,6 @@ if ($LASTEXITCODE -ne 0) { throw "ClusterIssuer not ready" }
 # --- Postgres credentials in Key Vault (ESO syncs to cluster) ---
 Write-Host "==> Storing Postgres credentials in Key Vault..." `
     -ForegroundColor Cyan
-$KvName = $Config.keyVaultName
 $PgSecretExists = az keyvault secret show `
     --vault-name $KvName `
     --name 'postgres-password' `

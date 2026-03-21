@@ -14,6 +14,8 @@ type PhotoInfo =
       Url: string
       ThumbnailUrl: string
       LastModified: DateTimeOffset }
+
+type PhotoPage = { Items: PhotoInfo[]; NextBefore: string option }
 let private lastModified (b: Azure.Storage.Blobs.Models.BlobItem) =
     b.Properties.LastModified
     |> Option.ofNullable
@@ -43,9 +45,40 @@ let selectRecent (toUrl: string -> string) (toThumbnailUrl: string -> string) (b
         { Name = name; Url = toUrl name; ThumbnailUrl = toThumbnailUrl name; LastModified = modified })
     |> List.toArray
 
-let private listBlobsAsync (container: BlobContainerClient) = task {
+let private selectPhotoPage
+    (toUrl: string -> string)
+    (toThumbnailUrl: string -> string)
+    (blobs: seq<string * DateTimeOffset>)
+    (limit: int)
+    (before: DateTimeOffset option) =
+    let filtered =
+        match before with
+        | Some b -> blobs |> Seq.filter (fun (_, dt) -> dt < b)
+        | None   -> blobs
+    let page =
+        filtered
+        |> Seq.sortByDescending snd
+        |> Seq.truncate (limit + 1)
+        |> Seq.toList
+    let hasMore   = page.Length > limit
+    let items     = page |> List.truncate limit
+    let nextBefore =
+        if hasMore then items |> List.last |> snd |> (fun dt -> dt.ToString("O")) |> Some
+        else None
+    let mapped =
+        items
+        |> List.map (fun (name, modified) ->
+            { Name = name; Url = toUrl name; ThumbnailUrl = toThumbnailUrl name; LastModified = modified })
+        |> List.toArray
+    { Items = mapped; NextBefore = nextBefore }
+
+let private listBlobsAsync (container: BlobContainerClient) (prefix: string option) = task {
     let blobs = ResizeArray<string * DateTimeOffset>()
-    use enumerator = container.GetBlobsAsync().GetAsyncEnumerator()
+    let blobsEnum =
+        match prefix with
+        | Some p -> container.GetBlobsAsync(BlobTraits.None, BlobStates.None, p, System.Threading.CancellationToken.None)
+        | None   -> container.GetBlobsAsync()
+    use enumerator = blobsEnum.GetAsyncEnumerator()
     let mutable hasNext = true
     while hasNext do
         let! moved = enumerator.MoveNextAsync().AsTask()
@@ -75,18 +108,18 @@ let deletePhoto (config: StorageConfig) (blobName: string) = task {
 
 let private thumbnailContainerName = "thumbnails"
 
-let listRecentPhotos (config: StorageConfig) (count: int) = task {
+let listPhotoPage (config: StorageConfig) (limit: int) (datePrefix: string option) (before: DateTimeOffset option) = task {
     let service, container = getClients config
     let thumbnailContainer = service.GetBlobContainerClient thumbnailContainerName
     let expiry = DateTimeOffset.UtcNow.AddHours 1.0
     let! delegationKeyResponse = service.GetUserDelegationKeyAsync(Nullable(), expiry)
     let delegationKey = delegationKeyResponse.Value
-    let! blobs = listBlobsAsync container
+    let! blobs = listBlobsAsync container datePrefix
 
     let! thumbnailNames =
         task {
             try
-                let! thumbBlobs = listBlobsAsync thumbnailContainer
+                let! thumbBlobs = listBlobsAsync thumbnailContainer None
                 return thumbBlobs |> Seq.map fst |> Set.ofSeq
             with _ -> return Set.empty
         }
@@ -99,5 +132,5 @@ let listRecentPhotos (config: StorageConfig) (count: int) = task {
         else
             toUrl name
 
-    return selectRecent toUrl toThumbnailUrl blobs count
+    return selectPhotoPage toUrl toThumbnailUrl blobs limit before
 }

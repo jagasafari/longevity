@@ -37,6 +37,36 @@ When responding:
 - Group inputs that share the same lifecycle into tuple/record
   parameters instead of many separate arguments
 - Prefer pattern matching over if/else when possible
+- Keep nesting shallow: target at most 2 levels of nesting inside a
+  function body; 3 only when unavoidable
+- If a function starts needing nested `match`/`try`/`task` blocks,
+  extract small helpers instead of nesting further
+- Prefer flat pipelines over nested control flow
+- Prefer partial application over inline lambdas when it improves
+  readability
+- Bind environment once, then pass focused functions forward
+  (`let q = qs ctx`, `let run = withTransaction conn`)
+- Keep impure orchestration thin:
+  parse inputs -> decide via pure function -> execute IO
+- Extract pure decision logic from IO code into small functions that
+  return discriminated unions
+- For `task` workflows, avoid mixing `try/with`, `match`, and multiple
+  `let!` levels in one function when a helper can flatten it
+- For database or HTTP workflows, prefer small combinators like
+  `withConnection`, `withTransaction`, `parseQuery`, `requireValue`
+  instead of open-coded ceremony in each handler
+- Avoid deeply nested anonymous functions; give them names when reused
+  or when they contain logic
+- When there are multiple valid implementations, choose the one with
+  the flattest control flow and clearest data flow
+  - Do not produce functions with more than 3 nested scopes
+  (`task`/`match`/`try`/lambda). Refactor by extracting helpers.
+  - Prefer a functional shell for handlers:
+  `read/parse -> pure planning function -> small execution function`
+- For transactional code, prefer a reusable helper such as
+  `inTransaction : IsolationLevel -> NpgsqlConnection -> (NpgsqlTransaction -> Task<'a>) -> Task<'a>`
+  instead of repeating `OpenAsync` / `BeginTransactionAsync` /
+  `CommitAsync` / `RollbackAsync`
 
 ### PowerShell
 - Keep lines to a maximum of 94 characters

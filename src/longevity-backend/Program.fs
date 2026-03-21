@@ -52,7 +52,7 @@ let main args =
     builder.Services.AddHostedService<ThumbnailSubscriber.ThumbnailSubscriberService>() |> ignore
 
     let app = builder.Build()
-    PhotoGroups.initSchema(pgConnStr).GetAwaiter().GetResult()
+    DbMigrations.run pgConnStr
     let requestLogger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Request")
 
     if app.Environment.IsDevelopment() then
@@ -97,7 +97,7 @@ let main args =
     |> ignore
 
     app.MapGet("/api/photos",
-        Func<_>(Routes.photos storage))
+        Func<HttpContext, Task<IResult>>(fun ctx -> Routes.photos storage ctx))
         .RequireAuthorization()
     |> ignore
 
