@@ -12,12 +12,13 @@ open SixLabors.ImageSharp
 open SixLabors.ImageSharp.Processing
 
 type ProcessorConfig =
-    { AccountName: string
-      SourceContainer: string
-      ThumbnailContainer: string
-      QueueName: string
-      MaxWidth: int
-      RedisConnectionString: string }
+        {
+            AccountName: string
+            SourceContainer: string
+            ThumbnailContainer: string
+            QueueName: string
+            MaxWidth: int
+        }
 
 let createClients (config: ProcessorConfig) =
     let cred = DefaultAzureCredential()

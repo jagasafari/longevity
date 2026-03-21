@@ -11,6 +11,7 @@
     <Compile Include="AuthTests.fs" />
     <Compile Include="RoutesTests.fs" />
     <Compile Include="ConfigTests.fs" />
+    <Compile Include="PhotoGroupsTests.fs" />
     <Compile Include="StorageTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>

@@ -13,4 +13,7 @@ WORKDIR /usr/share/nginx/html
 COPY --from=build /app/publish/wwwroot .
 COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
 
+ARG APP_INSIGHTS_CONN_STR
+RUN sed -i "s|__APP_INSIGHTS_CONN_STR__|${APP_INSIGHTS_CONN_STR}|g" index.html
+
 EXPOSE 80

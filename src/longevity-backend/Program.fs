@@ -4,6 +4,7 @@ open System.Net.Http
 open System.Threading.Tasks
 open Microsoft.AspNetCore.Authentication.Cookies
 open Microsoft.AspNetCore.Builder
+open Microsoft.AspNetCore.DataProtection
 open Microsoft.AspNetCore.Http
 open Microsoft.AspNetCore.SignalR
 open Microsoft.Extensions.DependencyInjection
@@ -29,20 +30,30 @@ let main args =
                 Task.CompletedTask)
     |> ignore
 
-    let oauth   = Config.loadGoogleOAuth builder.Configuration
-    let storage = Config.loadStorage builder.Configuration
+    let oauth    = Config.loadGoogleOAuth builder.Configuration
+    let storage  = Config.loadStorage builder.Configuration
+    let pgConnStr = Config.loadPostgres builder.Configuration
 
     let redisConn =
         builder.Configuration["Redis:ConnectionString"]
         |> Option.ofObj
         |> Option.defaultValue "redis-svc:6379"
 
+    let redis = ConnectionMultiplexer.Connect redisConn
+
+    builder.Services
+        .AddDataProtection()
+        .SetApplicationName("longevity-app")
+        .PersistKeysToStackExchangeRedis(redis, "DataProtection-Keys")
+    |> ignore
+
     builder.Services.AddSingleton(storage) |> ignore
-    builder.Services.AddSingleton<IConnectionMultiplexer>(
-        ConnectionMultiplexer.Connect redisConn) |> ignore
+    builder.Services.AddSingleton<IConnectionMultiplexer>(redis) |> ignore
     builder.Services.AddHostedService<ThumbnailSubscriber.ThumbnailSubscriberService>() |> ignore
 
     let app = builder.Build()
+    DbMigrations.run pgConnStr
+    let requestLogger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Request")
 
     if app.Environment.IsDevelopment() then
         app.MapOpenApi() |> ignore
@@ -53,12 +64,11 @@ let main args =
             match Activity.Current with
             | null -> "-"
             | a -> a.TraceId.ToString()
-        let logger = ctx.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger("Request")
         let path = ctx.Request.Path.Value
         let method = ctx.Request.Method
-        logger.LogInformation("[{TraceId}] {Method} {Path}", [| traceId :> obj; method :> obj; path :> obj |])
+        requestLogger.LogInformation("[{TraceId}] {Method} {Path}", [| traceId :> obj; method :> obj; path :> obj |])
         do! next.Invoke ctx
-        logger.LogInformation("[{TraceId}] {Method} {Path} -> {Status}", [| traceId :> obj; method :> obj; path :> obj; ctx.Response.StatusCode :> obj |])
+        requestLogger.LogInformation("[{TraceId}] {Method} {Path} -> {Status}", [| traceId :> obj; method :> obj; path :> obj; ctx.Response.StatusCode :> obj |])
     })) |> ignore
     app.UseAuthentication()   |> ignore
     app.UseAuthorization()    |> ignore
@@ -87,12 +97,12 @@ let main args =
     |> ignore
 
     app.MapGet("/api/photos",
-        Func<_>(Routes.photos storage))
+        Func<HttpContext, Task<IResult>>(fun ctx -> Routes.photos storage ctx))
         .RequireAuthorization()
     |> ignore
 
     app.MapGet("/api/photo-groups",
-        Func<_>(PhotoGroups.listPhotoGroups storage))
+        Func<_>(PhotoGroups.listPhotoGroups pgConnStr))
         .RequireAuthorization()
     |> ignore
 
@@ -100,9 +110,27 @@ let main args =
         Func<Routes.GroupPhotosRequest, IHubContext<PhotoHub.PhotoHub>, _>(
             fun request hub ->
                 Routes.groupPhotos
-                    (PhotoGroups.groupPhotos storage)
+                    (PhotoGroups.groupPhotos pgConnStr)
                     hub
                     request))
+        .RequireAuthorization()
+    |> ignore
+
+    app.MapDelete("/api/photo-groups/{name}",
+        Func<HttpContext, IHubContext<PhotoHub.PhotoHub>, _>(
+            fun ctx hub ->
+                let name =
+                    match ctx.Request.RouteValues.TryGetValue("name") with
+                    | true, value -> string value
+                    | _ -> ""
+                task {
+                    if System.String.IsNullOrWhiteSpace name then
+                        return Results.BadRequest {| error = "missing_photo_name" |}
+                    else
+                        do! PhotoGroups.removePhotoFromGroups pgConnStr name
+                        do! hub.Clients.All.SendAsync("PhotosChanged")
+                        return Results.NoContent()
+                }))
         .RequireAuthorization()
     |> ignore
 
@@ -117,7 +145,7 @@ let main args =
                 Routes.deletePhoto
                     (Storage.deletePhoto storage)
                     (fun photoName ->
-                        PhotoGroups.removePhotoFromGroups storage photoName
+                        PhotoGroups.removePhotoFromGroups pgConnStr photoName
                         :> Task)
                     hub
                     name))

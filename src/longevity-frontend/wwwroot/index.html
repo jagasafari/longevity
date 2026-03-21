@@ -28,6 +28,23 @@
         <a href="." class="reload">Reload</a>
         <span class="dismiss">🗙</span>
     </div>
+    <script src="https://js.monitor.azure.com/scripts/b/ai.3.gbl.min.js"
+            integrity="sha384-qPpJCcLP8aZS00kKpnM+fG0k4ZEDxmt7Nz4zziDB5/UmCcEZGOjEpGBn5p/lZddU"
+            crossorigin="anonymous"></script>
+    <script>
+        var appInsights = new Microsoft.ApplicationInsights.ApplicationInsights({
+            config: {
+                connectionString: "__APP_INSIGHTS_CONN_STR__",
+                samplingPercentage: 100
+            }
+        });
+        appInsights.loadAppInsights();
+        appInsights.trackPageView();
+        window.onerror = function (msg, url, line, col, err) {
+            appInsights.trackException({ exception: err || new Error(msg) });
+        };
+        window.appInsights = appInsights;
+    </script>
     <script src="_framework/blazor.webassembly#[.{fingerprint}].js"></script>
 </body>
 

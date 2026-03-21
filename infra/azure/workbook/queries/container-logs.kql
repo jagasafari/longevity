@@ -1,12 +1,7 @@
-ContainerLog
-| join kind=inner (
-    KubePodInventory
-    | where Namespace == "{Namespace}"
-    | distinct ContainerID, ContainerName, PodStatus
-) on ContainerID
-| extend Container = tostring(split(ContainerName, "/")[1])
-| where PodStatus == "Running"
-| where Container in ({Container})
-| extend TraceId = extract(@"\[([0-9a-f]{32})\]", 1, LogEntry)
-| project TimeGenerated, Container, TraceId, LogEntry
+ContainerLogV2
+| where TimeGenerated {TimeRange}
+| where PodNamespace == "{Namespace}"
+| where ContainerName in ({Container})
+| extend TraceId = extract(@"\[([0-9a-f]{32})\]", 1, tostring(LogMessage))
+| project TimeGenerated, Container = ContainerName, PodName, TraceId, LogEntry = tostring(LogMessage)
 | order by TimeGenerated desc

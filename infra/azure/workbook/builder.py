@@ -114,9 +114,9 @@ def group_item(i, spec, query):
         "content": {
             "version": "NotebookGroup/1.0",
             "groupType": "editable",
-            "loadType": "explicit",
-            "loadButtonText": spec.get("load_button_text", "Show section"),
             "title": spec["title"],
+            "expandable": True,
+            "expanded": spec.get("expanded", False),
             "items": [query],
         },
         "name": f"group - {i} - {spec['title']}",

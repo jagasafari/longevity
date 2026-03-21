@@ -1,4 +1,3 @@
-
 import json, sys
 from pathlib import Path
 
@@ -6,15 +5,19 @@ QUERIES_DIR = Path(__file__).parent / "queries"
 DEFAULT_OUTPUT = Path(__file__).parent.parent / "modules" / "workbook.serialized.json"
 
 QUERY_SPECS = [
-    ("01-ingress-requests-all.kql", "All Incoming Requests (Ingress)",   "table"),
-    ("02-route-split.kql",          "Traffic Split (Frontend vs Backend)", "timechart"),
-    ("05-pod-health.kql",           "Pod Health Snapshot",                "table"),
-    ("06-kube-events.kql",          "Kubernetes Events",                  "table"),
+    ("container-logs.kql",       "Container Logs (Filtered)",              "table"),
+    ("storage-blob-logs.kql",    "Storage Blob Logs",                      "table"),
+    ("storage-queue-logs.kql",   "Storage Queue Logs",                     "table"),
+    ("ingress-requests-all.kql", "All Incoming Requests (Ingress)",        "table"),
+    ("waf-detections.kql",       "WAF Detections (ModSecurity)",           "table"),
+    ("route-split.kql",          "Traffic Split (Frontend vs Backend)",    "timechart"),
+    ("pod-health.kql",           "Pod Health Snapshot",                    "table"),
+    ("kube-events.kql",          "Kubernetes Events",                      "table"),
 ]
 
-args          = sys.argv[1:]
-output_path   = Path(args[0]) if args else DEFAULT_OUTPUT
-workspace_id  = args[1] if len(args) > 1 else ""
+args         = sys.argv[1:]
+output_path  = Path(args[0]) if args else DEFAULT_OUTPUT
+workspace_id = args[1] if len(args) > 1 else ""
 
 def query_item(i, filename, title, visualization):
     query = (QUERIES_DIR / filename).read_text().strip()

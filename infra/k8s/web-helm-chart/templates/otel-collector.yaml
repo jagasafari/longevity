@@ -2,7 +2,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: otel-collector-config
-  namespace: longevity
+  namespace: {{ .Release.Namespace }}
 data:
   config.yaml: |
     receivers:
@@ -23,7 +23,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: otel-collector
-  namespace: longevity
+  namespace: {{ .Release.Namespace }}
 spec:
   replicas: 1
   selector:
@@ -60,7 +60,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: otel-collector-svc
-  namespace: longevity
+  namespace: {{ .Release.Namespace }}
 spec:
   selector:
     app: otel-collector

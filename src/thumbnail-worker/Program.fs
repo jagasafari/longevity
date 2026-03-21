@@ -79,21 +79,22 @@ let main args =
         |> Option.defaultValue "redis-svc:6379"
 
     let config: ThumbnailProcessor.ProcessorConfig =
-        { AccountName = require "AccountName"
-          SourceContainer =
-            s["ContainerName"]
-            |> Option.ofObj
-            |> Option.defaultValue "photos"
-          ThumbnailContainer =
-            s["ThumbnailContainerName"]
-            |> Option.ofObj
-            |> Option.defaultValue "thumbnails"
-          QueueName =
-            s["QueueName"]
-            |> Option.ofObj
-            |> Option.defaultValue "thumbnail-events"
-          MaxWidth = 400
-          RedisConnectionString = redisConn }
+                {
+                    AccountName = require "AccountName"
+                    SourceContainer =
+                        s["ContainerName"]
+                        |> Option.ofObj
+                        |> Option.defaultValue "photos"
+                    ThumbnailContainer =
+                        s["ThumbnailContainerName"]
+                        |> Option.ofObj
+                        |> Option.defaultValue "thumbnails"
+                    QueueName =
+                        s["QueueName"]
+                        |> Option.ofObj
+                        |> Option.defaultValue "thumbnail-events"
+                    MaxWidth = 400
+                }
 
     builder.Services.AddSingleton(config) |> ignore
     builder.Services.AddSingleton<IConnectionMultiplexer>(

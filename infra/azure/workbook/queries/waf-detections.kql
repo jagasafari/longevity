@@ -1,5 +1,6 @@
-ContainerLog
+ContainerLogV2
 | where TimeGenerated {TimeRange}
+| extend LogEntry = tostring(LogMessage)
 | where LogEntry has "ModSecurity"
 | parse LogEntry with * "ModSecurity: " Action ". " RuleMessage "[id \"" RuleId "\"]" *
 | parse LogEntry with * "[uri \"" Uri "\"]" *

@@ -8,13 +8,6 @@ open Microsoft.Extensions.Hosting
 open Microsoft.Extensions.Logging
 open StackExchange.Redis
 
-module private Cancellation =
-    let awaitToken (ct: CancellationToken) =
-        let tcs = TaskCompletionSource()
-        ct.Register(fun () -> tcs.TrySetResult() |> ignore)
-        |> ignore
-        tcs.Task
-
 type ThumbnailSubscriberService(hub: IHubContext<PhotoHub.PhotoHub>, redis: IConnectionMultiplexer, logger: ILogger<ThumbnailSubscriberService>) =
     inherit BackgroundService()
 
@@ -40,7 +33,7 @@ type ThumbnailSubscriberService(hub: IHubContext<PhotoHub.PhotoHub>, redis: ICon
             "Subscribed to Redis thumbnail-ready channel"
 
         try
-            do! Cancellation.awaitToken cancellationToken
+            do! Task.Delay(Timeout.Infinite, cancellationToken)
         with :? OperationCanceledException -> ()
 
         do! subscriber.UnsubscribeAsync channel

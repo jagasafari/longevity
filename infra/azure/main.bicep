@@ -33,6 +33,9 @@ param logAnalyticsRetentionInDays int = 30
 @description('Daily ingestion cap in GB (cost control).')
 param logAnalyticsDailyQuotaGb int = 1
 
+@description('Application Insights resource name.')
+param appInsightsName string = 'longevity-appinsights'
+
 resource rg 'Microsoft.Resources/resourceGroups@2021-04-01' = {
   name: rgName
   location: rgLocation
@@ -46,6 +49,16 @@ module logAnalytics './modules/log-analytics.bicep' = {
     location: resourceLocation
     retentionInDays: logAnalyticsRetentionInDays
     dailyQuotaGb: logAnalyticsDailyQuotaGb
+  }
+}
+
+module appInsights './modules/app-insights.bicep' = {
+  name: 'app-insights-deployment'
+  scope: rg
+  params: {
+    appInsightsName: appInsightsName
+    location: resourceLocation
+    workspaceResourceId: logAnalytics.outputs.workspaceId
   }
 }
 
@@ -153,5 +166,6 @@ output storageAccountName string = storage.outputs.storageAccountName
 output backendIdentityClientId string = backendIdentity.outputs.clientId
 output thumbnailWorkerIdentityClientId string = thumbnailWorkerIdentity.outputs.clientId
 output logAnalyticsWorkspaceId string = logAnalytics.outputs.workspaceId
+output appInsightsConnectionString string = appInsights.outputs.connectionString
 output workbookId string = workbook.outputs.workbookId
 output workbookUrl string = workbook.outputs.workbookPortalUrl
