@@ -5,11 +5,17 @@ import android.net.Uri
 import android.provider.MediaStore
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
+import com.jagasafari.longevity.photosync.data.AzureBlobRepository
+import com.jagasafari.longevity.photosync.data.SecurePrefsConfigRepository
+import com.jagasafari.longevity.photosync.domain.model.UploadResult
+import com.jagasafari.longevity.photosync.domain.repository.BlobRepository
+import com.jagasafari.longevity.photosync.domain.repository.ConfigRepository
 
 class UploadWorker @JvmOverloads constructor(
     ctx: Context,
     params: WorkerParameters,
-    private val uploader: BlobUploader = BlobUploader(),
+    private val blobRepository: BlobRepository = AzureBlobRepository(),
+    private val configRepository: ConfigRepository = SecurePrefsConfigRepository(ctx),
     private val logger: Logger = AndroidLogger
 ) : CoroutineWorker(ctx, params) {
 
@@ -22,23 +28,14 @@ class UploadWorker @JvmOverloads constructor(
             val uri = Uri.parse(uriString)
             logger.d(TAG, "Worker started for uri=$uri runAttemptCount=$runAttemptCount")
 
-            val prefs = SecurePrefs.get(applicationContext)
-            val rawToken = prefs.getString("sas_token", null) ?: run {
-                logger.e(TAG, "Missing sas_token in settings")
+            val config = configRepository.getConfig() ?: run {
+                logger.e(TAG, "Missing configuration (no SAS token)")
                 return Result.failure()
             }
 
-            val storageAccount = prefs.getString("storage_account", "longevityphotos")
-                ?.trim()
-                .orEmpty()
-                .ifBlank { "longevityphotos" }
-            val container = prefs.getString("container", "photos")
-                ?.trim()
-                .orEmpty()
-                .ifBlank { "photos" }
-
-            val config = UploadConfig(storageAccount, container, rawToken)
-            val filename = resolveFilename(uri) ?: "photo_${System.currentTimeMillis()}.jpg"
+            // We can optionally use the provided filename if available now
+            val inputFileName = inputData.getString("fileName")
+            val filename = inputFileName ?: resolveFilename(uri) ?: "photo_${System.currentTimeMillis()}.jpg"
             val contentType = applicationContext.contentResolver.getType(uri) ?: "image/jpeg"
 
             val input = applicationContext.contentResolver.openInputStream(uri)
@@ -48,10 +45,19 @@ class UploadWorker @JvmOverloads constructor(
             }
 
             input.use { stream ->
-                when (val result = uploader.upload(config, filename, contentType, stream)) {
-                    is UploadResult.Success -> Result.success()
-                    is UploadResult.Retry -> Result.retry()
-                    is UploadResult.Failure -> Result.failure()
+                when (val result = blobRepository.upload(config, filename, contentType, stream)) {
+                    is UploadResult.Success -> {
+                        UploadLogStore.addLog("Uploaded: $filename")
+                        Result.success()
+                    }
+                    is UploadResult.Retry -> {
+                        UploadLogStore.addLog("Retry: $filename (${result.reason})")
+                        Result.retry()
+                    }
+                    is UploadResult.Failure -> {
+                        UploadLogStore.addLog("Failed: $filename (${result.reason})")
+                        Result.failure()
+                    }
                 }
             }
         } catch (ex: SecurityException) {
