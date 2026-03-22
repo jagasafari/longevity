@@ -78,14 +78,22 @@ class UploadWorker @JvmOverloads constructor(
     }
 
     private fun resolveSize(uri: Uri): Long {
-        return applicationContext.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+        val fromCursor = applicationContext.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
             val sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE)
-            if (cursor.moveToFirst() && !cursor.isNull(sizeIndex)) {
+            if (sizeIndex >= 0 && cursor.moveToFirst() && !cursor.isNull(sizeIndex)) {
                 cursor.getLong(sizeIndex)
             } else {
                 0L
             }
         } ?: 0L
+
+        if (fromCursor > 0) return fromCursor
+
+        return try {
+            applicationContext.contentResolver.openFileDescriptor(uri, "r")?.use { it.statSize } ?: 0L
+        } catch (_: Exception) {
+            0L
+        }
     }
 
     companion object {

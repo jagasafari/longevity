@@ -70,9 +70,8 @@
             }
         </div>
 
-        @foreach (var group in GroupedPhotos())
+        @foreach (var (groupId, group) in GroupedPhotos())
         {
-            var groupId = GetGroupId(group);
             var cats = GetGroupCategoryNames(groupId);
             <section class="group-section">
                 <div class="group-header">
@@ -186,6 +185,7 @@
     private DateTime _calendarMonth = DateTime.Today;
 
     private CategoryDto[] _allCategories = [];
+    private Dictionary<int, CategoryDto> _categoryById = [];
     private Dictionary<string, int[]> _groupCategories = [];
     private int? _selectedCategoryId;
     private string? _assigningGroupId;
@@ -266,10 +266,11 @@
         await LoadFirstPage(date);
         _groups = await Photos.LoadGroupsAsync();
         _allCategories = await Photos.LoadCategoriesAsync();
+        _categoryById = _allCategories.ToDictionary(c => c.Id);
         _groupCategories = await Photos.LoadGroupCategoriesAsync();
     }
 
-    private IEnumerable<PhotoInfo[]> GroupedPhotos()
+    private IEnumerable<(string GroupId, PhotoInfo[] Photos)> GroupedPhotos()
     {
         var photos = VisiblePhotos();
         var photosByName = photos.ToDictionary(p => p.Name, StringComparer.Ordinal);
@@ -289,9 +290,7 @@
                 && cats.Contains(_selectedCategoryId.Value));
         }
 
-        return groups
-            .OrderByDescending(g => g.Photos[0].LastModified)
-            .Select(g => g.Photos);
+        return groups.OrderByDescending(g => g.Photos[0].LastModified);
     }
 
     private PhotoInfo[] UngroupedPhotos()
@@ -416,26 +415,18 @@
         }
     }
 
-    private string GetGroupId(PhotoInfo[] group)
-    {
-        var firstName = group[0].Name;
-        return _groups.FirstOrDefault(kvp => kvp.Value.Contains(firstName)).Key ?? "";
-    }
-
     private string[] GetGroupCategoryNames(string groupId)
     {
         if (string.IsNullOrEmpty(groupId)) return [];
         if (!_groupCategories.TryGetValue(groupId, out var catIds)) return [];
-        var lookup = _allCategories.ToDictionary(c => c.Id);
-        return catIds.Where(lookup.ContainsKey).Select(id => lookup[id].Name).ToArray();
+        return catIds.Where(_categoryById.ContainsKey).Select(id => _categoryById[id].Name).ToArray();
     }
 
     private CategoryDto[] GetGroupCategories(string groupId)
     {
         if (string.IsNullOrEmpty(groupId)) return [];
         if (!_groupCategories.TryGetValue(groupId, out var catIds)) return [];
-        var lookup = _allCategories.ToDictionary(c => c.Id);
-        return catIds.Where(lookup.ContainsKey).Select(id => lookup[id]).ToArray();
+        return catIds.Where(_categoryById.ContainsKey).Select(id => _categoryById[id]).ToArray();
     }
 
     private void StartAssigningCategory(string groupId)

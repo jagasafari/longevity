@@ -165,38 +165,16 @@ let main args =
 
     app.MapPost("/api/group-categories/{groupId}",
         Func<HttpContext, IHubContext<PhotoHub.PhotoHub>, _>(
-            fun ctx hub -> task {
-                let groupId =
-                    match ctx.Request.RouteValues.TryGetValue("groupId") with
-                    | true, v -> string v | _ -> ""
-                let! body = ctx.Request.ReadFromJsonAsync<{| categoryName: string |}>()
-                let name = body.categoryName
-                if System.String.IsNullOrWhiteSpace groupId || System.String.IsNullOrWhiteSpace name then
-                    return Results.BadRequest {| error = "missing_fields" |}
-                else
-                    do! Categories.assignCategory pgConnStr groupId name
-                    do! hub.Clients.All.SendAsync("PhotosChanged")
-                    return Results.NoContent()
-            }))
+            Routes.assignCategory
+                (Categories.assignCategory pgConnStr)))
         .RequireAuthorization()
     |> ignore
 
-    app.MapDelete("/api/group-categories/{groupId}/{categoryId:int}",
+    app.MapDelete(
+        "/api/group-categories/{groupId}/{categoryId:int}",
         Func<HttpContext, IHubContext<PhotoHub.PhotoHub>, _>(
-            fun ctx hub -> task {
-                let groupId =
-                    match ctx.Request.RouteValues.TryGetValue("groupId") with
-                    | true, v -> string v | _ -> ""
-                let categoryId =
-                    match ctx.Request.RouteValues.TryGetValue("categoryId") with
-                    | true, v -> v :?> int | _ -> 0
-                if System.String.IsNullOrWhiteSpace groupId || categoryId = 0 then
-                    return Results.BadRequest {| error = "missing_fields" |}
-                else
-                    do! Categories.removeCategory pgConnStr groupId categoryId
-                    do! hub.Clients.All.SendAsync("PhotosChanged")
-                    return Results.NoContent()
-            }))
+            Routes.removeGroupCategory
+                (Categories.removeCategory pgConnStr)))
         .RequireAuthorization()
     |> ignore
 

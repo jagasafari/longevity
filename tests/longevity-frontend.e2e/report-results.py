@@ -33,7 +33,8 @@ def parse_trx(path: str) -> dict:
 
 
 def _post(url: str, headers: dict, body: bytes) -> None:
-    urlopen(Request(url, data=body, headers=headers), timeout=10)
+    with urlopen(Request(url, data=body, headers=headers), timeout=10):
+        pass
 
 
 def post_appinsights_availability(

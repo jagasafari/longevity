@@ -14,14 +14,19 @@ import org.xmlpull.v1.XmlPullParser
 import org.xmlpull.v1.XmlPullParserFactory
 import java.io.InputStream
 import java.io.StringReader
+import java.net.URLEncoder
 
-class AzureBlobRepository : BlobRepository {
+class AzureBlobRepository(
+    private val client: OkHttpClient = OkHttpClient(),
+    private val baseUrlOverride: String? = null
+) : BlobRepository {
 
     companion object {
         private const val TAG = "AzureBlobRepo"
     }
 
-    private val client = OkHttpClient()
+    private fun baseUrl(config: UploadConfig): String =
+        baseUrlOverride ?: config.saUrl
 
     override fun listAllBlobs(config: UploadConfig): Set<String> {
         val allBlobs = mutableSetOf<String>()
@@ -38,7 +43,7 @@ class AzureBlobRepository : BlobRepository {
 
     private fun fetchBlobListPage(config: UploadConfig, marker: String? = null): Pair<List<String>, String?> {
         // Construct the list URL. SAS token already starts with '?'
-        var url = "${config.saUrl}${config.normalizedSasToken}&comp=list&restype=container"
+        var url = "${baseUrl(config)}${config.normalizedSasToken}&comp=list&restype=container"
         if (marker != null) {
             url += "&marker=$marker"
         }
@@ -127,7 +132,9 @@ class AzureBlobRepository : BlobRepository {
             }
 
             // Construct the upload URL. SAS token already starts with '?'
-            val url = "${config.saUrl}/$finalName${config.normalizedSasToken}"
+            val encoded = URLEncoder.encode(finalName, "UTF-8")
+                .replace("+", "%20")
+            val url = "${baseUrl(config)}/$encoded${config.normalizedSasToken}"
             
             val requestBody = object : RequestBody() {
                 override fun contentType() = "application/octet-stream".toMediaType()

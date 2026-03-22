@@ -3,8 +3,6 @@ CREATE TABLE categories (
     name TEXT        NOT NULL UNIQUE
 );
 
-CREATE INDEX idx_categories_name ON categories (name);
-
 CREATE TABLE group_categories (
     group_id    TEXT    NOT NULL,
     category_id INTEGER NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
