@@ -31,12 +31,15 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 class MediaObserverService : Service() {
 
     private lateinit var observer: ContentObserver
     private var lastHandledId: Long = -1
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val changeMutex = Mutex()
 
     // Manual Dependency Injection
     private val configRepository by lazy { SecurePrefsConfigRepository(this) }
@@ -78,15 +81,16 @@ class MediaObserverService : Service() {
     }
 
     private fun handleChange() {
-        // Execute on a background thread so we don't block the ContentObserver handler
         serviceScope.launch {
-            val (unseenPhotos, newWatermark) = syncUseCase.getUnseenPhotos(lastHandledId)
-            lastHandledId = newWatermark
-            Log.d(TAG, "Resolved ${unseenPhotos.size} unseen photos")
-            if (unseenPhotos.isNotEmpty()) {
-                unseenPhotos.forEach { enqueueUpload(it) }
-            } else {
-                Log.d(TAG, "No new target photos found")
+            changeMutex.withLock {
+                val (unseenPhotos, newWatermark) = syncUseCase.getUnseenPhotos(lastHandledId)
+                if (newWatermark > lastHandledId) {
+                    lastHandledId = newWatermark
+                    Log.d(TAG, "Resolved ${unseenPhotos.size} unseen photos. New watermark: $lastHandledId")
+                    unseenPhotos.forEach { enqueueUpload(it) }
+                } else {
+                    Log.d(TAG, "No new target photos found (watermark unchanged)")
+                }
             }
         }
     }
@@ -111,7 +115,7 @@ class MediaObserverService : Service() {
         val work = OneTimeWorkRequestBuilder<UploadWorker>()
             .setInputData(workDataOf(
                 "uri" to localPhoto.uri.toString(),
-                "fileName" to localPhoto.name // Provide file name to worker
+                "fileName" to localPhoto.filename // Provide file name to worker
             ))
             .setConstraints(constraints)
             .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)

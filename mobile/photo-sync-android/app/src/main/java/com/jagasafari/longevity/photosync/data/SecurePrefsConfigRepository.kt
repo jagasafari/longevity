@@ -10,13 +10,14 @@ class SecurePrefsConfigRepository(private val context: Context) : ConfigReposito
         val prefs = SecurePrefs.get(context)
         val rawToken = prefs.getString("sas_token", null) ?: return null
         
-        if (rawToken.isBlank()) return null
+        val token = rawToken.trim().removePrefix("?")
+        if (token.isBlank()) return null
 
         val storageAccount = prefs.getString("storage_account", "longevityphotos")
             ?.trim().orEmpty().ifBlank { "longevityphotos" }
         val container = prefs.getString("container", "photos")
             ?.trim().orEmpty().ifBlank { "photos" }
 
-        return UploadConfig(storageAccount, container, rawToken)
+        return UploadConfig(storageAccount, container, token)
     }
 }

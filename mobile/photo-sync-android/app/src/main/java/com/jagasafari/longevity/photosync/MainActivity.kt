@@ -11,7 +11,9 @@ import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
@@ -51,11 +53,15 @@ class MainActivity : AppCompatActivity() {
 
     private fun observeLogs() {
         lifecycleScope.launch {
-            // Initial load
-            logText.text = UploadLogStore.logs.joinToString("\n")
-            // Listen for updates
-            UploadLogStore.updates.collect {
+            // This coroutine will run as long as the Activity is alive,
+            // but repeatOnLifecycle will only collect when it's at least STARTED.
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                // Initial load when entering STARTED
                 logText.text = UploadLogStore.logs.joinToString("\n")
+                // Listen for updates while in STARTED
+                UploadLogStore.updates.collect {
+                    logText.text = UploadLogStore.logs.joinToString("\n")
+                }
             }
         }
     }

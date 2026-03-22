@@ -20,11 +20,11 @@ class SyncUseCase(
         val allLocal = (cameraPhotos + uploadsPhotos).distinctBy { it.id }
 
         return allLocal.filter { local ->
-            !remoteBlobs.contains(local.name) && !remoteBlobs.contains(
-                if (local.name.endsWith(".heic", ignoreCase = true)) {
-                    local.name.substringBeforeLast('.') + ".jpg"
+            !remoteBlobs.contains(local.filename) && !remoteBlobs.contains(
+                if (local.filename.endsWith(".heic", ignoreCase = true)) {
+                    local.filename.substringBeforeLast('.') + ".jpg"
                 } else {
-                    local.name
+                    local.filename
                 }
             )
         }

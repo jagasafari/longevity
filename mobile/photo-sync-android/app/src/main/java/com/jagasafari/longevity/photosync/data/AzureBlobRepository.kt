@@ -37,7 +37,8 @@ class AzureBlobRepository : BlobRepository {
     }
 
     private fun fetchBlobListPage(config: UploadConfig, marker: String? = null): Pair<List<String>, String?> {
-        var url = "${config.saUrl}?comp=list&restype=container&${config.sasToken}"
+        // Construct the list URL. SAS token already starts with '?'
+        var url = "${config.saUrl}${config.normalizedSasToken}&comp=list&restype=container"
         if (marker != null) {
             url += "&marker=$marker"
         }
@@ -124,7 +125,8 @@ class AzureBlobRepository : BlobRepository {
                 filename
             }
 
-            val url = "${config.saUrl}/$finalName?${config.sasToken}"
+            // Construct the upload URL. SAS token already starts with '?'
+            val url = "${config.saUrl}/$finalName${config.normalizedSasToken}"
             
             val requestBody = object : RequestBody() {
                 override fun contentType() = "application/octet-stream".toMediaType()
