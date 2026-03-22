@@ -6,5 +6,11 @@ import java.io.InputStream
 
 interface BlobRepository {
     fun listAllBlobs(config: UploadConfig): Set<String>
-    fun upload(config: UploadConfig, filename: String, contentType: String, inputStream: InputStream): UploadResult
+    fun upload(
+        config: UploadConfig,
+        filename: String,
+        contentType: String,
+        inputStream: InputStream,
+        contentLength: Long
+    ): UploadResult
 }

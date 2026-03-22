@@ -5,6 +5,7 @@ namespace longevity_frontend.Services;
 public sealed record PhotoInfo(string Name, string Url, string? ThumbnailUrl, DateTimeOffset LastModified);
 public sealed record GroupPhotosRequest(string SourceName, string TargetName);
 public sealed record PhotoPage(PhotoInfo[] Items, string? NextBefore);
+public sealed record CategoryDto(int Id, string Name);
 
 public sealed class PhotoService(HttpClient http)
 {
@@ -53,6 +54,45 @@ public sealed class PhotoService(HttpClient http)
             "/api/photo-groups/group",
             new GroupPhotosRequest(sourceName, targetName));
 
+        return response.IsSuccessStatusCode;
+    }
+
+    public async Task<CategoryDto[]> LoadCategoriesAsync()
+    {
+        try
+        {
+            return await http.GetFromJsonAsync<CategoryDto[]>("/api/categories") ?? [];
+        }
+        catch
+        {
+            return [];
+        }
+    }
+
+    public async Task<Dictionary<string, int[]>> LoadGroupCategoriesAsync()
+    {
+        try
+        {
+            return await http.GetFromJsonAsync<Dictionary<string, int[]>>("/api/group-categories") ?? [];
+        }
+        catch
+        {
+            return [];
+        }
+    }
+
+    public async Task<bool> AssignCategoryAsync(string groupId, string categoryName)
+    {
+        var response = await http.PostAsJsonAsync(
+            $"/api/group-categories/{Uri.EscapeDataString(groupId)}",
+            new { categoryName });
+        return response.IsSuccessStatusCode;
+    }
+
+    public async Task<bool> RemoveCategoryAsync(string groupId, int categoryId)
+    {
+        var response = await http.DeleteAsync(
+            $"/api/group-categories/{Uri.EscapeDataString(groupId)}/{categoryId}");
         return response.IsSuccessStatusCode;
     }
 }

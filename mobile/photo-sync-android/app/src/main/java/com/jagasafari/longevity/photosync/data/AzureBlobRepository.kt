@@ -115,7 +115,8 @@ class AzureBlobRepository : BlobRepository {
         config: UploadConfig,
         filename: String,
         contentType: String,
-        inputStream: InputStream
+        inputStream: InputStream,
+        contentLength: Long
     ): UploadResult {
         return try {
             val originalExt = filename.substringAfterLast('.', "")
@@ -130,6 +131,7 @@ class AzureBlobRepository : BlobRepository {
             
             val requestBody = object : RequestBody() {
                 override fun contentType() = "application/octet-stream".toMediaType()
+                override fun contentLength() = contentLength
                 
                 override fun writeTo(sink: BufferedSink) {
                     inputStream.source().use { source ->

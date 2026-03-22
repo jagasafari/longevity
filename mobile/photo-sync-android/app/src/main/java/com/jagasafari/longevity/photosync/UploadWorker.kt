@@ -3,6 +3,7 @@ package com.jagasafari.longevity.photosync
 import android.content.Context
 import android.net.Uri
 import android.provider.MediaStore
+import android.provider.OpenableColumns
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.jagasafari.longevity.photosync.data.AzureBlobRepository
@@ -33,10 +34,10 @@ class UploadWorker @JvmOverloads constructor(
                 return Result.failure()
             }
 
-            // We can optionally use the provided filename if available now
             val inputFileName = inputData.getString("fileName")
             val filename = inputFileName ?: resolveFilename(uri) ?: "photo_${System.currentTimeMillis()}.jpg"
             val contentType = applicationContext.contentResolver.getType(uri) ?: "image/jpeg"
+            val size = resolveSize(uri)
 
             val input = applicationContext.contentResolver.openInputStream(uri)
             if (input == null) {
@@ -45,7 +46,7 @@ class UploadWorker @JvmOverloads constructor(
             }
 
             input.use { stream ->
-                when (val result = blobRepository.upload(config, filename, contentType, stream)) {
+                when (val result = blobRepository.upload(config, filename, contentType, stream, size)) {
                     is UploadResult.Success -> {
                         UploadLogStore.addLog("Uploaded: $filename")
                         Result.success()
@@ -74,6 +75,17 @@ class UploadWorker @JvmOverloads constructor(
         return applicationContext.contentResolver.query(uri, projection, null, null, null)?.use { cursor ->
             if (cursor.moveToFirst()) cursor.getString(0) else null
         }
+    }
+
+    private fun resolveSize(uri: Uri): Long {
+        return applicationContext.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+            val sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE)
+            if (cursor.moveToFirst() && !cursor.isNull(sizeIndex)) {
+                cursor.getLong(sizeIndex)
+            } else {
+                0L
+            }
+        } ?: 0L
     }
 
     companion object {

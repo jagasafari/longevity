@@ -13,6 +13,7 @@ securityCrypto = "1.1.0"
 mockitoCore = "5.11.0"
 okhttp = "4.12.0"
 okio = "3.9.0"
+lifecycle = "2.8.7"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -28,6 +29,7 @@ androidx-security-crypto = { group = "androidx.security", name = "security-crypt
 mockito-core = { group = "org.mockito", name = "mockito-core", version.ref = "mockitoCore" }
 okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
 okio = { group = "com.squareup.okio", name = "okio", version.ref = "okio" }
+androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycle" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
