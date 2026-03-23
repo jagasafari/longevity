@@ -175,3 +175,57 @@ let groupPhotos
             | :? PostgresException ->
                 return Results.StatusCode 503
     }
+
+let private routeStr key (ctx: HttpContext) =
+    match ctx.Request.RouteValues.TryGetValue key with
+    | true, v ->
+        let s = string v
+        if String.IsNullOrWhiteSpace s then None
+        else Some s
+    | _ -> None
+
+let private routeInt key (ctx: HttpContext) =
+    match ctx.Request.RouteValues.TryGetValue key with
+    | true, v ->
+        match Int32.TryParse(string v) with
+        | true, n when n > 0 -> Some n
+        | _ -> None
+    | _ -> None
+
+let private notifyChanged
+    (hub: IHubContext<PhotoHub.PhotoHub>) =
+    hub.Clients.All.SendAsync("PhotosChanged")
+
+let assignCategory
+    (assign: string -> string -> Task<unit>)
+    (ctx: HttpContext)
+    (hub: IHubContext<PhotoHub.PhotoHub>) = task {
+    let groupId = routeStr "groupId" ctx
+    let! body =
+        ctx.Request
+            .ReadFromJsonAsync<{| categoryName: string |}>()
+    let name =
+        match isNull (box body) with
+        | true  -> None
+        | false -> validName body.categoryName
+    match groupId, name with
+    | Some gid, Some n ->
+        do! assign gid n
+        do! notifyChanged hub
+        return Results.NoContent()
+    | _ ->
+        return Results.BadRequest {| error = "missing_fields" |}
+}
+
+let removeGroupCategory
+    (remove: string -> int -> Task<unit>)
+    (ctx: HttpContext)
+    (hub: IHubContext<PhotoHub.PhotoHub>) = task {
+    match routeStr "groupId" ctx, routeInt "categoryId" ctx with
+    | Some gid, Some cid ->
+        do! remove gid cid
+        do! notifyChanged hub
+        return Results.NoContent()
+    | _ ->
+        return Results.BadRequest {| error = "missing_fields" |}
+}

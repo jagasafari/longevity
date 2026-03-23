@@ -1,0 +1,52 @@
+name: E2E
+# run locally
+# PWDEBUG=1 E2E_BASE_URL="http://localhost:5119" dotnet test tests/longevity-frontend.e2e/longevity-frontend.e2e.csproj
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Build
+        run: dotnet build tests/longevity-frontend.e2e/longevity-frontend.e2e.csproj
+
+      - name: Install Playwright browsers
+        run: >
+          pwsh tests/longevity-frontend.e2e/bin/Debug/net10.0/playwright.ps1
+          install --with-deps chromium
+
+      - name: Run smoke tests
+        env:
+          E2E_BASE_URL: ${{ secrets.E2E_BASE_URL }}
+        run: >
+          dotnet test tests/longevity-frontend.e2e/longevity-frontend.e2e.csproj
+          --no-build
+          --logger "trx;LogFileName=e2e-results.trx"
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-results
+          path: tests/longevity-frontend.e2e/**/*.trx
+
+      - name: Report results to Azure Monitor
+        if: always()
+        env:
+          APPINSIGHTS_CONNECTION_STRING: ${{ secrets.APPINSIGHTS_CONNECTION_STRING }}
+          LA_WORKSPACE_ID: ${{ secrets.LA_WORKSPACE_ID }}
+          LA_WORKSPACE_KEY: ${{ secrets.LA_WORKSPACE_KEY }}
+        run: python tests/longevity-frontend.e2e/report-results.py

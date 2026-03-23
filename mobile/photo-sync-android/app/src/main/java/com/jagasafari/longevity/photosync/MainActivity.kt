@@ -11,10 +11,15 @@ import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var statusText: TextView
+    private lateinit var logText: TextView
 
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -31,6 +36,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         statusText = findViewById(R.id.status_text)
+        logText = findViewById(R.id.log_text)
         val startButton = findViewById<Button>(R.id.start_button)
         val stopButton = findViewById<Button>(R.id.stop_button)
         val settingsButton = findViewById<Button>(R.id.settings_button)
@@ -42,6 +48,22 @@ class MainActivity : AppCompatActivity() {
         }
 
         updateStatus()
+        observeLogs()
+    }
+
+    private fun observeLogs() {
+        lifecycleScope.launch {
+            // This coroutine will run as long as the Activity is alive,
+            // but repeatOnLifecycle will only collect when it's at least STARTED.
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                // Initial load when entering STARTED
+                logText.text = UploadLogStore.logs.joinToString("\n")
+                // Listen for updates while in STARTED
+                UploadLogStore.updates.collect {
+                    logText.text = UploadLogStore.logs.joinToString("\n")
+                }
+            }
+        }
     }
 
     override fun onResume() {

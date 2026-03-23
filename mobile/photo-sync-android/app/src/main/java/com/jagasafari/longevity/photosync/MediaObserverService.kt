@@ -4,7 +4,6 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
-import android.content.ContentUris
 import android.content.Intent
 import android.database.ContentObserver
 import android.net.Uri
@@ -21,19 +20,35 @@ import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.workDataOf
+import com.jagasafari.longevity.photosync.data.AzureBlobRepository
+import com.jagasafari.longevity.photosync.data.MediaStorePhotoRepository
+import com.jagasafari.longevity.photosync.data.SecurePrefsConfigRepository
+import com.jagasafari.longevity.photosync.domain.model.LocalPhoto
+import com.jagasafari.longevity.photosync.domain.usecase.SyncUseCase
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 class MediaObserverService : Service() {
 
     private lateinit var observer: ContentObserver
     private var lastHandledId: Long = -1
-    private val uploader = BlobUploader()
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val changeMutex = Mutex()
+
+    // Manual Dependency Injection
+    private val configRepository by lazy { SecurePrefsConfigRepository(this) }
+    private val syncUseCase by lazy {
+        SyncUseCase(
+            photoRepository = MediaStorePhotoRepository(this),
+            blobRepository = AzureBlobRepository()
+        )
+    }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -45,18 +60,15 @@ class MediaObserverService : Service() {
 
         observer = object : ContentObserver(Handler(Looper.getMainLooper())) {
             override fun onChange(selfChange: Boolean) {
-                Log.d(TAG, "onChange(selfChange=$selfChange) — no URI")
-                handleChange(null)
+                handleChange()
             }
 
             override fun onChange(selfChange: Boolean, uri: Uri?) {
-                Log.d(TAG, "onChange(selfChange=$selfChange, uri=$uri)")
-                handleChange(uri)
+                handleChange()
             }
 
             override fun onChange(selfChange: Boolean, uris: Collection<Uri>, flags: Int) {
-                Log.d(TAG, "onChange(selfChange=$selfChange, uris=${uris.size}, flags=$flags)")
-                for (u in uris) handleChange(u)
+                handleChange()
             }
         }
         contentResolver.registerContentObserver(
@@ -68,13 +80,18 @@ class MediaObserverService : Service() {
         serviceScope.launch { runCatchUpSync() }
     }
 
-    private fun handleChange(uri: Uri?) {
-        val resolved = resolveLatestCameraPhoto()
-        Log.d(TAG, "Resolved URI: $resolved")
-        if (resolved != null) {
-            enqueueUpload(resolved)
-        } else {
-            Log.d(TAG, "No new camera photo found")
+    private fun handleChange() {
+        serviceScope.launch {
+            changeMutex.withLock {
+                val (unseenPhotos, newWatermark) = syncUseCase.getUnseenPhotos(lastHandledId)
+                if (newWatermark > lastHandledId) {
+                    lastHandledId = newWatermark
+                    Log.d(TAG, "Resolved ${unseenPhotos.size} unseen photos. New watermark: $lastHandledId")
+                    unseenPhotos.forEach { enqueueUpload(it) }
+                } else {
+                    Log.d(TAG, "No new target photos found (watermark unchanged)")
+                }
+            }
         }
     }
 
@@ -90,18 +107,21 @@ class MediaObserverService : Service() {
         super.onDestroy()
     }
 
-    private fun enqueueUpload(uri: Uri) {
+    private fun enqueueUpload(localPhoto: LocalPhoto) {
         val constraints = Constraints.Builder()
             .setRequiredNetworkType(NetworkType.CONNECTED)
             .build()
 
         val work = OneTimeWorkRequestBuilder<UploadWorker>()
-            .setInputData(workDataOf("uri" to uri.toString()))
+            .setInputData(workDataOf(
+                "uri" to localPhoto.uri.toString(),
+                "fileName" to localPhoto.filename // Provide file name to worker
+            ))
             .setConstraints(constraints)
             .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
             .build()
 
-        val uniqueName = "upload:${uri.lastPathSegment ?: uri}"
+        val uniqueName = "upload:${localPhoto.id}"
         Log.d(TAG, "Enqueuing work: $uniqueName")
         WorkManager.getInstance(this).enqueueUniqueWork(
             uniqueName,
@@ -111,82 +131,23 @@ class MediaObserverService : Service() {
     }
 
     private suspend fun runCatchUpSync() {
-        val prefs = SecurePrefs.get(this)
-        val rawToken = prefs.getString("sas_token", null) ?: run {
+        val config = configRepository.getConfig() ?: run {
             Log.d(TAG, "Catch-up: no SAS token configured, skipping")
             return
         }
-        val storageAccount = prefs.getString("storage_account", "longevityphotos")
-            ?.trim().orEmpty().ifBlank { "longevityphotos" }
-        val container = prefs.getString("container", "photos")
-            ?.trim().orEmpty().ifBlank { "photos" }
-        val config = UploadConfig(storageAccount, container, rawToken)
 
-        val localPhotos = resolveAllCameraPhotos()
-        Log.d(TAG, "Catch-up: ${localPhotos.size} photos in DCIM/Camera (last 48h)")
-
-        val missing = localPhotos.filter { (_, filename) -> !uploader.blobExists(config, filename) }
-        Log.d(TAG, "Catch-up: enqueueing ${missing.size} missing photos")
-        missing.forEach { (uri, _) -> enqueueUpload(uri) }
-    }
-
-    private fun resolveAllCameraPhotos(): List<Pair<Uri, String>> {
-        val projection = arrayOf(
-            MediaStore.Images.Media._ID,
-            MediaStore.Images.Media.DISPLAY_NAME,
-            MediaStore.Images.Media.RELATIVE_PATH
-        )
-        val cutoffSeconds = (System.currentTimeMillis() / 1000) - 48 * 60 * 60
-        val results = mutableListOf<Pair<Uri, String>>()
-        contentResolver.query(
-            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-            projection,
-            "${MediaStore.Images.Media.RELATIVE_PATH} LIKE ? AND ${MediaStore.Images.Media.DATE_ADDED} >= ?",
-            arrayOf("DCIM/Camera%", cutoffSeconds.toString()),
-            "${MediaStore.Images.Media.DATE_ADDED} DESC"
-        )?.use { cursor ->
-            val idCol = cursor.getColumnIndexOrThrow(MediaStore.Images.Media._ID)
-            val nameCol = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DISPLAY_NAME)
-            while (cursor.moveToNext()) {
-                val id = cursor.getLong(idCol)
-                val name = cursor.getString(nameCol)
-                val uri = ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id)
-                results.add(uri to name)
-            }
-        }
-        return results
-    }
-
-    private fun resolveLatestCameraPhoto(): Uri? {
-        val projection = arrayOf(
-            MediaStore.Images.Media._ID,
-            MediaStore.Images.Media.DISPLAY_NAME,
-            MediaStore.Images.Media.RELATIVE_PATH
-        )
-        val selection = "${MediaStore.Images.Media.RELATIVE_PATH} LIKE ?"
-        val selectionArgs = arrayOf("DCIM/Camera%")
-        val sortOrder = "${MediaStore.Images.Media.DATE_ADDED} DESC"
-
-        return contentResolver.query(
-            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-            projection,
-            selection,
-            selectionArgs,
-            sortOrder
-        )?.use { cursor ->
-            if (!cursor.moveToFirst()) {
-                Log.d(TAG, "No images found in DCIM/Camera")
-                return@use null
-            }
-            val id = cursor.getLong(cursor.getColumnIndexOrThrow(MediaStore.Images.Media._ID))
-            val name = cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DISPLAY_NAME))
-            Log.d(TAG, "Latest camera photo: id=$id name=$name")
-            if (id == lastHandledId) {
-                Log.d(TAG, "Already handled id=$id, skipping")
-                return@use null
-            }
-            lastHandledId = id
-            ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id)
+        UploadLogStore.addLog("Fetching blob list...")
+        
+        try {
+            val missing = syncUseCase.executeCatchUp(config)
+            
+            Log.d(TAG, "Catch-up: enqueueing ${missing.size} missing photos")
+            UploadLogStore.addLog("Uploading ${missing.size} missing photos")
+            
+            missing.forEach { enqueueUpload(it) }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed fetch or diff during catch-up", e)
+            UploadLogStore.addLog("Catch-up failed: ${e.message}")
         }
     }
 
@@ -202,7 +163,7 @@ class MediaObserverService : Service() {
     private fun buildNotification(): Notification =
         NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Photo Sync active")
-            .setContentText("Watching DCIM/Camera for new photos")
+            .setContentText("Watching DCIM/Camera & DCIM/Uploads")
             .setSmallIcon(android.R.drawable.ic_menu_upload)
             .setOngoing(true)
             .build()
