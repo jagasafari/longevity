@@ -20,12 +20,11 @@ let private listBlobDates (container: BlobContainerClient) =
     System.Threading.Tasks.Task.Run(fun () ->
         let counts = System.Collections.Generic.Dictionary<DateOnly, int>()
         for blob in container.GetBlobs() do
-            let modified =
-                blob.Properties.LastModified
-                |> Option.ofNullable
-                |> Option.defaultValue DateTimeOffset.MinValue
-            let date = DateOnly.FromDateTime(modified.Date)
-            counts[date] <- (match counts.TryGetValue date with | true, v -> v | _ -> 0) + 1
+            match blob.Properties.LastModified |> Option.ofNullable with
+            | None -> ()
+            | Some modified ->
+                let date = DateOnly.FromDateTime(modified.Date)
+                counts[date] <- (match counts.TryGetValue date with | true, v -> v | _ -> 0) + 1
         counts |> Seq.map (fun kv -> kv.Key, kv.Value) |> Seq.toList)
 
 let private upsertCounts (connStr: string) (counts: (DateOnly * int) list) = task {
