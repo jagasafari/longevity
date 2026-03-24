@@ -3,11 +3,11 @@ name: Frontend CI
 on:
   push:
     paths:
-      - "src/longevity-frontend/**"
+      - "src/web/**"
       - ".github/workflows/frontend-ci.yml"
   pull_request:
     paths:
-      - "src/longevity-frontend/**"
+      - "src/web/**"
   schedule:
     - cron: "0 0 * * *"
 
@@ -23,13 +23,13 @@ jobs:
           dotnet-version: "10.0.x"
 
       - name: Restore
-        run: dotnet restore src/longevity-frontend/longevity-frontend.csproj
+        run: dotnet restore src/web/web.csproj
 
       - name: Build
-        run: dotnet build src/longevity-frontend/longevity-frontend.csproj --no-restore -c Release
+        run: dotnet build src/web/web.csproj --no-restore -c Release
 
       - name: Publish
-        run: dotnet publish src/longevity-frontend/longevity-frontend.csproj --no-build -c Release -o publish
+        run: dotnet publish src/web/web.csproj --no-build -c Release -o publish
 
       - name: Verify output
         run: test -f publish/wwwroot/index.html

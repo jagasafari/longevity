@@ -107,9 +107,9 @@ module backendIdentity './modules/workload-identity.bicep' = {
   params: {
     location: resourceLocation
     oidcIssuerUrl: aks.outputs.oidcIssuerUrl
-    identityName: 'longevity-backend-identity'
+    identityName: 'photo-api-identity'
     credentialLabel: 'backend'
-    k8sServiceAccountName: 'backend-sa'
+    k8sServiceAccountName: 'photo-api-sa'
   }
 }
 
@@ -125,6 +125,18 @@ module thumbnailWorkerIdentity './modules/workload-identity.bicep' = {
   }
 }
 
+module photoCountWorkerIdentity './modules/workload-identity.bicep' = {
+  name: 'photo-count-worker-identity-deployment'
+  scope: rg
+  params: {
+    location: resourceLocation
+    oidcIssuerUrl: aks.outputs.oidcIssuerUrl
+    identityName: 'photo-count-worker-identity'
+    credentialLabel: 'photo-count-worker'
+    k8sServiceAccountName: 'photo-count-worker-sa'
+  }
+}
+
 module storage './modules/storage.bicep' = {
   name: 'storage-deployment'
   scope: rg
@@ -133,6 +145,7 @@ module storage './modules/storage.bicep' = {
     location: rgLocation
     backendPrincipalId: backendIdentity.outputs.principalId
     thumbnailWorkerPrincipalId: thumbnailWorkerIdentity.outputs.principalId
+    photoCountWorkerPrincipalId: photoCountWorkerIdentity.outputs.principalId
     logAnalyticsWorkspaceId: logAnalytics.outputs.workspaceId
   }
 }
@@ -165,6 +178,7 @@ output acrLoginServer string = acr.outputs.acrLoginServer
 output storageAccountName string = storage.outputs.storageAccountName
 output backendIdentityClientId string = backendIdentity.outputs.clientId
 output thumbnailWorkerIdentityClientId string = thumbnailWorkerIdentity.outputs.clientId
+output photoCountWorkerIdentityClientId string = photoCountWorkerIdentity.outputs.clientId
 output logAnalyticsWorkspaceId string = logAnalytics.outputs.workspaceId
 output appInsightsConnectionString string = appInsights.outputs.connectionString
 output workbookId string = workbook.outputs.workbookId

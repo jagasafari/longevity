@@ -1,24 +1,24 @@
 namespace: longevity
 
-frontend:
+web:
   replicaCount: 1
   image:
-    repository: longevityacr.azurecr.io/longevity-frontend
+    repository: longevityacr.azurecr.io/web
     tag: ""
   service:
     port: 80
     targetPort: 80
 
-backend:
+photoApi:
   replicaCount: 1
-  workloadIdentityClientId: "5e35af52-d86b-4942-992e-b41069dc54db"
+  workloadIdentityClientId: "c92417c9-c2ca-4cb5-98ca-dc97de835997"
   image:
-    repository: longevityacr.azurecr.io/longevity-backend
+    repository: longevityacr.azurecr.io/photo-api
     tag: ""
   service:
     port: 80
     targetPort: 8080
-  healthPath: /api/weatherforecast
+  healthPath: /healthz
 
 worker:
   replicaCount: 1
@@ -27,6 +27,12 @@ worker:
     repository: longevityacr.azurecr.io/thumbnail-worker
     tag: ""
 
+photoCountWorker:
+  replicaCount: 1
+  workloadIdentityClientId: "a082bfcf-e000-4515-bacb-c84c3584578c"
+  image:
+    repository: longevityacr.azurecr.io/photo-count-worker
+    tag: ""
 redis:
   connectionString: redis-svc:6379
 

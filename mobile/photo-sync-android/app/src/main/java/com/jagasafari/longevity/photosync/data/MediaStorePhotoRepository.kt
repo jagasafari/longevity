@@ -40,11 +40,14 @@ class MediaStorePhotoRepository(private val context: Context) : PhotoRepository 
         )?.use { cursor ->
             val idCol = cursor.getColumnIndexOrThrow(MediaStore.Images.Media._ID)
             val nameCol = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DISPLAY_NAME)
+            val pathCol = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.RELATIVE_PATH)
+            
             while (cursor.moveToNext()) {
                 val id = cursor.getLong(idCol)
                 val name = cursor.getString(nameCol)
+                val path = cursor.getString(pathCol)
                 val uri = ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id)
-                results.add(LocalPhoto(id, name, uri))
+                results.add(LocalPhoto(id, name, uri, path))
             }
         }
         return results
@@ -72,13 +75,15 @@ class MediaStorePhotoRepository(private val context: Context) : PhotoRepository 
         )?.use { cursor ->
             val idCol = cursor.getColumnIndexOrThrow(MediaStore.Images.Media._ID)
             val nameCol = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DISPLAY_NAME)
+            val pathCol = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.RELATIVE_PATH)
 
             while (cursor.moveToNext()) {
                 val id = cursor.getLong(idCol)
                 if (lastHandledId == -1L) {
                     val name = cursor.getString(nameCol)
+                    val path = cursor.getString(pathCol)
                     val uri = ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id)
-                    unseen.add(LocalPhoto(id, name, uri))
+                    unseen.add(LocalPhoto(id, name, uri, path))
                     highestSeenId = id
                     break
                 }
@@ -86,8 +91,9 @@ class MediaStorePhotoRepository(private val context: Context) : PhotoRepository 
                 if (id <= lastHandledId) break
 
                 val name = cursor.getString(nameCol)
+                val path = cursor.getString(pathCol)
                 val uri = ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id)
-                unseen.add(LocalPhoto(id, name, uri))
+                unseen.add(LocalPhoto(id, name, uri, path))
                 highestSeenId = maxOf(highestSeenId, id)
             }
         }

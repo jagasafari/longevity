@@ -115,7 +115,8 @@ class MediaObserverService : Service() {
         val work = OneTimeWorkRequestBuilder<UploadWorker>()
             .setInputData(workDataOf(
                 "uri" to localPhoto.uri.toString(),
-                "fileName" to localPhoto.filename // Provide file name to worker
+                "fileName" to localPhoto.filename,
+                "folder" to localPhoto.folder // Pass folder to worker
             ))
             .setConstraints(constraints)
             .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)

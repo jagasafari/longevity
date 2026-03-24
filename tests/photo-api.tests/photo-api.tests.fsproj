@@ -1,0 +1,27 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>photo_api.tests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="AuthTests.fs" />
+    <Compile Include="RoutesTests.fs" />
+    <Compile Include="ConfigTests.fs" />
+    <Compile Include="PhotoGroupsTests.fs" />
+    <Compile Include="StorageTests.fs" />
+    <Compile Include="Program.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Expecto" Version="10.2.3" />
+    <PackageReference Include="Unquote" Version="7.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\photo-api\photo-api.fsproj" />
+  </ItemGroup>
+
+</Project>

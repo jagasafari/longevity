@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: photo-api-deployment
+  namespace: {{ .Values.namespace }}
+spec:
+  replicas: {{ .Values.photoApi.replicaCount }}
+  selector:
+    matchLabels:
+      app: photo-api
+  template:
+    metadata:
+      labels:
+        app: photo-api
+        azure.workload.identity/use: "true"
+    spec:
+      serviceAccountName: photo-api-sa
+      containers:
+      - image: {{ printf "%s:%s" .Values.photoApi.image.repository (required "photoApi.image.tag is required" .Values.photoApi.image.tag) | quote }}
+        name: photo-api
+        ports:
+        - containerPort: {{ .Values.photoApi.service.targetPort }}
+        env:
+        - name: ASPNETCORE_URLS
+          value: http://+:{{ .Values.photoApi.service.targetPort }}
+        - name: Redis__ConnectionString
+          value: {{ .Values.redis.connectionString }}
+        - name: Postgres__ConnectionString
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: connectionString
+        envFrom:
+        - secretRef:
+            name: oauth-secret
+        livenessProbe:
+          httpGet:
+            path: {{ .Values.photoApi.healthPath }}
+            port: {{ .Values.photoApi.service.targetPort }}
+          initialDelaySeconds: 10
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: {{ .Values.photoApi.healthPath }}
+            port: {{ .Values.photoApi.service.targetPort }}
+          initialDelaySeconds: 5
+          periodSeconds: 10

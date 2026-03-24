@@ -38,6 +38,19 @@ class UploadWorker @JvmOverloads constructor(
             val filename = inputFileName ?: resolveFilename(uri) ?: "photo_${System.currentTimeMillis()}.jpg"
             val contentType = applicationContext.contentResolver.getType(uri) ?: "image/jpeg"
             val size = resolveSize(uri)
+            
+            val folderPath = inputData.getString("folder").orEmpty()
+            val folderDisplay = when {
+                folderPath.contains("Camera", ignoreCase = true) -> "[Camera] "
+                folderPath.contains("Uploads", ignoreCase = true) -> "[Uploads] "
+                folderPath.isNotBlank() -> "[${folderPath.trim('/').split('/').last()}] "
+                else -> ""
+            }
+
+            if (size <= 0L) {
+                logger.e(TAG, "Cannot determine file size for uri=$uri")
+                return Result.retry()
+            }
 
             val input = applicationContext.contentResolver.openInputStream(uri)
             if (input == null) {
@@ -48,15 +61,15 @@ class UploadWorker @JvmOverloads constructor(
             input.use { stream ->
                 when (val result = blobRepository.upload(config, filename, contentType, stream, size)) {
                     is UploadResult.Success -> {
-                        UploadLogStore.addLog("Uploaded: $filename")
+                        UploadLogStore.addLog("Uploaded: $folderDisplay$filename")
                         Result.success()
                     }
                     is UploadResult.Retry -> {
-                        UploadLogStore.addLog("Retry: $filename (${result.reason})")
+                        UploadLogStore.addLog("Retry: $folderDisplay$filename (${result.reason})")
                         Result.retry()
                     }
                     is UploadResult.Failure -> {
-                        UploadLogStore.addLog("Failed: $filename (${result.reason})")
+                        UploadLogStore.addLog("Failed: $folderDisplay$filename (${result.reason})")
                         Result.failure()
                     }
                 }
@@ -78,19 +91,24 @@ class UploadWorker @JvmOverloads constructor(
     }
 
     private fun resolveSize(uri: Uri): Long {
-        val fromCursor = applicationContext.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
-            val sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE)
-            if (sizeIndex >= 0 && cursor.moveToFirst() && !cursor.isNull(sizeIndex)) {
-                cursor.getLong(sizeIndex)
-            } else {
-                0L
-            }
-        } ?: 0L
+        val projection = arrayOf(OpenableColumns.SIZE)
+        val fromCursor = applicationContext.contentResolver
+            .query(uri, projection, null, null, null)
+            ?.use { cursor ->
+                val sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE)
+                if (sizeIndex >= 0 && cursor.moveToFirst() && !cursor.isNull(sizeIndex)) {
+                    cursor.getLong(sizeIndex)
+                } else {
+                    0L
+                }
+            } ?: 0L
 
         if (fromCursor > 0) return fromCursor
 
         return try {
-            applicationContext.contentResolver.openFileDescriptor(uri, "r")?.use { it.statSize } ?: 0L
+            applicationContext.contentResolver
+                .openFileDescriptor(uri, "r")
+                ?.use { it.statSize } ?: 0L
         } catch (_: Exception) {
             0L
         }
