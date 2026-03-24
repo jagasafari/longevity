@@ -138,8 +138,10 @@ def main() -> None:
         try:
             post_appinsights_availability(conn_str, result, run_id, branch, sha)
         except (URLError, KeyError) as e:
-            print(f"App Insights: failed — {e}", file=sys.stderr)        except Exception as e:
-            print(f"App Insights: unexpected error \u2014 {e}", file=sys.stderr)    else:
+            print(f"App Insights: failed — {e}", file=sys.stderr)
+        except Exception as e:
+            print(f"App Insights: unexpected error — {e}", file=sys.stderr)
+    else:
         print("APPINSIGHTS_CONNECTION_STRING not set — skipping App Insights", file=sys.stderr)
 
     la_id = os.environ.get("LA_WORKSPACE_ID")
@@ -148,8 +150,10 @@ def main() -> None:
         try:
             post_log_analytics(la_id, la_key, result, run_id, branch, sha)
         except (URLError, ValueError) as e:
-            print(f"Log Analytics: failed — {e}", file=sys.stderr)        except Exception as e:
-            print(f"Log Analytics: unexpected error \u2014 {e}", file=sys.stderr)    else:
+            print(f"Log Analytics: failed — {e}", file=sys.stderr)
+        except Exception as e:
+            print(f"Log Analytics: unexpected error — {e}", file=sys.stderr)
+    else:
         print("LA_WORKSPACE_ID / LA_WORKSPACE_KEY not set — skipping Log Analytics", file=sys.stderr)
 
     print(f"Result: {result['outcome']} ({result['passed']}/{result['total']} passed)")
