@@ -45,7 +45,7 @@ class AzureBlobRepository(
         // Construct the list URL. SAS token already starts with '?'
         var url = "${baseUrl(config)}${config.normalizedSasToken}&comp=list&restype=container"
         if (marker != null) {
-            url += "&marker=$marker"
+            url += "&marker=${URLEncoder.encode(marker, "UTF-8")}"
         }
 
         val request = Request.Builder()

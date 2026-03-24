@@ -24,30 +24,30 @@ spec:
         pathType: Prefix
         backend:
           service:
-            name: backend-svc
+            name: photo-api-svc
             port:
-              number: {{ .Values.backend.service.port }}
+              number: {{ .Values.photoApi.service.port }}
       - path: /api
         pathType: Prefix
         backend:
           service:
-            name: backend-svc
+            name: photo-api-svc
             port:
-              number: {{ .Values.backend.service.port }}
+              number: {{ .Values.photoApi.service.port }}
       - path: /hubs
         pathType: Prefix
         backend:
           service:
-            name: backend-svc
+            name: photo-api-svc
             port:
-              number: {{ .Values.backend.service.port }}
+              number: {{ .Values.photoApi.service.port }}
       - path: /
         pathType: Prefix
         backend:
           service:
-            name: frontend-svc
+            name: web-svc
             port:
-              number: {{ .Values.frontend.service.port }}
+              number: {{ .Values.web.service.port }}
   tls:
   - hosts:
     - {{ .Values.ingress.host }}

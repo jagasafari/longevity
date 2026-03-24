@@ -10,6 +10,9 @@ param backendPrincipalId string
 @description('Principal ID of the thumbnail worker managed identity (for RBAC role assignments).')
 param thumbnailWorkerPrincipalId string
 
+@description('Principal ID of the photo-count worker managed identity (read-only blob access).')
+param photoCountWorkerPrincipalId string
+
 @description('Log Analytics workspace resource ID for diagnostic settings.')
 param logAnalyticsWorkspaceId string
 
@@ -119,6 +122,19 @@ resource workerQueueProcessor 'Microsoft.Authorization/roleAssignments@2022-04-0
       'Microsoft.Authorization/roleDefinitions',
       '8a0f0c08-91a1-4084-bc3d-661d67233fed') // Storage Queue Data Message Processor
     principalId: thumbnailWorkerPrincipalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+// Photo-count worker: read-only blob access to list and inspect photos
+resource photoCountWorkerBlobReader 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(storageScopeId, photoCountWorkerPrincipalId, 'Storage Blob Data Reader')
+  scope: storageAccount
+  properties: {
+    roleDefinitionId: subscriptionResourceId(
+      'Microsoft.Authorization/roleDefinitions',
+      '2a2b9908-6ea1-4ae2-8e65-a410df84e7d1') // Storage Blob Data Reader
+    principalId: photoCountWorkerPrincipalId
     principalType: 'ServicePrincipal'
   }
 }

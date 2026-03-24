@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: photo-count-worker-deployment
+  namespace: {{ .Values.namespace }}
+spec:
+  replicas: {{ .Values.photoCountWorker.replicaCount }}
+  selector:
+    matchLabels:
+      app: photo-count-worker
+  template:
+    metadata:
+      labels:
+        app: photo-count-worker
+        azure.workload.identity/use: "true"
+    spec:
+      serviceAccountName: photo-count-worker-sa
+      containers:
+      - image: {{ printf "%s:%s" .Values.photoCountWorker.image.repository (required "photoCountWorker.image.tag is required" .Values.photoCountWorker.image.tag) | quote }}
+        name: photo-count-worker
+        env:
+        - name: Storage__AccountName
+          valueFrom:
+            secretKeyRef:
+              name: oauth-secret
+              key: Storage__AccountName
+        - name: ConnectionStrings__Postgres
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: connectionString
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"

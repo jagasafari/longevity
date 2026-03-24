@@ -1,9 +1,11 @@
-# Usage: pwsh build-push.ps1 -Service frontend [-Tag x]
-#        pwsh build-push.ps1 -Service backend  [-Tag x]
+# Usage: pwsh build-push.ps1 -Service web              [-Tag x]
+#        pwsh build-push.ps1 -Service photo-api         [-Tag x]
+#        pwsh build-push.ps1 -Service worker            [-Tag x]
+#        pwsh build-push.ps1 -Service photo-count-worker [-Tag x]
 
 param(
     [Parameter(Mandatory)]
-    [ValidateSet('frontend', 'backend', 'worker')]
+    [ValidateSet('web', 'photo-api', 'worker', 'photo-count-worker')]
     [string]$Service,
     [string]$Tag
 )
@@ -16,12 +18,20 @@ $Config     = Get-Content "$ScriptsDir/env.json" -Raw |
               ConvertFrom-Json
 
 $AcrName  = $Config.acrName
-$ImageName = if ($Service -eq 'worker') { 'thumbnail-worker' }
-             else { "longevity-$Service" }
+$ImageName = switch ($Service) {
+    'worker'             { 'thumbnail-worker' }
+    'photo-count-worker' { 'photo-count-worker' }
+    'photo-api'          { 'photo-api' }
+    'web'                { 'web' }
+}
 $AcrImage = "$AcrName.azurecr.io/$ImageName"
 $Full     = "${AcrImage}:${Tag}"
-$SrcDir   = if ($Service -eq 'worker') { "$RepoDir/src/thumbnail-worker" }
-            else { "$RepoDir/src/longevity-$Service" }
+$SrcDir   = switch ($Service) {
+    'worker'             { "$RepoDir/src/thumbnail-worker" }
+    'photo-count-worker' { "$RepoDir/src/photo-count-worker" }
+    'photo-api'          { "$RepoDir/src/photo-api" }
+    'web'                { "$RepoDir/src/web" }
+}
 
 Write-Host "==> Logging in to ACR..." -ForegroundColor Cyan
 az acr login --name $AcrName
@@ -30,7 +40,7 @@ if ($LASTEXITCODE -ne 0) { throw "ACR login failed" }
 Write-Host "==> Building $Service image (tag: $Tag)..." `
     -ForegroundColor Cyan
 $BuildArgs = @('--platform', 'linux/amd64', '-t', $Full)
-if ($Service -eq 'frontend') {
+if ($Service -eq 'web') {
     $ConnStr = az keyvault secret show `
         --vault-name $Config.keyVaultName `
         --name 'app-insights-connection-string' `

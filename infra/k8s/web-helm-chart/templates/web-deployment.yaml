@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-deployment
+  namespace: {{ .Values.namespace }}
+spec:
+  replicas: {{ .Values.web.replicaCount }}
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      containers:
+      - image: {{ printf "%s:%s" .Values.web.image.repository (required "web.image.tag is required" .Values.web.image.tag) | quote }}
+        name: nginx
+        ports:
+        - containerPort: {{ .Values.web.service.targetPort }}
+        volumeMounts:
+        - mountPath: /etc/nginx/conf.d/default.conf
+          name: nginx-config
+          subPath: nginx.conf
+      volumes:
+      - configMap:
+          name: nginx-config
+        name: nginx-config

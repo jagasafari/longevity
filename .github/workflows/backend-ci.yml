@@ -3,13 +3,13 @@ name: Backend CI
 on:
   push:
     paths:
-      - "src/longevity-backend/**"
-      - "tests/longevity-backend.tests/**"
+      - "src/photo-api/**"
+      - "tests/photo-api.tests/**"
       - ".github/workflows/backend-ci.yml"
   pull_request:
     paths:
-      - "src/longevity-backend/**"
-      - "tests/longevity-backend.tests/**"
+      - "src/photo-api/**"
+      - "tests/photo-api.tests/**"
   schedule:
     - cron: "0 0 * * *"
 
@@ -25,13 +25,13 @@ jobs:
           dotnet-version: "10.0.x"
 
       - name: Restore
-        run: dotnet restore tests/longevity-backend.tests/longevity-backend.tests.fsproj
+        run: dotnet restore tests/photo-api.tests/photo-api.tests.fsproj
 
       - name: Build backend
-        run: dotnet build src/longevity-backend/longevity-backend.fsproj --no-restore -c Release
+        run: dotnet build src/photo-api/photo-api.fsproj --no-restore -c Release
 
       - name: Build tests
-        run: dotnet build tests/longevity-backend.tests/longevity-backend.tests.fsproj --no-restore -c Release
+        run: dotnet build tests/photo-api.tests/photo-api.tests.fsproj --no-restore -c Release
 
       - name: Run tests
-        run: dotnet run --project tests/longevity-backend.tests/longevity-backend.tests.fsproj -c Release --no-build
+        run: dotnet run --project tests/photo-api.tests/photo-api.tests.fsproj -c Release --no-build
