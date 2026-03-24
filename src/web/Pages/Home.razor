@@ -52,7 +52,7 @@
                         {
                             @if (cell is null)
                             {
-                                <span style="width: 32px; height: 32px;"></span>
+                                <span style="width: 32px; height: 38px;"></span>
                             }
                             else
                             {
@@ -60,10 +60,10 @@
                                 var count = GetPhotoCount(day);
                                 var isSelected = _selectedDay is not null && day.Date == _selectedDay.Value.Date;
                                 <button style="@DayStyle(isSelected, count > 0)" @onclick="() => SelectDate(day)" @onclick:stopPropagation>
-                                    <span>@day.Day</span>
+                                    <span style="line-height: 1;">@day.Day</span>
                                     @if (count > 0)
                                     {
-                                        <span style="font-size: 0.55rem; color: #64748b; position: absolute; bottom: 2px;">@count</span>
+                                        <span style="font-size: 0.5rem; line-height: 1; margin-top: 1px;">@count</span>
                                     }
                                 </button>
                             }
@@ -364,7 +364,7 @@
 
     private static string DayStyle(bool isSelected, bool hasPhotos)
     {
-        var baseStyle = "all: unset; width: 32px; height: 32px; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 50%; font-size: 0.85rem; box-sizing: border-box; cursor: pointer; position: relative;";
+        var baseStyle = "all: unset; width: 32px; height: 38px; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 8px; font-size: 0.85rem; box-sizing: border-box; cursor: pointer; position: relative; gap: 0;";
         if (isSelected)
             return baseStyle + " background: #1d4ed8; color: #fff; font-weight: 700;";
         if (hasPhotos)
