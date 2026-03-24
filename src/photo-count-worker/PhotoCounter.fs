@@ -25,7 +25,7 @@ let private listBlobDates (container: BlobContainerClient) =
                 |> Option.ofNullable
                 |> Option.defaultValue DateTimeOffset.MinValue
             let date = DateOnly.FromDateTime(modified.Date)
-            counts[date] <- (counts.TryGetValue date |> function true, v -> v | _ -> 0) + 1
+            counts[date] <- (match counts.TryGetValue date with | true, v -> v | _ -> 0) + 1
         counts |> Seq.map (fun kv -> kv.Key, kv.Value) |> Seq.toList)
 
 let private upsertCounts (connStr: string) (counts: (DateOnly * int) list) = task {
