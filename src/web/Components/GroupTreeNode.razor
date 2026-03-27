@@ -8,10 +8,13 @@
              @ondrop="() => DropIntoGroup(Node.GroupId)">
         <h3>Subgroup</h3>
 
-        @if (NodePhotos().Length > 0)
+        @{
+            var nodePhotos = NodePhotos();
+        }
+        @if (nodePhotos.Length > 0)
         {
             <div class="photo-grid">
-                @foreach (var photo in NodePhotos())
+                @foreach (var photo in nodePhotos)
                 {
                     <div class="photo-card"
                          data-photo-name="@photo.Name"

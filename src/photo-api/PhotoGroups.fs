@@ -271,21 +271,6 @@ let private deletePhoto (conn: NpgsqlConnection) (tx: NpgsqlTransaction) blobNam
     ()
 }
 
-let private ensureGroupExists
-    (conn: NpgsqlConnection)
-    (tx: NpgsqlTransaction)
-    groupId =
-    task {
-        let! found =
-            conn.ExecuteScalarAsync<string>(
-                "SELECT group_id FROM photo_groups WHERE group_id = @g LIMIT 1",
-                {| g = groupId |},
-                tx)
-        match Option.ofObj found with
-        | Some _ -> ()
-        | None -> failwith "target_group_not_found"
-    }
-
 let groupPhotos (connStr: string) (sourceName: string) (targetName: string) =
     withTransaction connStr <| fun conn tx -> task {
         let! sourceGroup = findGroupId conn tx sourceName
@@ -316,7 +301,6 @@ let movePhotoToGroup
     (photoName: string)
     (targetGroupId: string) =
     withTransaction connStr <| fun conn tx -> task {
-        do! ensureGroupExists conn tx targetGroupId
         let! sourceGroup = findGroupId conn tx photoName
         match sourceGroup with
         | Some source when source = targetGroupId -> ()

@@ -9,8 +9,12 @@ CREATE INDEX IF NOT EXISTS idx_photo_groups_parent
     ON photo_groups (parent_group_id);
 
 INSERT INTO photo_groups (group_id, parent_group_id)
-SELECT DISTINCT gp.group_id, NULL
-FROM group_photos gp
+SELECT DISTINCT g.group_id, NULL
+FROM (
+    SELECT group_id FROM group_photos
+    UNION
+    SELECT group_id FROM group_categories
+) g
 ON CONFLICT (group_id) DO NOTHING;
 
 ALTER TABLE IF EXISTS group_photos

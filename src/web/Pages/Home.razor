@@ -300,6 +300,7 @@
         var date = _selectedDay.HasValue ? DateOnly.FromDateTime(_selectedDay.Value) : (DateOnly?)null;
         var page = await Photos.LoadPageAsync(before: _nextBefore, date: date);
         _photos!.AddRange(page.Items);
+        _photosByName = _photos.ToDictionary(photo => photo.Name, StringComparer.Ordinal);
         _nextBefore = page.NextBefore;
         _loadingMore = false;
     }
@@ -321,19 +322,21 @@
         _photoCounts = await Photos.LoadPhotoCountsAsync();
     }
 
+    private bool HasVisiblePhotos(GroupTreeNodeDto node) =>
+        GroupPhotos(node).Length > 0
+        || ChildGroups(node.GroupId).Any(HasVisiblePhotos);
+
     private GroupTreeNodeDto[] RootGroups() =>
         _groupTree
             .Where(node =>
                 string.IsNullOrWhiteSpace(node.ParentGroupId)
                 && IsGroupVisible(node.GroupId)
-                && GroupPhotos(node).Length > 0)
-            .OrderByDescending(node =>
-            {
-                var photos = GroupPhotos(node);
-                return photos.Length > 0
-                    ? photos[0].LastModified
-                    : DateTimeOffset.MinValue;
-            })
+                && HasVisiblePhotos(node))
+            .Select(node => new { node, photos = GroupPhotos(node) })
+            .OrderByDescending(x => x.photos.Length > 0
+                ? x.photos[0].LastModified
+                : DateTimeOffset.MinValue)
+            .Select(x => x.node)
             .ToArray();
 
     private GroupTreeNodeDto[] ChildGroups(string groupId) =>
