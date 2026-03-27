@@ -50,9 +50,15 @@ let main args =
     builder.Services.AddSingleton(storage) |> ignore
     builder.Services.AddSingleton<IConnectionMultiplexer>(redis) |> ignore
     builder.Services.AddHostedService<ThumbnailSubscriber.ThumbnailSubscriberService>() |> ignore
+    builder.Services.AddSingleton<PhotoCountCache.Cache>() |> ignore
+    builder.Services.AddHostedService<PhotoCountCache.RefreshService>() |> ignore
+    builder.Services.Configure<HostOptions>(fun (opts: HostOptions) ->
+        opts.BackgroundServiceExceptionBehavior <-
+            BackgroundServiceExceptionBehavior.Ignore) |> ignore
 
     let app = builder.Build()
     DbMigrations.run pgConnStr
+    let cache = app.Services.GetRequiredService<PhotoCountCache.Cache>()
     let requestLogger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Request")
 
     if app.Environment.IsDevelopment() then
@@ -104,11 +110,26 @@ let main args =
         .RequireAuthorization()
     |> ignore
 
+    app.MapGet("/api/photo-groups/tree",
+        Func<_>(PhotoGroups.listPhotoGroupTree pgConnStr))
+        .RequireAuthorization()
+    |> ignore
+
     app.MapPost("/api/photo-groups/group",
         Func<Routes.GroupPhotosRequest, IHubContext<PhotoHub.PhotoHub>, _>(
             fun request hub ->
                 Routes.groupPhotos
                     (PhotoGroups.groupPhotos pgConnStr)
+                    hub
+                    request))
+        .RequireAuthorization()
+    |> ignore
+
+    app.MapPost("/api/photo-groups/move-to-group",
+        Func<Routes.MovePhotoToGroupRequest, IHubContext<PhotoHub.PhotoHub>, _>(
+            fun request hub ->
+                Routes.movePhotoToGroup
+                    (PhotoGroups.movePhotoToGroup pgConnStr)
                     hub
                     request))
         .RequireAuthorization()
@@ -177,7 +198,7 @@ let main args =
     |> ignore
 
     app.MapGet("/api/photo-counts",
-        Func<_>(PhotoCounts.listPhotoCounts pgConnStr))
+        Func<_>(PhotoCountCache.list cache))
         .RequireAuthorization()
     |> ignore
 

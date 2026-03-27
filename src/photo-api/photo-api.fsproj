@@ -15,8 +15,8 @@
     <Compile Include="DbMigrations.fs" />
     <Compile Include="PhotoGroups.fs" />
     <Compile Include="Categories.fs" />
-    <Compile Include="PhotoCounts.fs" />
     <Compile Include="Storage.fs" />
+    <Compile Include="PhotoCountCache.fs" />
     <Compile Include="PhotoHub.fs" />
     <Compile Include="ThumbnailSubscriber.fs" />
     <Compile Include="Config.fs" />

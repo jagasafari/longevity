@@ -27,12 +27,6 @@ worker:
     repository: longevityacr.azurecr.io/thumbnail-worker
     tag: ""
 
-photoCountWorker:
-  replicaCount: 1
-  workloadIdentityClientId: "a082bfcf-e000-4515-bacb-c84c3584578c"
-  image:
-    repository: longevityacr.azurecr.io/photo-count-worker
-    tag: ""
 redis:
   connectionString: redis-svc:6379
 

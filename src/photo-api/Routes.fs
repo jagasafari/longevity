@@ -17,6 +17,12 @@ type GroupPhotosRequest = {
     TargetName: string
 }
 
+[<CLIMutable>]
+type MovePhotoToGroupRequest = {
+    PhotoName: string
+    TargetGroupId: string
+}
+
 let authLogin clientId redirectUri : IResult =
     AuthLogin.buildLoginUrl clientId redirectUri |> Results.Redirect
 
@@ -169,6 +175,39 @@ let groupPhotos
                 return Results.StatusCode 409
             | :? PostgresException as ex when ex.SqlState = "23505" ->
                 return Results.Conflict {| error = "group_conflict" |}
+            | :? PostgresException ->
+                return Results.StatusCode 503
+    }
+
+let movePhotoToGroup
+    (movePhoto: string -> string -> Task<unit>)
+    (hub: IHubContext<PhotoHub.PhotoHub>)
+    (request: MovePhotoToGroupRequest) =
+    let validate req =
+        let normalize =
+            Option.ofObj
+            >> Option.map (fun (s: string) -> s.Trim())
+            >> Option.defaultValue ""
+        let photo = normalize req.PhotoName
+        let groupId = normalize req.TargetGroupId
+
+        match photo, groupId with
+        | p, g when String.IsNullOrWhiteSpace p || String.IsNullOrWhiteSpace g ->
+            Error "missing_fields"
+        | p, g -> Ok (p, g)
+
+    task {
+        match validate request with
+        | Error code ->
+            return Results.BadRequest {| error = code |}
+        | Ok (photoName, groupId) ->
+            try
+                do! movePhoto photoName groupId
+                do! hub.Clients.All.SendAsync("PhotosChanged")
+                return Results.NoContent()
+            with
+            | :? PostgresException as ex when ex.SqlState = "23503" ->
+                return Results.NotFound()
             | :? PostgresException ->
                 return Results.StatusCode 503
     }

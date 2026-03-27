@@ -1,0 +1,126 @@
+@using web.Services
+
+@if (IsVisible(Node.GroupId))
+{
+    <section class="group-section nested-group" style="--depth:@Depth"
+             data-group-id="@Node.GroupId"
+             @ondragover:preventDefault
+             @ondrop="() => DropIntoGroup(Node.GroupId)">
+        <h3>Subgroup</h3>
+
+        @if (NodePhotos().Length > 0)
+        {
+            <div class="photo-grid">
+                @foreach (var photo in NodePhotos())
+                {
+                    <div class="photo-card"
+                         data-photo-name="@photo.Name"
+                         draggable="true"
+                         @ondragstart="() => StartDrag(photo.Name)"
+                         @ondragend="EndDrag"
+                         @ondragover:preventDefault
+                         @ondrop="() => DropOnPhoto(photo.Name)">
+                        <img src="@(photo.ThumbnailUrl ?? photo.Url)"
+                             alt="@photo.Name"
+                             loading="lazy"
+                             @onclick="() => OpenLightbox(photo)"
+                             @onclick:stopPropagation="true" />
+                        <span>@photo.Name</span>
+                        <div class="card-actions">
+                            <button class="ungroup-btn"
+                                    aria-label="Ungroup @photo.Name"
+                                    @onclick="() => Ungroup(photo)">
+                                Ungroup
+                            </button>
+                            <button class="delete-btn"
+                                    aria-label="Delete @photo.Name"
+                                    @onclick="() => Delete(photo)">
+                                Delete
+                            </button>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+
+        @foreach (var child in Children(Node.GroupId))
+        {
+            <GroupTreeNode Node="child"
+                           Depth="@(Depth + 1)"
+                           PhotosByName="PhotosByName"
+                           ChildrenByParent="ChildrenByParent"
+                           IsVisible="IsVisible"
+                           OnStartDrag="OnStartDrag"
+                           OnEndDrag="OnEndDrag"
+                           OnDropOnPhoto="OnDropOnPhoto"
+                           OnDropIntoGroup="OnDropIntoGroup"
+                           OnOpenLightbox="OnOpenLightbox"
+                           OnUngroup="OnUngroup"
+                           OnDelete="OnDelete" />
+        }
+    </section>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public GroupTreeNodeDto Node { get; set; } = default!;
+
+    [Parameter]
+    public int Depth { get; set; } = 1;
+
+    [Parameter, EditorRequired]
+    public Dictionary<string, PhotoInfo> PhotosByName { get; set; } = [];
+
+    [Parameter, EditorRequired]
+    public Dictionary<string, GroupTreeNodeDto[]> ChildrenByParent { get; set; } = [];
+
+    [Parameter, EditorRequired]
+    public Func<string, bool> IsVisible { get; set; } = _ => true;
+
+    [Parameter, EditorRequired]
+    public Action<string> OnStartDrag { get; set; } = _ => { };
+
+    [Parameter, EditorRequired]
+    public Action OnEndDrag { get; set; } = () => { };
+
+    [Parameter, EditorRequired]
+    public Func<string, Task> OnDropOnPhoto { get; set; } = _ => Task.CompletedTask;
+
+    [Parameter, EditorRequired]
+    public Func<string, Task> OnDropIntoGroup { get; set; } = _ => Task.CompletedTask;
+
+    [Parameter, EditorRequired]
+    public EventCallback<PhotoInfo> OnOpenLightbox { get; set; }
+
+    [Parameter, EditorRequired]
+    public Func<PhotoInfo, Task> OnUngroup { get; set; } = _ => Task.CompletedTask;
+
+    [Parameter, EditorRequired]
+    public Func<PhotoInfo, Task> OnDelete { get; set; } = _ => Task.CompletedTask;
+
+    private PhotoInfo[] NodePhotos() =>
+        Node.Photos
+            .Where(PhotosByName.ContainsKey)
+            .Select(name => PhotosByName[name])
+            .OrderByDescending(photo => photo.LastModified)
+            .ToArray();
+
+    private GroupTreeNodeDto[] Children(string groupId) =>
+        ChildrenByParent.TryGetValue(groupId, out var children)
+            ? children
+            : [];
+
+    private void StartDrag(string name) => OnStartDrag(name);
+
+    private void EndDrag() => OnEndDrag();
+
+    private Task DropOnPhoto(string targetName) => OnDropOnPhoto(targetName);
+
+    private Task DropIntoGroup(string groupId) => OnDropIntoGroup(groupId);
+
+    private Task OpenLightbox(PhotoInfo photo) => OnOpenLightbox.InvokeAsync(photo);
+
+    private Task Ungroup(PhotoInfo photo) => OnUngroup(photo);
+
+    private Task Delete(PhotoInfo photo) => OnDelete(photo);
+}

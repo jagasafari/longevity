@@ -4,9 +4,11 @@ namespace web.Services;
 
 public sealed record PhotoInfo(string Name, string Url, string? ThumbnailUrl, DateTimeOffset LastModified);
 public sealed record GroupPhotosRequest(string SourceName, string TargetName);
+public sealed record MovePhotoToGroupRequest(string PhotoName, string TargetGroupId);
 public sealed record PhotoPage(PhotoInfo[] Items, string? NextBefore);
 public sealed record CategoryDto(int Id, string Name);
 public sealed record PhotoCountDto(DateOnly Date, int Count);
+public sealed record GroupTreeNodeDto(string GroupId, string? ParentGroupId, string[] Photos);
 
 public sealed class PhotoService(HttpClient http)
 {
@@ -55,6 +57,26 @@ public sealed class PhotoService(HttpClient http)
             "/api/photo-groups/group",
             new GroupPhotosRequest(sourceName, targetName));
 
+        return response.IsSuccessStatusCode;
+    }
+
+    public async Task<GroupTreeNodeDto[]> LoadGroupTreeAsync()
+    {
+        try
+        {
+            return await http.GetFromJsonAsync<GroupTreeNodeDto[]>("/api/photo-groups/tree") ?? [];
+        }
+        catch
+        {
+            return [];
+        }
+    }
+
+    public async Task<bool> MovePhotoToGroupAsync(string photoName, string targetGroupId)
+    {
+        var response = await http.PostAsJsonAsync(
+            "/api/photo-groups/move-to-group",
+            new MovePhotoToGroupRequest(photoName, targetGroupId));
         return response.IsSuccessStatusCode;
     }
 

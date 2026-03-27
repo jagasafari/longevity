@@ -22,7 +22,6 @@ Write-Host "`n========== BUILD + PUSH ==========" `
 & $PSScriptRoot/lib/build-push.ps1 -Service web               -Tag $Tag
 & $PSScriptRoot/lib/build-push.ps1 -Service photo-api          -Tag $Tag
 & $PSScriptRoot/lib/build-push.ps1 -Service worker             -Tag $Tag
-& $PSScriptRoot/lib/build-push.ps1 -Service photo-count-worker -Tag $Tag
 
 if ($IncludeIngress) {
     Write-Host "`n========== INGRESS NGINX ==========" `
@@ -46,8 +45,7 @@ helm upgrade --install web-app `
     --create-namespace `
     --set "web.image.tag=$Tag" `
     --set "photoApi.image.tag=$Tag" `
-    --set "worker.image.tag=$Tag" `
-    --set "photoCountWorker.image.tag=$Tag"
+    --set "worker.image.tag=$Tag"
 if ($LASTEXITCODE -ne 0) { throw "Helm deployment failed" }
 
 Write-Host "`n==> Deployed (tag: $Tag)" -ForegroundColor Green

@@ -37,6 +37,10 @@ function photoCard(el) {
     return el?.closest?.('[data-photo-name]') ?? null;
 }
 
+function groupDropTarget(el) {
+    return el?.closest?.('[data-group-id]') ?? null;
+}
+
 function setDragOver(card) {
     if (dragOverCard === card) return;
     dragOverCard?.classList.remove('touch-drag-over');
@@ -76,7 +80,18 @@ function onTouchMove(e) {
     e.preventDefault();
     const el = document.elementFromPoint(touch.clientX, touch.clientY);
     const card = photoCard(el);
-    setDragOver(card?.dataset.photoName !== dragging ? card : null);
+    if (card && card?.dataset.photoName !== dragging) {
+        setDragOver(card);
+        return;
+    }
+
+    const group = groupDropTarget(el);
+    if (group) {
+        setDragOver(group);
+        return;
+    }
+
+    setDragOver(null);
 }
 
 function onTouchEnd(e) {
@@ -91,9 +106,14 @@ function onTouchEnd(e) {
     const el = document.elementFromPoint(touch.clientX, touch.clientY);
     const targetCard = photoCard(el);
     const targetName = targetCard?.dataset.photoName;
+    const targetGroup = groupDropTarget(el);
+    const targetGroupId = targetGroup?.dataset.groupId;
 
     if (targetName && targetName !== dragging) {
         dotNetRef?.invokeMethodAsync('DropOnFromTouch', dragging, targetName)
+            ?.catch(() => {});
+    } else if (targetGroupId) {
+        dotNetRef?.invokeMethodAsync('DropIntoGroupFromTouch', dragging, targetGroupId)
             ?.catch(() => {});
     }
     endDrag();

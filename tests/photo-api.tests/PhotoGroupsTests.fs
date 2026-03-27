@@ -31,25 +31,28 @@ let tests = testList "PhotoGroups" [
                     "b.jpg"
             test <@ result = PhotoGroups.MergeGroups ("group-a", "group-b") @>
 
-        testCase "does nothing when both photos are already in same group" <| fun () ->
+        testCase "creates subgroup when both photos are in same group" <| fun () ->
             let result =
                 PhotoGroups.planGroupChange
                     (Some "group-a")
                     (Some "group-a")
                     "a.jpg"
                     "b.jpg"
-            test <@ result = PhotoGroups.NoChange @>
+            test <@ result = PhotoGroups.CreateSubgroup ("group-a", "a.jpg", "b.jpg") @>
     ]
 
     testList "shouldDeleteGroupAfterRemoval" [
 
         testCase "deletes empty groups" <| fun () ->
-            test <@ PhotoGroups.shouldDeleteGroupAfterRemoval 0 @>
+            test <@ PhotoGroups.shouldDeleteGroupAfterRemoval 0 0 @>
 
-        testCase "deletes singleton groups" <| fun () ->
-            test <@ PhotoGroups.shouldDeleteGroupAfterRemoval 1 @>
+        testCase "deletes singleton groups without children" <| fun () ->
+            test <@ PhotoGroups.shouldDeleteGroupAfterRemoval 1 0 @>
+
+        testCase "keeps singleton groups with children" <| fun () ->
+            test <@ not (PhotoGroups.shouldDeleteGroupAfterRemoval 1 1) @>
 
         testCase "keeps groups with two or more photos" <| fun () ->
-            test <@ not (PhotoGroups.shouldDeleteGroupAfterRemoval 2) @>
+            test <@ not (PhotoGroups.shouldDeleteGroupAfterRemoval 2 0) @>
     ]
 ]
