@@ -49,16 +49,6 @@
     cursor: pointer;
 }
 
-.photo-card span {
-    display: block;
-    font-size: 0.85rem;
-    color: #666;
-    margin-top: 0.25rem;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
 .card-actions {
     display: flex;
     gap: 0.25rem;

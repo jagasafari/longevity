@@ -133,7 +133,6 @@
                              @ondrop="() => DropOn(photo.Name)">
                             <img src="@(photo.ThumbnailUrl ?? photo.Url)" alt="@photo.Name" loading="lazy"
                                  @onclick="() => OpenLightbox(photo)" @onclick:stopPropagation />
-                            <span>@photo.Name</span>
                             <div class="card-actions">
                                 <button class="ungroup-btn" aria-label="Ungroup @photo.Name" @onclick="() => UngroupPhoto(photo)">Ungroup</button>
                                 <button class="delete-btn" aria-label="Delete @photo.Name" @onclick="() => DeletePhoto(photo)">Delete</button>
@@ -176,7 +175,6 @@
                              @ondrop="() => DropOn(photo.Name)">
                             <img src="@(photo.ThumbnailUrl ?? photo.Url)" alt="@photo.Name" loading="lazy"
                                  @onclick="() => OpenLightbox(photo)" @onclick:stopPropagation />
-                            <span>@photo.Name</span>
                             <button class="delete-btn" aria-label="Delete @photo.Name" @onclick="() => DeletePhoto(photo)">Delete</button>
                         </div>
                     }
