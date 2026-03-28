@@ -1,11 +1,10 @@
 # Usage: pwsh deploy-service.ps1 -Service web              [-Tag <string>]
 #        pwsh deploy-service.ps1 -Service photo-api         [-Tag <string>]
 #        pwsh deploy-service.ps1 -Service worker            [-Tag <string>]
-#        pwsh deploy-service.ps1 -Service photo-count-worker [-Tag <string>]
 
 param(
     [Parameter(Mandatory)]
-    [ValidateSet('web', 'photo-api', 'worker', 'photo-count-worker')]
+    [ValidateSet('web', 'photo-api', 'worker')]
     [string]$Service,
     [string]$Tag
 )
@@ -13,8 +12,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $ScriptsDir = Resolve-Path "$PSScriptRoot/../.."
 $InfraDir   = Resolve-Path "$ScriptsDir/.."
-$Config     = Get-Content "$ScriptsDir/env.json" -Raw |
-              ConvertFrom-Json
+$Config     = & "$ScriptsDir/lib/get-config.ps1"
 
 $Namespace = $Config.namespace
 
@@ -22,9 +20,8 @@ $Namespace = $Config.namespace
 $Tag = Resolve-Tag $Tag
 
 $HelmKey = switch ($Service) {
-    'photo-count-worker' { 'photoCountWorker' }
-    'photo-api'          { 'photoApi' }
-    default              { $Service }
+    'photo-api' { 'photoApi' }
+    default     { $Service }
 }
 
 & $PSScriptRoot/build-push.ps1 -Service $Service -Tag $Tag

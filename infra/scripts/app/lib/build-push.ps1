@@ -1,11 +1,10 @@
-# Usage: pwsh build-push.ps1 -Service web              [-Tag x]
-#        pwsh build-push.ps1 -Service photo-api         [-Tag x]
-#        pwsh build-push.ps1 -Service worker            [-Tag x]
-#        pwsh build-push.ps1 -Service photo-count-worker [-Tag x]
+# Usage: pwsh build-push.ps1 -Service web      [-Tag x]
+#        pwsh build-push.ps1 -Service photo-api [-Tag x]
+#        pwsh build-push.ps1 -Service worker    [-Tag x]
 
 param(
     [Parameter(Mandatory)]
-    [ValidateSet('web', 'photo-api', 'worker', 'photo-count-worker')]
+    [ValidateSet('web', 'photo-api', 'worker')]
     [string]$Service,
     [string]$Tag
 )
@@ -14,23 +13,20 @@ $ErrorActionPreference = 'Stop'
 $ScriptsDir = Resolve-Path "$PSScriptRoot/../.."
 $InfraDir   = Resolve-Path "$ScriptsDir/.."
 $RepoDir    = Resolve-Path "$InfraDir/.."
-$Config     = Get-Content "$ScriptsDir/env.json" -Raw |
-              ConvertFrom-Json
+$Config     = & "$ScriptsDir/lib/get-config.ps1"
 
 $AcrName  = $Config.acrName
 $ImageName = switch ($Service) {
-    'worker'             { 'thumbnail-worker' }
-    'photo-count-worker' { 'photo-count-worker' }
-    'photo-api'          { 'photo-api' }
-    'web'                { 'web' }
+    'worker'    { 'thumbnail-worker' }
+    'photo-api' { 'photo-api' }
+    'web'       { 'web' }
 }
 $AcrImage = "$AcrName.azurecr.io/$ImageName"
 $Full     = "${AcrImage}:${Tag}"
 $SrcDir   = switch ($Service) {
-    'worker'             { "$RepoDir/src/thumbnail-worker" }
-    'photo-count-worker' { "$RepoDir/src/photo-count-worker" }
-    'photo-api'          { "$RepoDir/src/photo-api" }
-    'web'                { "$RepoDir/src/web" }
+    'worker'    { "$RepoDir/src/thumbnail-worker" }
+    'photo-api' { "$RepoDir/src/photo-api" }
+    'web'       { "$RepoDir/src/web" }
 }
 
 Write-Host "==> Logging in to ACR..." -ForegroundColor Cyan

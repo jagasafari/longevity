@@ -79,11 +79,16 @@
         }
         else
         {
-            @foreach (var (groupId, group) in GroupedPhotos())
+            @foreach (var groupNode in RootGroups())
             {
+                var groupId = groupNode.GroupId;
+                var group = GroupPhotos(groupNode);
                 var cats = GetGroupCategoryNames(groupId);
             <section class="group-section">
-                <div class="group-header">
+                <div class="group-header"
+                     data-group-id="@groupId"
+                     @ondragover:preventDefault
+                     @ondrop="() => DropIntoGroup(groupId)">
                     <h2>@(cats.Length > 0 ? string.Join(", ", cats) : "Group")</h2>
                     <div class="category-tags">
                         @foreach (var cat in GetGroupCategories(groupId))
@@ -123,11 +128,11 @@
                              data-photo-name="@photo.Name"
                              draggable="true"
                              @ondragstart="() => StartDrag(photo.Name)"
+                                @ondragend="EndDrag"
                              @ondragover:preventDefault
                              @ondrop="() => DropOn(photo.Name)">
                             <img src="@(photo.ThumbnailUrl ?? photo.Url)" alt="@photo.Name" loading="lazy"
                                  @onclick="() => OpenLightbox(photo)" @onclick:stopPropagation />
-                            <span>@photo.Name</span>
                             <div class="card-actions">
                                 <button class="ungroup-btn" aria-label="Ungroup @photo.Name" @onclick="() => UngroupPhoto(photo)">Ungroup</button>
                                 <button class="delete-btn" aria-label="Delete @photo.Name" @onclick="() => DeletePhoto(photo)">Delete</button>
@@ -135,6 +140,22 @@
                         </div>
                     }
                 </div>
+
+                @foreach (var child in ChildGroups(groupId))
+                {
+                    <GroupTreeNode Node="child"
+                                   Depth="1"
+                                   PhotosByName="_photosByName"
+                                   ChildrenByParent="_childrenByParent"
+                                   IsVisible="IsGroupVisible"
+                                   OnStartDrag="StartDrag"
+                                   OnEndDrag="EndDrag"
+                                   OnDropOnPhoto="DropOn"
+                                   OnDropIntoGroup="DropIntoGroup"
+                                   OnOpenLightbox="OpenLightbox"
+                                   OnUngroup="UngroupPhoto"
+                                   OnDelete="DeletePhoto" />
+                }
             </section>
         }
 
@@ -149,11 +170,11 @@
                              data-photo-name="@photo.Name"
                              draggable="true"
                              @ondragstart="() => StartDrag(photo.Name)"
+                                @ondragend="EndDrag"
                              @ondragover:preventDefault
                              @ondrop="() => DropOn(photo.Name)">
                             <img src="@(photo.ThumbnailUrl ?? photo.Url)" alt="@photo.Name" loading="lazy"
                                  @onclick="() => OpenLightbox(photo)" @onclick:stopPropagation />
-                            <span>@photo.Name</span>
                             <button class="delete-btn" aria-label="Delete @photo.Name" @onclick="() => DeletePhoto(photo)">Delete</button>
                         </div>
                     }
@@ -185,7 +206,9 @@
     private string? _nextBefore;
     private bool _loadingMore;
     private HubConnection? _hubConnection;
-    private Dictionary<string, string[]> _groups = [];
+    private GroupTreeNodeDto[] _groupTree = [];
+    private Dictionary<string, GroupTreeNodeDto[]> _childrenByParent = [];
+    private Dictionary<string, PhotoInfo> _photosByName = [];
     private string? _draggedPhotoName;
     private DateTime? _selectedDay;
     private PhotoInfo? _lightboxPhoto;
@@ -251,6 +274,16 @@
         }
     }
 
+    [JSInvokable]
+    public async Task DropIntoGroupFromTouch(string sourceName, string targetGroupId)
+    {
+        if (await Photos.MovePhotoToGroupAsync(sourceName, targetGroupId))
+        {
+            await ReloadAsync();
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
     private async Task LoadFirstPage(DateOnly? date = null)
     {
         _photos = null;
@@ -267,6 +300,7 @@
         var date = _selectedDay.HasValue ? DateOnly.FromDateTime(_selectedDay.Value) : (DateOnly?)null;
         var page = await Photos.LoadPageAsync(before: _nextBefore, date: date);
         _photos!.AddRange(page.Items);
+        _photosByName = _photos.ToDictionary(photo => photo.Name, StringComparer.Ordinal);
         _nextBefore = page.NextBefore;
         _loadingMore = false;
     }
@@ -275,41 +309,66 @@
     {
         var date = _selectedDay.HasValue ? DateOnly.FromDateTime(_selectedDay.Value) : (DateOnly?)null;
         await LoadFirstPage(date);
-        _groups = await Photos.LoadGroupsAsync();
+        _groupTree = await Photos.LoadGroupTreeAsync();
+        _childrenByParent = _groupTree
+            .Where(node => !string.IsNullOrWhiteSpace(node.ParentGroupId))
+            .GroupBy(node => node.ParentGroupId!)
+            .ToDictionary(g => g.Key, g => g.ToArray());
+        _photosByName = (_photos ?? [])
+            .ToDictionary(photo => photo.Name, StringComparer.Ordinal);
         _allCategories = await Photos.LoadCategoriesAsync();
         _categoryById = _allCategories.ToDictionary(c => c.Id);
         _groupCategories = await Photos.LoadGroupCategoriesAsync();
         _photoCounts = await Photos.LoadPhotoCountsAsync();
     }
 
-    private IEnumerable<(string GroupId, PhotoInfo[] Photos)> GroupedPhotos()
+    private bool HasVisiblePhotos(GroupTreeNodeDto node) =>
+        GroupPhotos(node).Length > 0
+        || ChildGroups(node.GroupId).Any(HasVisiblePhotos);
+
+    private GroupTreeNodeDto[] RootGroups() =>
+        _groupTree
+            .Where(node =>
+                string.IsNullOrWhiteSpace(node.ParentGroupId)
+                && IsGroupVisible(node.GroupId)
+                && HasVisiblePhotos(node))
+            .Select(node => new { node, photos = GroupPhotos(node) })
+            .OrderByDescending(x => x.photos.Length > 0
+                ? x.photos[0].LastModified
+                : DateTimeOffset.MinValue)
+            .Select(x => x.node)
+            .ToArray();
+
+    private GroupTreeNodeDto[] ChildGroups(string groupId) =>
+        _childrenByParent.TryGetValue(groupId, out var children)
+            ? children.Where(child => IsGroupVisible(child.GroupId)).ToArray()
+            : [];
+
+    private PhotoInfo[] GroupPhotos(GroupTreeNodeDto node) =>
+        node.Photos
+            .Where(_photosByName.ContainsKey)
+            .Select(name => _photosByName[name])
+            .OrderByDescending(photo => photo.LastModified)
+            .ToArray();
+
+    private bool IsGroupVisible(string groupId)
     {
-        var photos = VisiblePhotos();
-        var photosByName = photos.ToDictionary(p => p.Name, StringComparer.Ordinal);
+        if (_selectedCategoryId is null) return true;
 
-        var groups = _groups
-            .Select(kvp => (GroupId: kvp.Key, Photos: kvp.Value
-                .Where(name => photosByName.ContainsKey(name))
-                .Select(name => photosByName[name])
-                .OrderByDescending(p => p.LastModified)
-                .ToArray()))
-            .Where(g => g.Photos.Length > 1);
+        var selectedCategoryId = _selectedCategoryId.Value;
+        var ownMatch =
+            _groupCategories.TryGetValue(groupId, out var ownCats)
+            && ownCats.Contains(selectedCategoryId);
+        if (ownMatch) return true;
 
-        if (_selectedCategoryId is not null)
-        {
-            groups = groups.Where(g =>
-                _groupCategories.TryGetValue(g.GroupId, out var cats)
-                && cats.Contains(_selectedCategoryId.Value));
-        }
-
-        return groups.OrderByDescending(g => g.Photos[0].LastModified);
+        var children = ChildGroups(groupId);
+        return children.Any(child => IsGroupVisible(child.GroupId));
     }
 
     private PhotoInfo[] UngroupedPhotos()
     {
-        var groupedNames = _groups.Values
-            .Where(g => g.Length > 1)
-            .SelectMany(g => g)
+        var groupedNames = _groupTree
+            .SelectMany(group => group.Photos)
             .ToHashSet(StringComparer.Ordinal);
 
         return VisiblePhotos()
@@ -386,6 +445,7 @@
 
     private void OpenLightbox(PhotoInfo photo)
     {
+        if (!string.IsNullOrWhiteSpace(_draggedPhotoName)) return;
         _lightboxPhoto = photo;
     }
 
@@ -397,6 +457,11 @@
     private void StartDrag(string photoName)
     {
         _draggedPhotoName = photoName;
+    }
+
+    private void EndDrag()
+    {
+        _draggedPhotoName = null;
     }
 
     private async Task DropOn(string targetName)
@@ -411,6 +476,23 @@
         _draggedPhotoName = null;
 
         if (await Photos.GroupAsync(sourceName, targetName))
+        {
+            await ReloadAsync();
+        }
+    }
+
+    private async Task DropIntoGroup(string targetGroupId)
+    {
+        if (string.IsNullOrWhiteSpace(_draggedPhotoName))
+        {
+            _draggedPhotoName = null;
+            return;
+        }
+
+        var sourceName = _draggedPhotoName;
+        _draggedPhotoName = null;
+
+        if (await Photos.MovePhotoToGroupAsync(sourceName, targetGroupId))
         {
             await ReloadAsync();
         }

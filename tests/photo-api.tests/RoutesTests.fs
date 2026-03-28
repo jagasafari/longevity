@@ -113,4 +113,71 @@ let tests = testList "Routes" [
             let status = (result :?> IStatusCodeHttpResult).StatusCode
             test <@ status = Nullable 400 @>
     ]
+
+    testList "movePhotoToGroup" [
+
+        testCase "returns 204 on success" <| fun () ->
+            let move _ _ = Task.CompletedTask
+            let req = { Routes.MovePhotoToGroupRequest.PhotoName = "a.jpg"; TargetGroupId = "group-1" }
+            let result = (Routes.movePhotoToGroup move stubHub req).Result
+            test <@ result :? IStatusCodeHttpResult @>
+            test <@ (result :?> IStatusCodeHttpResult).StatusCode = Nullable 204 @>
+
+        testCase "passes correct photo name and group id to move function" <| fun () ->
+            let mutable calledWith = ("", "")
+            let move photo groupId =
+                calledWith <- (photo, groupId)
+                Task.CompletedTask
+            let req = { Routes.MovePhotoToGroupRequest.PhotoName = "photo.jpg"; TargetGroupId = "grp-42" }
+            (Routes.movePhotoToGroup move stubHub req).Result |> ignore
+            test <@ calledWith = ("photo.jpg", "grp-42") @>
+
+        testCase "trims whitespace from inputs" <| fun () ->
+            let mutable calledWith = ("", "")
+            let move photo groupId =
+                calledWith <- (photo, groupId)
+                Task.CompletedTask
+            let req = { Routes.MovePhotoToGroupRequest.PhotoName = "  photo.jpg  "; TargetGroupId = "  grp-1  " }
+            (Routes.movePhotoToGroup move stubHub req).Result |> ignore
+            test <@ calledWith = ("photo.jpg", "grp-1") @>
+
+        testCase "returns 400 when photo name is empty" <| fun () ->
+            let move _ _ = failwith "should not be called"
+            let req = { Routes.MovePhotoToGroupRequest.PhotoName = ""; TargetGroupId = "grp-1" }
+            let result = (Routes.movePhotoToGroup move stubHub req).Result
+            test <@ result :? IStatusCodeHttpResult @>
+            test <@ (result :?> IStatusCodeHttpResult).StatusCode = Nullable 400 @>
+
+        testCase "returns 400 when photo name is whitespace" <| fun () ->
+            let move _ _ = failwith "should not be called"
+            let req = { Routes.MovePhotoToGroupRequest.PhotoName = "   "; TargetGroupId = "grp-1" }
+            let result = (Routes.movePhotoToGroup move stubHub req).Result
+            test <@ result :? IStatusCodeHttpResult @>
+            test <@ (result :?> IStatusCodeHttpResult).StatusCode = Nullable 400 @>
+
+        testCase "returns 400 when group id is empty" <| fun () ->
+            let move _ _ = failwith "should not be called"
+            let req = { Routes.MovePhotoToGroupRequest.PhotoName = "photo.jpg"; TargetGroupId = "" }
+            let result = (Routes.movePhotoToGroup move stubHub req).Result
+            test <@ result :? IStatusCodeHttpResult @>
+            test <@ (result :?> IStatusCodeHttpResult).StatusCode = Nullable 400 @>
+
+        testCase "returns 404 when group does not exist (FK violation)" <| fun () ->
+            let move _ _ =
+                let ex = Npgsql.PostgresException("", "", "", "23503")
+                raise ex
+            let req = { Routes.MovePhotoToGroupRequest.PhotoName = "photo.jpg"; TargetGroupId = "missing-grp" }
+            let result = (Routes.movePhotoToGroup move stubHub req).Result
+            test <@ result :? IStatusCodeHttpResult @>
+            test <@ (result :?> IStatusCodeHttpResult).StatusCode = Nullable 404 @>
+
+        testCase "returns 503 on other postgres error" <| fun () ->
+            let move _ _ =
+                let ex = Npgsql.PostgresException("", "", "", "58000")
+                raise ex
+            let req = { Routes.MovePhotoToGroupRequest.PhotoName = "photo.jpg"; TargetGroupId = "grp-1" }
+            let result = (Routes.movePhotoToGroup move stubHub req).Result
+            test <@ result :? IStatusCodeHttpResult @>
+            test <@ (result :?> IStatusCodeHttpResult).StatusCode = Nullable 503 @>
+    ]
 ]
