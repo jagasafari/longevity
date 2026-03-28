@@ -1,10 +1,11 @@
-# Usage: pwsh deploy-workbook.ps1
+# Usage: pwsh deploy-workbook.ps1 [-KeyVaultName <name>]
+
+param([string]$KeyVaultName = $env:KV_NAME)
 
 $ErrorActionPreference = 'Stop'
 $ScriptsDir = Resolve-Path "$PSScriptRoot/.."
 $InfraDir   = Resolve-Path "$ScriptsDir/.."
-$Config     = Get-Content "$ScriptsDir/env.json" -Raw |
-              ConvertFrom-Json
+$Config     = & "$ScriptsDir/lib/get-config.ps1" -KeyVaultName $KeyVaultName
 
 $SubscriptionId = $Config.subscriptionId
 $RgName         = $Config.rgName

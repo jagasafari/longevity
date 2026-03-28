@@ -1,15 +1,15 @@
-# Usage: pwsh deploy-app.ps1 [-Tag <string>] [-IncludeIngress]
+# Usage: pwsh deploy-app.ps1 [-Tag <string>] [-IncludeIngress] [-KeyVaultName <name>]
 
 param(
     [string]$Tag,
-    [switch]$IncludeIngress
+    [switch]$IncludeIngress,
+    [string]$KeyVaultName = $env:KV_NAME
 )
 
 $ErrorActionPreference = 'Stop'
 $ScriptsDir = Resolve-Path "$PSScriptRoot/.."
 $InfraDir   = Resolve-Path "$ScriptsDir/.."
-$Config     = Get-Content "$ScriptsDir/env.json" -Raw |
-              ConvertFrom-Json
+$Config     = & "$ScriptsDir/lib/get-config.ps1" -KeyVaultName $KeyVaultName
 
 $Namespace = $Config.namespace
 

@@ -12,8 +12,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $ScriptsDir = Resolve-Path "$PSScriptRoot/../.."
 $InfraDir   = Resolve-Path "$ScriptsDir/.."
-$Config     = Get-Content "$ScriptsDir/env.json" -Raw |
-              ConvertFrom-Json
+$Config     = & "$ScriptsDir/lib/get-config.ps1"
 
 $Namespace = $Config.namespace
 

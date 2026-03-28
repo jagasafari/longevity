@@ -13,8 +13,7 @@ $ErrorActionPreference = 'Stop'
 $ScriptsDir = Resolve-Path "$PSScriptRoot/../.."
 $InfraDir   = Resolve-Path "$ScriptsDir/.."
 $RepoDir    = Resolve-Path "$InfraDir/.."
-$Config     = Get-Content "$ScriptsDir/env.json" -Raw |
-              ConvertFrom-Json
+$Config     = & "$ScriptsDir/lib/get-config.ps1"
 
 $AcrName  = $Config.acrName
 $ImageName = switch ($Service) {
