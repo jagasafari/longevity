@@ -7,6 +7,7 @@ open Expecto
 open Swensen.Unquote
 open Microsoft.AspNetCore.Http
 open Microsoft.AspNetCore.SignalR
+open Routes
 
 type StubClientProxy() =
     interface IClientProxy with
@@ -117,7 +118,7 @@ let tests = testList "Routes" [
     testList "movePhotoToGroup" [
 
         testCase "returns 204 on success" <| fun () ->
-            let move _ _ = Task.CompletedTask
+            let move _ _ = task { () }
             let req = { Routes.MovePhotoToGroupRequest.PhotoName = "a.jpg"; TargetGroupId = "group-1" }
             let result = (Routes.movePhotoToGroup move stubHub req).Result
             test <@ result :? IStatusCodeHttpResult @>
@@ -127,7 +128,7 @@ let tests = testList "Routes" [
             let mutable calledWith = ("", "")
             let move photo groupId =
                 calledWith <- (photo, groupId)
-                Task.CompletedTask
+                task { () }
             let req = { Routes.MovePhotoToGroupRequest.PhotoName = "photo.jpg"; TargetGroupId = "grp-42" }
             (Routes.movePhotoToGroup move stubHub req).Result |> ignore
             test <@ calledWith = ("photo.jpg", "grp-42") @>
@@ -136,7 +137,7 @@ let tests = testList "Routes" [
             let mutable calledWith = ("", "")
             let move photo groupId =
                 calledWith <- (photo, groupId)
-                Task.CompletedTask
+                task { () }
             let req = { Routes.MovePhotoToGroupRequest.PhotoName = "  photo.jpg  "; TargetGroupId = "  grp-1  " }
             (Routes.movePhotoToGroup move stubHub req).Result |> ignore
             test <@ calledWith = ("photo.jpg", "grp-1") @>
