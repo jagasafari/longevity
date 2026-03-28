@@ -58,10 +58,4 @@ infra/azure/modules/workbook.json
 # Local environment config (contains PII / env-specific values — never commit)
 infra/scripts/env.json
 
-# Android build outputs and local config
-mobile/**/build/
-mobile/**/local.properties
-mobile/**/gradle/gradle-daemon-jvm.properties
-mobile/**/.gradle/
-
 .local

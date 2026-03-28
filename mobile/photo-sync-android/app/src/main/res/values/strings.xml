@@ -1,8 +1,0 @@
-<resources>
-    <string name="app_name">Longevity Photo Sync</string>
-    <string name="settings_title">Azure Blob Storage Settings</string>
-    <string name="settings_storage_account_hint">Storage Account Name</string>
-    <string name="settings_container_hint">Container Name</string>
-    <string name="settings_sas_token_hint">SAS Token</string>
-    <string name="settings_save_button">Save</string>
-</resources>
