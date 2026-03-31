@@ -35,6 +35,13 @@
                 </select>
             </div>
 
+            @if (_nextBefore is not null)
+            {
+                <button class="btn-all" @onclick="LoadMoreAsync" disabled="@_loadingMore">
+                    @(_loadingMore ? "Loading..." : "Load more")
+                </button>
+            }
+
             @if (_calendarOpen)
             {
                 <div class="calendar-backdrop" @onclick="ToggleCalendar"></div>
@@ -141,20 +148,25 @@
                     }
                 </div>
 
-                @foreach (var child in ChildGroups(groupId))
+                @if (ChildGroups(groupId).Length > 0)
                 {
-                    <GroupTreeNode Node="child"
-                                   Depth="1"
-                                   PhotosByName="_photosByName"
-                                   ChildrenByParent="_childrenByParent"
-                                   IsVisible="IsGroupVisible"
-                                   OnStartDrag="StartDrag"
-                                   OnEndDrag="EndDrag"
-                                   OnDropOnPhoto="DropOn"
-                                   OnDropIntoGroup="DropIntoGroup"
-                                   OnOpenLightbox="OpenLightbox"
-                                   OnUngroup="UngroupPhoto"
-                                   OnDelete="DeletePhoto" />
+                    <div class="subgroups-container">
+                        @foreach (var child in ChildGroups(groupId))
+                        {
+                            <GroupTreeNode Node="child"
+                                           Depth="1"
+                                           PhotosByName="_photosByName"
+                                           ChildrenByParent="_childrenByParent"
+                                           IsVisible="_ => true"
+                                           OnStartDrag="StartDrag"
+                                           OnEndDrag="EndDrag"
+                                           OnDropOnPhoto="DropOn"
+                                           OnDropIntoGroup="DropIntoGroup"
+                                           OnOpenLightbox="OpenLightbox"
+                                           OnUngroup="UngroupPhoto"
+                                           OnDelete="DeletePhoto" />
+                        }
+                    </div>
                 }
             </section>
         }
@@ -269,7 +281,7 @@
     {
         if (await Photos.GroupAsync(sourceName, targetName))
         {
-            await ReloadAsync();
+            await RefreshGroupsAsync();
             await InvokeAsync(StateHasChanged);
         }
     }
@@ -279,7 +291,7 @@
     {
         if (await Photos.MovePhotoToGroupAsync(sourceName, targetGroupId))
         {
-            await ReloadAsync();
+            await RefreshGroupsAsync();
             await InvokeAsync(StateHasChanged);
         }
     }
@@ -322,6 +334,18 @@
         _photoCounts = await Photos.LoadPhotoCountsAsync();
     }
 
+    private async Task RefreshGroupsAsync()
+    {
+        _groupTree = await Photos.LoadGroupTreeAsync();
+        _childrenByParent = _groupTree
+            .Where(node => !string.IsNullOrWhiteSpace(node.ParentGroupId))
+            .GroupBy(node => node.ParentGroupId!)
+            .ToDictionary(g => g.Key, g => g.ToArray());
+        _groupCategories = await Photos.LoadGroupCategoriesAsync();
+        _allCategories = await Photos.LoadCategoriesAsync();
+        _categoryById = _allCategories.ToDictionary(c => c.Id);
+    }
+
     private bool HasVisiblePhotos(GroupTreeNodeDto node) =>
         GroupPhotos(node).Length > 0
         || ChildGroups(node.GroupId).Any(HasVisiblePhotos);
@@ -341,7 +365,7 @@
 
     private GroupTreeNodeDto[] ChildGroups(string groupId) =>
         _childrenByParent.TryGetValue(groupId, out var children)
-            ? children.Where(child => IsGroupVisible(child.GroupId)).ToArray()
+            ? children.ToArray()
             : [];
 
     private PhotoInfo[] GroupPhotos(GroupTreeNodeDto node) =>
@@ -361,12 +385,15 @@
             && ownCats.Contains(selectedCategoryId);
         if (ownMatch) return true;
 
-        var children = ChildGroups(groupId);
+        var children = _childrenByParent.TryGetValue(groupId, out var c) ? c : [];
         return children.Any(child => IsGroupVisible(child.GroupId));
     }
 
     private PhotoInfo[] UngroupedPhotos()
     {
+        // When filtering by category, hide ungrouped photos entirely
+        if (_selectedCategoryId is not null) return [];
+
         var groupedNames = _groupTree
             .SelectMany(group => group.Photos)
             .ToHashSet(StringComparer.Ordinal);
@@ -439,8 +466,7 @@
             _calendarMonth = new DateTime(day.Value.Year, day.Value.Month, 1);
             _calendarOpen = false;
         }
-        var date = _selectedDay.HasValue ? DateOnly.FromDateTime(_selectedDay.Value) : (DateOnly?)null;
-        await LoadFirstPage(date);
+        await ReloadAsync();
     }
 
     private void OpenLightbox(PhotoInfo photo)
@@ -477,7 +503,7 @@
 
         if (await Photos.GroupAsync(sourceName, targetName))
         {
-            await ReloadAsync();
+            await RefreshGroupsAsync();
         }
     }
 
@@ -494,7 +520,7 @@
 
         if (await Photos.MovePhotoToGroupAsync(sourceName, targetGroupId))
         {
-            await ReloadAsync();
+            await RefreshGroupsAsync();
         }
     }
 
@@ -502,7 +528,9 @@
     {
         if (await Photos.DeleteAsync(photo.Name))
         {
-            await ReloadAsync();
+            _photos?.RemoveAll(p => p.Name == photo.Name);
+            _photosByName.Remove(photo.Name);
+            await RefreshGroupsAsync();
         }
     }
 
@@ -510,7 +538,7 @@
     {
         if (await Photos.UngroupAsync(photo.Name))
         {
-            await ReloadAsync();
+            await RefreshGroupsAsync();
         }
     }
 
@@ -541,7 +569,7 @@
         {
             _assigningGroupId = null;
             _categoryInput = "";
-            await ReloadAsync();
+            await RefreshGroupsAsync();
         }
     }
 
@@ -555,7 +583,7 @@
     {
         if (await Photos.RemoveCategoryAsync(groupId, categoryId))
         {
-            await ReloadAsync();
+            await RefreshGroupsAsync();
         }
     }
 
@@ -563,7 +591,7 @@
     {
         _selectedDay = null;
         _selectedCategoryId = null;
-        await LoadFirstPage();
+        await ReloadAsync();
     }
 
     private async Task OnCategoryFilterChanged(ChangeEventArgs e)

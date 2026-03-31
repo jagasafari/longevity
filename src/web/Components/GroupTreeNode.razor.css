@@ -1,14 +1,16 @@
 .nested-group {
-    margin-top: 1rem;
-    padding: 0.75rem 0.75rem 0.75rem 1rem;
+    flex: 1 1 300px;
+    max-width: 500px;
+    margin-top: 0;
+    padding: 0.5rem;
     border-left: 3px solid #93c5fd;
     border-radius: 0 8px 8px 0;
-    background: #f8fafc;
+    background: rgba(147, 197, 253, 0.15);
 }
 
 .nested-group h3 {
-    margin: 0 0 0.6rem;
-    font-size: 0.85rem;
+    margin: 0 0 0.4rem;
+    font-size: 0.75rem;
     font-weight: 600;
     color: #64748b;
     text-transform: uppercase;
@@ -17,8 +19,8 @@
 
 .photo-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 1rem;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 0.5rem;
 }
 
 .photo-card {
@@ -81,4 +83,11 @@
 
 .delete-btn:hover {
     background-color: #bb2d3b;
+}
+
+.subgroups-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
 }

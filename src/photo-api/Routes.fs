@@ -77,8 +77,9 @@ let private tryParseDate (s: string) =
     match DateTimeOffset.TryParse s with
     | true, dt -> Some dt | _ -> None
 
-let private isDatePrefix (s: string) =
-    s.Length = 8 && s |> Seq.forall Char.IsDigit
+let private tryParseDateOnly (s: string) =
+    match DateOnly.TryParseExact(s, "yyyyMMdd") with
+    | true, d -> Some d | _ -> None
 
 let private qs (ctx: HttpContext) key =
     match ctx.Request.Query.TryGetValue key with
@@ -92,9 +93,9 @@ let photos config (ctx: HttpContext) = task {
         |> Option.bind tryParseInt
         |> Option.filter (fun n -> n > 0 && n <= 200)
         |> Option.defaultValue 50
-    let datePrefix = q "date"   |> Option.filter isDatePrefix
+    let dateFilter = q "date"   |> Option.bind tryParseDateOnly
     let before     = q "before" |> Option.bind tryParseDate
-    let! page = Storage.listPhotoPage config limit datePrefix before
+    let! page = Storage.listPhotoPage config limit dateFilter before
     return Results.Ok {|
         items = page.Items
         nextBefore = page.NextBefore |> Option.toObj

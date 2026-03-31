@@ -5,16 +5,7 @@ The user uses voice-to-text input. English is not their native language.
 When responding:
 - First, silently correct any grammar, spelling, or transcription errors
 - Infer correct meaning from context when words are misheard
-- Before substantial technical answers, restate the interpreted request
-  in one sentence and ask for confirmation
-- If the user confirms, answer clearly and concisely
-- If the user does not confirm yet, ask one focused clarifying question
-- For voice-dictated prompts that are unclear or badly worded,
-  include a brief speaking improvement note: one natural rephrasing
-  and one short "next time you can say" sentence that keeps the same
-  meaning
-- Keep language feedback supportive, concise, and secondary to solving
-  the technical request
+- Then answer the technical question clearly and concisely
 
 ## Code style
 

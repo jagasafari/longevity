@@ -108,13 +108,18 @@ let deletePhoto (config: StorageConfig) (blobName: string) = task {
 
 let private thumbnailContainerName = "thumbnails"
 
-let listPhotoPage (config: StorageConfig) (limit: int) (datePrefix: string option) (before: DateTimeOffset option) = task {
+let listPhotoPage (config: StorageConfig) (limit: int) (dateFilter: DateOnly option) (before: DateTimeOffset option) = task {
     let service, container = getClients config
     let thumbnailContainer = service.GetBlobContainerClient thumbnailContainerName
     let expiry = DateTimeOffset.UtcNow.AddHours 1.0
     let! delegationKeyResponse = service.GetUserDelegationKeyAsync(Nullable(), expiry)
     let delegationKey = delegationKeyResponse.Value
-    let! blobs = listBlobsAsync container datePrefix
+    let! allBlobs = listBlobsAsync container None
+
+    let blobs =
+        match dateFilter with
+        | Some d -> allBlobs |> Seq.filter (fun (_, dt) -> DateOnly.FromDateTime(dt.Date) = d)
+        | None   -> allBlobs
 
     let! thumbnailNames =
         task {

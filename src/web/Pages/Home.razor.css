@@ -78,6 +78,13 @@
     background-color: #cbd5e1;
 }
 
+.subgroups-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
 .lightbox {
     position: fixed;
     inset: 0;

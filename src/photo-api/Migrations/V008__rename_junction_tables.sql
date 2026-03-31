@@ -1,0 +1,12 @@
+-- Rename group_photos → photo_group_members
+ALTER TABLE group_photos RENAME TO photo_group_members;
+ALTER INDEX idx_group_photos_photo RENAME TO idx_photo_group_members_photo;
+ALTER TABLE photo_group_members RENAME CONSTRAINT group_photos_pkey TO photo_group_members_pkey;
+ALTER TABLE photo_group_members RENAME CONSTRAINT group_photos_photo_name_key TO photo_group_members_photo_name_key;
+ALTER TABLE photo_group_members RENAME CONSTRAINT group_photos_group_id_fkey TO photo_group_members_group_id_fkey;
+
+-- Rename group_categories → photo_group_categories
+ALTER TABLE group_categories RENAME TO photo_group_categories;
+ALTER INDEX idx_group_categories_category RENAME TO idx_photo_group_categories_category;
+ALTER TABLE photo_group_categories RENAME CONSTRAINT group_categories_pkey TO photo_group_categories_pkey;
+ALTER TABLE photo_group_categories RENAME CONSTRAINT group_categories_group_id_fkey TO photo_group_categories_group_id_fkey;
