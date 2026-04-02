@@ -45,20 +45,25 @@
             </div>
         }
 
-        @foreach (var child in Children(Node.GroupId))
+        @if (Children(Node.GroupId).Length > 0)
         {
-            <GroupTreeNode Node="child"
-                           Depth="@(Depth + 1)"
-                           PhotosByName="PhotosByName"
-                           ChildrenByParent="ChildrenByParent"
-                           IsVisible="IsVisible"
-                           OnStartDrag="OnStartDrag"
-                           OnEndDrag="OnEndDrag"
-                           OnDropOnPhoto="OnDropOnPhoto"
-                           OnDropIntoGroup="OnDropIntoGroup"
-                           OnOpenLightbox="OnOpenLightbox"
-                           OnUngroup="OnUngroup"
-                           OnDelete="OnDelete" />
+            <div class="subgroups-container">
+                @foreach (var child in Children(Node.GroupId))
+                {
+                    <GroupTreeNode Node="child"
+                                   Depth="@(Depth + 1)"
+                                   PhotosByName="PhotosByName"
+                                   ChildrenByParent="ChildrenByParent"
+                                   IsVisible="IsVisible"
+                                   OnStartDrag="OnStartDrag"
+                                   OnEndDrag="OnEndDrag"
+                                   OnDropOnPhoto="OnDropOnPhoto"
+                                   OnDropIntoGroup="OnDropIntoGroup"
+                                   OnOpenLightbox="OnOpenLightbox"
+                                   OnUngroup="OnUngroup"
+                                   OnDelete="OnDelete" />
+                }
+            </div>
         }
     </section>
 }

@@ -22,14 +22,14 @@ let tests = testList "PhotoGroups" [
                 PhotoGroups.planGroupChange None (Some "group-b") "a.jpg" "b.jpg"
             test <@ result = PhotoGroups.AddPhotoToGroup ("group-b", "a.jpg") @>
 
-        testCase "merges distinct groups" <| fun () ->
+        testCase "moves source photo to target group when in distinct groups" <| fun () ->
             let result =
                 PhotoGroups.planGroupChange
                     (Some "group-a")
                     (Some "group-b")
                     "a.jpg"
                     "b.jpg"
-            test <@ result = PhotoGroups.MergeGroups ("group-a", "group-b") @>
+            test <@ result = PhotoGroups.MoveToGroup ("group-a", "group-b", "a.jpg") @>
 
         testCase "creates subgroup when both photos are in same group" <| fun () ->
             let result =
@@ -41,18 +41,51 @@ let tests = testList "PhotoGroups" [
             test <@ result = PhotoGroups.CreateSubgroup ("group-a", "a.jpg", "b.jpg") @>
     ]
 
-    testList "shouldDeleteGroupAfterRemoval" [
+    testList "classifyGroup" [
+
+        testCase "empty group with no categories or children" <| fun () ->
+            test <@ PhotoGroups.classifyGroup 0 0 0 = PhotoGroups.Empty @>
+
+        testCase "singleton group" <| fun () ->
+            test <@ PhotoGroups.classifyGroup 1 0 0 = PhotoGroups.Singleton @>
+
+        testCase "group with categories" <| fun () ->
+            test <@ PhotoGroups.classifyGroup 0 0 1 = PhotoGroups.HasCategories @>
+
+        testCase "group with children" <| fun () ->
+            test <@ PhotoGroups.classifyGroup 1 1 0 = PhotoGroups.HasChildren @>
+
+        testCase "healthy group with multiple photos" <| fun () ->
+            test <@ PhotoGroups.classifyGroup 2 0 0 = PhotoGroups.Healthy @>
+    ]
+
+    testList "decideCleanup" [
 
         testCase "deletes empty groups" <| fun () ->
-            test <@ PhotoGroups.shouldDeleteGroupAfterRemoval 0 0 @>
+            test <@ PhotoGroups.decideCleanup PhotoGroups.Empty = PhotoGroups.DeleteGroup @>
 
-        testCase "deletes singleton groups without children" <| fun () ->
-            test <@ PhotoGroups.shouldDeleteGroupAfterRemoval 1 0 @>
+        testCase "deletes singleton groups" <| fun () ->
+            test <@ PhotoGroups.decideCleanup PhotoGroups.Singleton = PhotoGroups.DeleteGroup @>
 
-        testCase "keeps singleton groups with children" <| fun () ->
-            test <@ not (PhotoGroups.shouldDeleteGroupAfterRemoval 1 1) @>
+        testCase "keeps groups with categories" <| fun () ->
+            test <@ PhotoGroups.decideCleanup PhotoGroups.HasCategories = PhotoGroups.KeepGroup @>
 
-        testCase "keeps groups with two or more photos" <| fun () ->
-            test <@ not (PhotoGroups.shouldDeleteGroupAfterRemoval 2 0) @>
+        testCase "keeps groups with children" <| fun () ->
+            test <@ PhotoGroups.decideCleanup PhotoGroups.HasChildren = PhotoGroups.KeepGroup @>
+
+        testCase "keeps healthy groups" <| fun () ->
+            test <@ PhotoGroups.decideCleanup PhotoGroups.Healthy = PhotoGroups.KeepGroup @>
+    ]
+
+    testList "planMove" [
+
+        testCase "already in target group" <| fun () ->
+            test <@ PhotoGroups.planMove (Some "g1") "g1" = PhotoGroups.AlreadyInTarget @>
+
+        testCase "move from one group to another" <| fun () ->
+            test <@ PhotoGroups.planMove (Some "g1") "g2" = PhotoGroups.MoveFromGroup "g1" @>
+
+        testCase "add ungrouped photo to group" <| fun () ->
+            test <@ PhotoGroups.planMove None "g1" = PhotoGroups.AddToGroup @>
     ]
 ]
