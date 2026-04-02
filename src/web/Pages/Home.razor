@@ -157,7 +157,7 @@
                                            Depth="1"
                                            PhotosByName="_photosByName"
                                            ChildrenByParent="_childrenByParent"
-                                           IsVisible="_ => true"
+                                           IsVisible="IsGroupVisible"
                                            OnStartDrag="StartDrag"
                                            OnEndDrag="EndDrag"
                                            OnDropOnPhoto="DropOn"
@@ -309,12 +309,18 @@
     {
         if (_nextBefore is null || _loadingMore) return;
         _loadingMore = true;
-        var date = _selectedDay.HasValue ? DateOnly.FromDateTime(_selectedDay.Value) : (DateOnly?)null;
-        var page = await Photos.LoadPageAsync(before: _nextBefore, date: date);
-        _photos!.AddRange(page.Items);
-        _photosByName = _photos.ToDictionary(photo => photo.Name, StringComparer.Ordinal);
-        _nextBefore = page.NextBefore;
-        _loadingMore = false;
+        try
+        {
+            var date = _selectedDay.HasValue ? DateOnly.FromDateTime(_selectedDay.Value) : (DateOnly?)null;
+            var page = await Photos.LoadPageAsync(before: _nextBefore, date: date);
+            _photos!.AddRange(page.Items);
+            _photosByName = _photos.ToDictionary(photo => photo.Name, StringComparer.Ordinal);
+            _nextBefore = page.NextBefore;
+        }
+        finally
+        {
+            _loadingMore = false;
+        }
     }
 
     private async Task ReloadAsync()
@@ -365,7 +371,7 @@
 
     private GroupTreeNodeDto[] ChildGroups(string groupId) =>
         _childrenByParent.TryGetValue(groupId, out var children)
-            ? children.ToArray()
+            ? children
             : [];
 
     private PhotoInfo[] GroupPhotos(GroupTreeNodeDto node) =>
@@ -531,6 +537,7 @@
             _photos?.RemoveAll(p => p.Name == photo.Name);
             _photosByName.Remove(photo.Name);
             await RefreshGroupsAsync();
+            await ReloadAsync();
         }
     }
 

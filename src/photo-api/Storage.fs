@@ -49,14 +49,9 @@ let private selectPhotoPage
     (toUrl: string -> string)
     (toThumbnailUrl: string -> string)
     (blobs: seq<string * DateTimeOffset>)
-    (limit: int)
-    (before: DateTimeOffset option) =
-    let filtered =
-        match before with
-        | Some b -> blobs |> Seq.filter (fun (_, dt) -> dt < b)
-        | None   -> blobs
+    (limit: int) =
     let page =
-        filtered
+        blobs
         |> Seq.sortByDescending snd
         |> Seq.truncate (limit + 1)
         |> Seq.toList
@@ -72,7 +67,10 @@ let private selectPhotoPage
         |> List.toArray
     { Items = mapped; NextBefore = nextBefore }
 
-let private listBlobsAsync (container: BlobContainerClient) (prefix: string option) = task {
+let private listBlobsAsync
+    (container: BlobContainerClient)
+    (prefix: string option)
+    (predicate: string * DateTimeOffset -> bool) = task {
     let blobs = ResizeArray<string * DateTimeOffset>()
     let blobsEnum =
         match prefix with
@@ -84,10 +82,10 @@ let private listBlobsAsync (container: BlobContainerClient) (prefix: string opti
         let! moved = enumerator.MoveNextAsync().AsTask()
         if moved then
             let b = enumerator.Current
-            blobs.Add (b.Name, lastModified b)
+            let item = b.Name, lastModified b
+            if predicate item then blobs.Add item
         else
             hasNext <- false
-
     return blobs :> seq<string * DateTimeOffset>
 }
 
@@ -114,17 +112,17 @@ let listPhotoPage (config: StorageConfig) (limit: int) (dateFilter: DateOnly opt
     let expiry = DateTimeOffset.UtcNow.AddHours 1.0
     let! delegationKeyResponse = service.GetUserDelegationKeyAsync(Nullable(), expiry)
     let delegationKey = delegationKeyResponse.Value
-    let! allBlobs = listBlobsAsync container None
 
-    let blobs =
-        match dateFilter with
-        | Some d -> allBlobs |> Seq.filter (fun (_, dt) -> DateOnly.FromDateTime(dt.Date) = d)
-        | None   -> allBlobs
+    let predicate (_, dt: DateTimeOffset) =
+        dateFilter |> Option.forall (fun d -> DateOnly.FromDateTime(dt.Date) = d)
+        && before  |> Option.forall (fun b -> dt < b)
+
+    let! blobs = listBlobsAsync container None predicate
 
     let! thumbnailNames =
         task {
             try
-                let! thumbBlobs = listBlobsAsync thumbnailContainer None
+                let! thumbBlobs = listBlobsAsync thumbnailContainer None (fun _ -> true)
                 return thumbBlobs |> Seq.map fst |> Set.ofSeq
             with _ -> return Set.empty
         }
@@ -137,5 +135,5 @@ let listPhotoPage (config: StorageConfig) (limit: int) (dateFilter: DateOnly opt
         else
             toUrl name
 
-    return selectPhotoPage toUrl toThumbnailUrl blobs limit before
+    return selectPhotoPage toUrl toThumbnailUrl blobs limit
 }

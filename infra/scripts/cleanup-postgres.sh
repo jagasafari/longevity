@@ -1,6 +1,13 @@
 #!/bin/bash
 set -e
 
+cleanup_port_forward() {
+    if [ -n "${PF_PID:-}" ]; then
+        kill "$PF_PID" 2>/dev/null || true
+    fi
+}
+trap cleanup_port_forward EXIT INT TERM
+
 # Colors for output
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
