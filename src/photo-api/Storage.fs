@@ -106,16 +106,17 @@ let deletePhoto (config: StorageConfig) (blobName: string) = task {
 
 let private thumbnailContainerName = "thumbnails"
 
-let listPhotoPage (config: StorageConfig) (limit: int) (dateFilter: DateOnly option) (before: DateTimeOffset option) = task {
+let listPhotoPage (config: StorageConfig) (limit: int) (dateFilter: DateOnly option) (before: DateTimeOffset option) (allowedNames: Set<string> option) = task {
     let service, container = getClients config
     let thumbnailContainer = service.GetBlobContainerClient thumbnailContainerName
     let expiry = DateTimeOffset.UtcNow.AddHours 1.0
     let! delegationKeyResponse = service.GetUserDelegationKeyAsync(Nullable(), expiry)
     let delegationKey = delegationKeyResponse.Value
 
-    let predicate (_, dt: DateTimeOffset) =
+    let predicate (name, dt: DateTimeOffset) =
         dateFilter |> Option.forall (fun d -> DateOnly.FromDateTime(dt.Date) = d)
         && before  |> Option.forall (fun b -> dt < b)
+        && allowedNames |> Option.forall (Set.contains name)
 
     let! blobs = listBlobsAsync container None predicate
 

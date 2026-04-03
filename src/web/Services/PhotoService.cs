@@ -12,13 +12,14 @@ public sealed record GroupTreeNodeDto(string GroupId, string? ParentGroupId, str
 
 public sealed class PhotoService(HttpClient http)
 {
-    public async Task<PhotoPage> LoadPageAsync(string? before = null, DateOnly? date = null)
+    public async Task<PhotoPage> LoadPageAsync(string? before = null, DateOnly? date = null, int? categoryId = null)
     {
         try
         {
             var url = "/api/photos?limit=50";
             if (before is not null) url += $"&before={Uri.EscapeDataString(before)}";
             if (date is not null) url += $"&date={date.Value.ToString("yyyyMMdd")}";
+            if (categoryId is not null) url += $"&categoryId={categoryId.Value}";
             return await http.GetFromJsonAsync<PhotoPage>(url) ?? new PhotoPage([], null);
         }
         catch

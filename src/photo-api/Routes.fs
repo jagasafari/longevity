@@ -86,7 +86,7 @@ let private qs (ctx: HttpContext) key =
     | true, v -> Some (v.ToString())
     | _ -> None
 
-let photos config (ctx: HttpContext) = task {
+let photos config pgConnStr (ctx: HttpContext) = task {
     let q = qs ctx
     let limit =
         q "limit"
@@ -95,7 +95,14 @@ let photos config (ctx: HttpContext) = task {
         |> Option.defaultValue 50
     let dateFilter = q "date"   |> Option.bind tryParseDateOnly
     let before     = q "before" |> Option.bind tryParseDate
-    let! page = Storage.listPhotoPage config limit dateFilter before
+    let categoryId = q "categoryId" |> Option.bind tryParseInt
+    let! allowedNames =
+        match categoryId with
+        | Some cid -> task {
+            let! names = Categories.photoNamesForCategory pgConnStr cid
+            return Some names }
+        | None -> Task.FromResult None
+    let! page = Storage.listPhotoPage config limit dateFilter before allowedNames
     return Results.Ok {|
         items = page.Items
         nextBefore = page.NextBefore |> Option.toObj

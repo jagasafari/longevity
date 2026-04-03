@@ -1,4 +1,4 @@
 ContainerLogV2
-| where ContainerName in ("backend", "thumbnail-worker")
+| where ContainerName in ("photo-api", "thumbnail-worker")
 | project TimeGenerated, Container = ContainerName, PodName, LogEntry = tostring(LogMessage)
 | order by TimeGenerated desc

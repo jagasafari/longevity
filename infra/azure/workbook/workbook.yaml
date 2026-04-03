@@ -40,11 +40,11 @@ parameters:
     kind: dropdown
     multi_select: true
     values:
-      - backend
+      - photo-api
       - thumbnail-worker
       - nginx
       - redis
-    default: backend
+    default: photo-api
 
 queries:
   - file: container-logs.kql
@@ -132,3 +132,10 @@ queries:
       Message: "500ch"
     sort_by: TimeGenerated
 
+  - file: ingestion-cost.kql
+    title: Log Analytics Ingestion (Last 30 Days)
+    visualization: table
+    column_formatters:
+      DataType: "40ch"
+      IngestedGB: "15ch"
+    sort_by: IngestedGB

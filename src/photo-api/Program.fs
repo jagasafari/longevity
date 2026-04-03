@@ -12,6 +12,18 @@ open Microsoft.Extensions.Hosting
 open Microsoft.Extensions.Logging
 open StackExchange.Redis
 
+let private logRequest (logger: ILogger) (ctx: HttpContext) (next: RequestDelegate) = task {
+    let traceId =
+        match Activity.Current with
+        | null -> "-"
+        | a    -> a.TraceId.ToString()
+    let method = ctx.Request.Method
+    let path   = ctx.Request.Path.Value
+    logger.LogInformation("[{TraceId}] {Method} {Path}", traceId, method, path)
+    do! next.Invoke ctx
+    logger.LogInformation("[{TraceId}] {Method} {Path} -> {Status}", traceId, method, path, ctx.Response.StatusCode)
+}
+
 [<EntryPoint>]
 let main args =
     let builder = WebApplication.CreateBuilder args
@@ -65,17 +77,9 @@ let main args =
         app.MapOpenApi() |> ignore
 
     app.UseHttpsRedirection() |> ignore
-    app.Use(Func<HttpContext, RequestDelegate, Task>(fun ctx next -> task {
-        let traceId =
-            match Activity.Current with
-            | null -> "-"
-            | a -> a.TraceId.ToString()
-        let path = ctx.Request.Path.Value
-        let method = ctx.Request.Method
-        requestLogger.LogInformation("[{TraceId}] {Method} {Path}", [| traceId :> obj; method :> obj; path :> obj |])
-        do! next.Invoke ctx
-        requestLogger.LogInformation("[{TraceId}] {Method} {Path} -> {Status}", [| traceId :> obj; method :> obj; path :> obj; ctx.Response.StatusCode :> obj |])
-    })) |> ignore
+    app.Use(Func<HttpContext, RequestDelegate, Task>(fun ctx next ->
+        if ctx.Request.Path.Value = "/healthz" then next.Invoke ctx
+        else logRequest requestLogger ctx next)) |> ignore
     app.UseAuthentication()   |> ignore
     app.UseAuthorization()    |> ignore
 
@@ -101,7 +105,7 @@ let main args =
     |> ignore
 
     app.MapGet("/api/photos",
-        Func<HttpContext, Task<IResult>>(fun ctx -> Routes.photos storage ctx))
+        Func<HttpContext, Task<IResult>>(fun ctx -> Routes.photos storage pgConnStr ctx))
         .RequireAuthorization()
     |> ignore
 

@@ -52,3 +52,23 @@ let removeCategory (connStr: string) (groupId: string) (categoryId: int) = task 
             {| g = groupId; c = categoryId |})
     ()
 }
+
+let photoNamesForCategory (connStr: string) (categoryId: int) = task {
+    use conn = new NpgsqlConnection(connStr)
+    let! rows =
+        conn.QueryAsync<string>(
+            """WITH RECURSIVE cat_groups AS (
+                   SELECT gc.group_id
+                   FROM photo_group_categories gc
+                   WHERE gc.category_id = @c
+                   UNION
+                   SELECT pg.group_id
+                   FROM photo_groups pg
+                   JOIN cat_groups cg ON pg.parent_group_id = cg.group_id
+               )
+               SELECT DISTINCT m.photo_name
+               FROM cat_groups cg
+               JOIN photo_group_members m ON m.group_id = cg.group_id""",
+            {| c = categoryId |})
+    return rows |> Seq.toArray |> Set.ofArray
+}

@@ -300,7 +300,7 @@
     {
         _photos = null;
         _nextBefore = null;
-        var page = await Photos.LoadPageAsync(date: date);
+        var page = await Photos.LoadPageAsync(date: date, categoryId: _selectedCategoryId);
         _photos = [..page.Items];
         _nextBefore = page.NextBefore;
     }
@@ -312,7 +312,7 @@
         try
         {
             var date = _selectedDay.HasValue ? DateOnly.FromDateTime(_selectedDay.Value) : (DateOnly?)null;
-            var page = await Photos.LoadPageAsync(before: _nextBefore, date: date);
+            var page = await Photos.LoadPageAsync(before: _nextBefore, date: date, categoryId: _selectedCategoryId);
             _photos!.AddRange(page.Items);
             _photosByName = _photos.ToDictionary(photo => photo.Name, StringComparer.Ordinal);
             _nextBefore = page.NextBefore;
@@ -386,13 +386,31 @@
         if (_selectedCategoryId is null) return true;
 
         var selectedCategoryId = _selectedCategoryId.Value;
-        var ownMatch =
-            _groupCategories.TryGetValue(groupId, out var ownCats)
-            && ownCats.Contains(selectedCategoryId);
-        if (ownMatch) return true;
 
+        if (AncestorHasCategory(groupId, selectedCategoryId)) return true;
+
+        return DescendantHasCategory(groupId, selectedCategoryId);
+    }
+
+    private bool AncestorHasCategory(string groupId, int categoryId)
+    {
+        var current = groupId;
+        while (current is not null)
+        {
+            if (_groupCategories.TryGetValue(current, out var cats) && cats.Contains(categoryId))
+                return true;
+            var node = _groupTree.FirstOrDefault(n => n.GroupId == current);
+            current = node?.ParentGroupId;
+        }
+        return false;
+    }
+
+    private bool DescendantHasCategory(string groupId, int categoryId)
+    {
         var children = _childrenByParent.TryGetValue(groupId, out var c) ? c : [];
-        return children.Any(child => IsGroupVisible(child.GroupId));
+        return children.Any(child =>
+            (_groupCategories.TryGetValue(child.GroupId, out var cats) && cats.Contains(categoryId))
+            || DescendantHasCategory(child.GroupId, categoryId));
     }
 
     private PhotoInfo[] UngroupedPhotos()

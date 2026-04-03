@@ -1,0 +1,4 @@
+Usage
+| where TimeGenerated > ago(30d)
+| summarize IngestedGB = round(sum(Quantity) / 1024, 3) by DataType
+| order by IngestedGB desc
