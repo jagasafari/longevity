@@ -14,7 +14,7 @@
     <Compile Include="AuthCallback.fs" />
     <Compile Include="DbMigrations.fs" />
     <Compile Include="PhotoGroups.fs" />
-    <Compile Include="Categories.fs" />
+    <Compile Include="GroupNames.fs" />
     <Compile Include="Storage.fs" />
     <Compile Include="PhotoCountCache.fs" />
     <Compile Include="PhotoHub.fs" />

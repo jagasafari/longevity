@@ -43,14 +43,14 @@ let tests = testList "PhotoGroups" [
 
     testList "classifyGroup" [
 
-        testCase "empty group with no categories or children" <| fun () ->
+        testCase "empty group with no names or children" <| fun () ->
             test <@ PhotoGroups.classifyGroup 0 0 0 = PhotoGroups.Empty @>
 
         testCase "singleton group" <| fun () ->
             test <@ PhotoGroups.classifyGroup 1 0 0 = PhotoGroups.Singleton @>
 
-        testCase "group with categories" <| fun () ->
-            test <@ PhotoGroups.classifyGroup 0 0 1 = PhotoGroups.HasCategories @>
+        testCase "group with names" <| fun () ->
+            test <@ PhotoGroups.classifyGroup 0 0 1 = PhotoGroups.HasNames @>
 
         testCase "group with children" <| fun () ->
             test <@ PhotoGroups.classifyGroup 1 1 0 = PhotoGroups.HasChildren @>
@@ -67,8 +67,8 @@ let tests = testList "PhotoGroups" [
         testCase "deletes singleton groups" <| fun () ->
             test <@ PhotoGroups.decideCleanup PhotoGroups.Singleton = PhotoGroups.DeleteGroup @>
 
-        testCase "keeps groups with categories" <| fun () ->
-            test <@ PhotoGroups.decideCleanup PhotoGroups.HasCategories = PhotoGroups.KeepGroup @>
+        testCase "keeps groups with names" <| fun () ->
+            test <@ PhotoGroups.decideCleanup PhotoGroups.HasNames = PhotoGroups.KeepGroup @>
 
         testCase "keeps groups with children" <| fun () ->
             test <@ PhotoGroups.decideCleanup PhotoGroups.HasChildren = PhotoGroups.KeepGroup @>

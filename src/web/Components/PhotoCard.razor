@@ -1,0 +1,30 @@
+@using web.Services
+
+<div class="photo-card"
+     data-photo-name="@Photo.Name"
+     draggable="true"
+     @ondragstart="() => OnStartDrag.InvokeAsync(Photo.Name)"
+     @ondragend="OnEndDrag"
+     @ondragover:preventDefault
+     @ondrop="() => OnDrop.InvokeAsync(Photo.Name)">
+    <img src="@(Photo.ThumbnailUrl ?? Photo.Url)" alt="@Photo.Name" loading="lazy"
+         @onclick="() => OnClick.InvokeAsync(Photo)" @onclick:stopPropagation />
+    <div class="card-actions">
+        @if (ShowUngroup)
+        {
+            <button class="ungroup-btn" aria-label="Ungroup @Photo.Name" @onclick="() => OnUngroup.InvokeAsync(Photo)">Ungroup</button>
+        }
+        <button class="delete-btn" aria-label="Delete @Photo.Name" @onclick="() => OnDelete.InvokeAsync(Photo)">Delete</button>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public PhotoInfo Photo { get; set; } = default!;
+    [Parameter] public bool ShowUngroup { get; set; }
+    [Parameter, EditorRequired] public EventCallback<string> OnStartDrag { get; set; }
+    [Parameter, EditorRequired] public EventCallback OnEndDrag { get; set; }
+    [Parameter, EditorRequired] public EventCallback<string> OnDrop { get; set; }
+    [Parameter, EditorRequired] public EventCallback<PhotoInfo> OnClick { get; set; }
+    [Parameter, EditorRequired] public EventCallback<PhotoInfo> OnUngroup { get; set; }
+    [Parameter, EditorRequired] public EventCallback<PhotoInfo> OnDelete { get; set; }
+}

@@ -1,0 +1,123 @@
+@using web.Services
+
+<section class="group-section">
+    <div class="group-header"
+         data-group-id="@Node.GroupId"
+         @ondragover:preventDefault
+         @ondrop="() => OnDropIntoGroup.InvokeAsync(Node.GroupId)">
+        <h2>@(Names.Length > 0 ? string.Join(", ", Names) : "Group")</h2>
+        <div class="category-tags">
+            @foreach (var name in Names)
+            {
+                <span class="category-tag">
+                    @name
+                    <button class="tag-remove" aria-label="Remove name @name" @onclick="() => RemoveName(name)">&times;</button>
+                </span>
+            }
+        </div>
+        <div class="category-assign">
+            @if (_assigning)
+            {
+                <input class="category-input" placeholder="New or existing name..."
+                       list="name-suggestions"
+                       @bind="_nameInput" @bind:event="oninput"
+                       @onkeydown="OnKeyDown" />
+                <datalist id="name-suggestions">
+                    @foreach (var n in AllGroupNames)
+                    {
+                        <option value="@n" />
+                    }
+                </datalist>
+                <button class="btn-tag-save" @onclick="Save">Add</button>
+                <button class="btn-tag-cancel" @onclick="() => _assigning = false">Cancel</button>
+            }
+            else
+            {
+                <button class="btn-tag-add" @onclick="() => _assigning = true">+ Name</button>
+            }
+        </div>
+    </div>
+
+    <div class="photo-grid">
+        @foreach (var photo in Photos)
+        {
+            <PhotoCard Photo="photo"
+                       ShowUngroup="true"
+                       OnStartDrag="OnStartDrag"
+                       OnEndDrag="OnEndDrag"
+                       OnDrop="OnDropOnPhoto"
+                       OnClick="OnOpenLightbox"
+                       OnUngroup="OnUngroup"
+                       OnDelete="OnDelete" />
+        }
+    </div>
+
+    @if (Children.Length > 0)
+    {
+        <div class="subgroups-container">
+            @foreach (var child in Children)
+            {
+                <GroupTreeNode Node="child"
+                               Depth="1"
+                               PhotosByName="PhotosByName"
+                               ChildrenByParent="ChildrenByParent"
+                               IsVisible="IsGroupVisible"
+                               OnStartDrag="StartDrag"
+                               OnEndDrag="EndDrag"
+                               OnDropOnPhoto="DropOnPhoto"
+                               OnDropIntoGroup="DropIntoGroup"
+                               OnOpenLightbox="OpenLightbox"
+                               OnUngroup="Ungroup"
+                               OnDelete="Delete" />
+            }
+        </div>
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public GroupTreeNodeDto Node { get; set; } = default!;
+    [Parameter, EditorRequired] public string[] Names { get; set; } = [];
+    [Parameter, EditorRequired] public string[] AllGroupNames { get; set; } = [];
+    [Parameter, EditorRequired] public PhotoInfo[] Photos { get; set; } = [];
+    [Parameter, EditorRequired] public GroupTreeNodeDto[] Children { get; set; } = [];
+    [Parameter, EditorRequired] public Dictionary<string, PhotoInfo> PhotosByName { get; set; } = [];
+    [Parameter, EditorRequired] public Dictionary<string, GroupTreeNodeDto[]> ChildrenByParent { get; set; } = [];
+    [Parameter, EditorRequired] public Func<string, bool> IsGroupVisible { get; set; } = _ => true;
+    [Parameter, EditorRequired] public EventCallback<string> OnStartDrag { get; set; }
+    [Parameter, EditorRequired] public EventCallback OnEndDrag { get; set; }
+    [Parameter, EditorRequired] public EventCallback<string> OnDropOnPhoto { get; set; }
+    [Parameter, EditorRequired] public EventCallback<string> OnDropIntoGroup { get; set; }
+    [Parameter, EditorRequired] public EventCallback<PhotoInfo> OnOpenLightbox { get; set; }
+    [Parameter, EditorRequired] public EventCallback<PhotoInfo> OnUngroup { get; set; }
+    [Parameter, EditorRequired] public EventCallback<PhotoInfo> OnDelete { get; set; }
+    [Parameter, EditorRequired] public EventCallback<(string GroupId, string Name)> OnAssignName { get; set; }
+    [Parameter, EditorRequired] public EventCallback<(string GroupId, string Name)> OnRemoveName { get; set; }
+
+    private bool _assigning;
+    private string _nameInput = "";
+
+    private void StartDrag(string name) => OnStartDrag.InvokeAsync(name);
+    private void EndDrag() => OnEndDrag.InvokeAsync();
+    private Task DropOnPhoto(string name) => OnDropOnPhoto.InvokeAsync(name);
+    private Task DropIntoGroup(string groupId) => OnDropIntoGroup.InvokeAsync(groupId);
+    private Task OpenLightbox(PhotoInfo photo) => OnOpenLightbox.InvokeAsync(photo);
+    private Task Ungroup(PhotoInfo photo) => OnUngroup.InvokeAsync(photo);
+    private Task Delete(PhotoInfo photo) => OnDelete.InvokeAsync(photo);
+
+    private async Task Save()
+    {
+        if (string.IsNullOrWhiteSpace(_nameInput)) return;
+        await OnAssignName.InvokeAsync((Node.GroupId, _nameInput.Trim()));
+        _nameInput = "";
+        _assigning = false;
+    }
+
+    private async Task OnKeyDown(Microsoft.AspNetCore.Components.Web.KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") await Save();
+        if (e.Key == "Escape") _assigning = false;
+    }
+
+    private Task RemoveName(string name) =>
+        OnRemoveName.InvokeAsync((Node.GroupId, name));
+}

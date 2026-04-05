@@ -6,20 +6,19 @@ public sealed record PhotoInfo(string Name, string Url, string? ThumbnailUrl, Da
 public sealed record GroupPhotosRequest(string SourceName, string TargetName);
 public sealed record MovePhotoToGroupRequest(string PhotoName, string TargetGroupId);
 public sealed record PhotoPage(PhotoInfo[] Items, string? NextBefore);
-public sealed record CategoryDto(int Id, string Name);
 public sealed record PhotoCountDto(DateOnly Date, int Count);
 public sealed record GroupTreeNodeDto(string GroupId, string? ParentGroupId, string[] Photos);
 
 public sealed class PhotoService(HttpClient http)
 {
-    public async Task<PhotoPage> LoadPageAsync(string? before = null, DateOnly? date = null, int? categoryId = null)
+    public async Task<PhotoPage> LoadPageAsync(string? before = null, DateOnly? date = null, string? groupName = null)
     {
         try
         {
             var url = "/api/photos?limit=50";
             if (before is not null) url += $"&before={Uri.EscapeDataString(before)}";
             if (date is not null) url += $"&date={date.Value.ToString("yyyyMMdd")}";
-            if (categoryId is not null) url += $"&categoryId={categoryId.Value}";
+            if (groupName is not null) url += $"&groupName={Uri.EscapeDataString(groupName)}";
             return await http.GetFromJsonAsync<PhotoPage>(url) ?? new PhotoPage([], null);
         }
         catch
@@ -81,11 +80,11 @@ public sealed class PhotoService(HttpClient http)
         return response.IsSuccessStatusCode;
     }
 
-    public async Task<CategoryDto[]> LoadCategoriesAsync()
+    public async Task<string[]> LoadGroupNamesAsync()
     {
         try
         {
-            return await http.GetFromJsonAsync<CategoryDto[]>("/api/categories") ?? [];
+            return await http.GetFromJsonAsync<string[]>("/api/group-names") ?? [];
         }
         catch
         {
@@ -93,11 +92,11 @@ public sealed class PhotoService(HttpClient http)
         }
     }
 
-    public async Task<Dictionary<string, int[]>> LoadGroupCategoriesAsync()
+    public async Task<Dictionary<string, string[]>> LoadGroupNameAssignmentsAsync()
     {
         try
         {
-            return await http.GetFromJsonAsync<Dictionary<string, int[]>>("/api/group-categories") ?? [];
+            return await http.GetFromJsonAsync<Dictionary<string, string[]>>("/api/group-name-assignments") ?? [];
         }
         catch
         {
@@ -105,18 +104,18 @@ public sealed class PhotoService(HttpClient http)
         }
     }
 
-    public async Task<bool> AssignCategoryAsync(string groupId, string categoryName)
+    public async Task<bool> AssignGroupNameAsync(string groupId, string name)
     {
         var response = await http.PostAsJsonAsync(
-            $"/api/group-categories/{Uri.EscapeDataString(groupId)}",
-            new { categoryName });
+            $"/api/group-names/{Uri.EscapeDataString(groupId)}",
+            new { name });
         return response.IsSuccessStatusCode;
     }
 
-    public async Task<bool> RemoveCategoryAsync(string groupId, int categoryId)
+    public async Task<bool> RemoveGroupNameAsync(string groupId, string name)
     {
         var response = await http.DeleteAsync(
-            $"/api/group-categories/{Uri.EscapeDataString(groupId)}/{categoryId}");
+            $"/api/group-names/{Uri.EscapeDataString(groupId)}/{Uri.EscapeDataString(name)}");
         return response.IsSuccessStatusCode;
     }
 

@@ -190,3 +190,221 @@ code {
 .form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
     text-align: start;
 }
+
+/* ── Groups & photos ──────────────────────────────── */
+.group-section {
+    margin-bottom: 2rem;
+}
+
+.group-section h2 {
+    margin: 0 0 0.75rem;
+    font-size: 1rem;
+    font-weight: 700;
+    color: #1f2937;
+}
+
+.photo-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.photo-card {
+    padding: 0.25rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    background: #fff;
+}
+
+.photo-card:hover { border-color: #93c5fd; }
+
+.photo-card.touch-dragging {
+    opacity: 0.5;
+    border-color: #60a5fa;
+}
+
+.photo-card.touch-drag-over {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 2px #93c5fd;
+}
+
+.photo-card img {
+    width: 100%;
+    height: auto;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.card-actions {
+    display: flex;
+    gap: 0.25rem;
+    margin-top: 0.25rem;
+}
+
+.ungroup-btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.8rem;
+    color: #1f2937;
+    background-color: #e2e8f0;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.ungroup-btn:hover { background-color: #cbd5e1; }
+
+.delete-btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.8rem;
+    color: #fff;
+    background-color: #dc3545;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.delete-btn:hover { background-color: #bb2d3b; }
+
+.subgroups-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.group-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.75rem;
+}
+
+.group-header h2 { margin: 0; font-size: 1rem; font-weight: 700; color: #1f2937; }
+
+.category-tags { display: flex; gap: 0.35rem; flex-wrap: wrap; }
+
+.category-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+    padding: 0.15rem 0.5rem;
+    font-size: 0.75rem;
+    background: #dbeafe;
+    color: #1e40af;
+    border-radius: 12px;
+    font-weight: 500;
+}
+
+.tag-remove {
+    all: unset;
+    cursor: pointer;
+    font-size: 0.85rem;
+    line-height: 1;
+    color: #1e40af;
+    padding: 0 0.1rem;
+}
+
+.tag-remove:hover { color: #dc2626; }
+
+.category-assign { display: flex; gap: 0.35rem; align-items: center; }
+
+.category-input {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.8rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    width: 160px;
+}
+
+.category-filter select {
+    padding: 0.35rem 0.5rem;
+    font-size: 0.85rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    background: #fff;
+    color: #1f2937;
+}
+
+.btn-tag-add {
+    padding: 0.2rem 0.5rem;
+    font-size: 0.75rem;
+    color: #1e40af;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.btn-tag-add:hover { background: #dbeafe; }
+
+.btn-tag-save {
+    padding: 0.2rem 0.5rem;
+    font-size: 0.75rem;
+    color: #fff;
+    background: #2563eb;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.btn-tag-cancel {
+    padding: 0.2rem 0.5rem;
+    font-size: 0.75rem;
+    color: #64748b;
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+/* ── Lightbox ─────────────────────────────────────── */
+.lightbox {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.92);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    cursor: pointer;
+}
+
+.lightbox img {
+    max-width: 95vw;
+    max-height: 95vh;
+    object-fit: contain;
+    cursor: default;
+}
+
+.lightbox-close {
+    position: absolute;
+    top: 1rem;
+    right: 1.5rem;
+    font-size: 2.5rem;
+    color: #fff;
+    background: none;
+    border: none;
+    cursor: pointer;
+    line-height: 1;
+}
+
+/* ── Nested subgroups ─────────────────────────────── */
+.nested-group {
+    flex: 1 1 300px;
+    max-width: 500px;
+    margin-top: 0;
+    padding: 0.5rem;
+    border-left: 3px solid #93c5fd;
+    border-radius: 0 8px 8px 0;
+    background: rgba(147, 197, 253, 0.15);
+}
+
+.nested-group h3 {
+    margin: 0 0 0.4rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}

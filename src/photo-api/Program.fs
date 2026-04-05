@@ -175,29 +175,29 @@ let main args =
         .RequireAuthorization()
     |> ignore
 
-    // Category endpoints
-    app.MapGet("/api/categories",
-        Func<_>(Categories.listCategories pgConnStr))
+    // Group name endpoints
+    app.MapGet("/api/group-names",
+        Func<_>(GroupNames.listNames pgConnStr))
         .RequireAuthorization()
     |> ignore
 
-    app.MapGet("/api/group-categories",
-        Func<_>(Categories.listGroupCategories pgConnStr))
+    app.MapGet("/api/group-name-assignments",
+        Func<_>(GroupNames.listGroupNames pgConnStr))
         .RequireAuthorization()
     |> ignore
 
-    app.MapPost("/api/group-categories/{groupId}",
+    app.MapPost("/api/group-names/{groupId}",
         Func<HttpContext, IHubContext<PhotoHub.PhotoHub>, _>(
-            Routes.assignCategory
-                (Categories.assignCategory pgConnStr)))
+            Routes.assignGroupName
+                (GroupNames.assignName pgConnStr)))
         .RequireAuthorization()
     |> ignore
 
     app.MapDelete(
-        "/api/group-categories/{groupId}/{categoryId:int}",
+        "/api/group-names/{groupId}/{name}",
         Func<HttpContext, IHubContext<PhotoHub.PhotoHub>, _>(
-            Routes.removeGroupCategory
-                (Categories.removeCategory pgConnStr)))
+            Routes.removeGroupName
+                (GroupNames.removeName pgConnStr)))
         .RequireAuthorization()
     |> ignore
 

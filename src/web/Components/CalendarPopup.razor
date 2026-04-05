@@ -1,0 +1,79 @@
+@using System.Globalization
+
+@if (IsOpen)
+{
+    <div class="calendar-backdrop" @onclick="Toggle"></div>
+    <div class="calendar-popup">
+        <div class="calendar-header">
+            <button @onclick="PrevMonth" @onclick:stopPropagation>&lsaquo;</button>
+            <span>@_month.ToString("MMMM yyyy", CultureInfo.InvariantCulture)</span>
+            <button @onclick="NextMonth" @onclick:stopPropagation>&rsaquo;</button>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(7, 32px); gap: 2px; text-align: center; font-size: 0.7rem; color: #64748b; margin-bottom: 4px;">
+            <span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span><span>Su</span>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(7, 32px); gap: 2px;">
+            @foreach (var cell in Cells())
+            {
+                @if (cell is null)
+                {
+                    <span style="width: 32px; height: 38px;"></span>
+                }
+                else
+                {
+                    var day = cell.Value;
+                    var count = GetCount(day);
+                    var isSelected = SelectedDay is not null && day.Date == SelectedDay.Value.Date;
+                    <button style="@DayStyle(isSelected, count > 0)" @onclick="() => Select(day)" @onclick:stopPropagation>
+                        <span style="line-height: 1;">@day.Day</span>
+                        @if (count > 0)
+                        {
+                            <span style="font-size: 0.5rem; line-height: 1; margin-top: 1px;">@count</span>
+                        }
+                    </button>
+                }
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public bool IsOpen { get; set; }
+    [Parameter, EditorRequired] public DateTime? SelectedDay { get; set; }
+    [Parameter, EditorRequired] public Dictionary<DateOnly, int> PhotoCounts { get; set; } = [];
+    [Parameter, EditorRequired] public EventCallback Toggle { get; set; }
+    [Parameter, EditorRequired] public EventCallback<DateTime> OnSelectDay { get; set; }
+
+    private DateTime _month = DateTime.Today;
+
+    private void PrevMonth() => _month = _month.AddMonths(-1);
+    private void NextMonth() => _month = _month.AddMonths(1);
+
+    private async Task Select(DateTime day)
+    {
+        _month = new DateTime(day.Year, day.Month, 1);
+        await OnSelectDay.InvokeAsync(day);
+    }
+
+    private int GetCount(DateTime day) =>
+        PhotoCounts.TryGetValue(DateOnly.FromDateTime(day), out var c) ? c : 0;
+
+    private DateTime?[] Cells()
+    {
+        var first = new DateTime(_month.Year, _month.Month, 1);
+        var offset = ((int)first.DayOfWeek + 6) % 7;
+        var days = DateTime.DaysInMonth(first.Year, first.Month);
+        var cells = new DateTime?[offset + days];
+        for (var i = 0; i < offset; i++) cells[i] = null;
+        for (var d = 1; d <= days; d++) cells[offset + d - 1] = new DateTime(first.Year, first.Month, d);
+        return cells;
+    }
+
+    private static string DayStyle(bool isSelected, bool hasPhotos)
+    {
+        var b = "all: unset; width: 32px; height: 38px; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 8px; font-size: 0.85rem; box-sizing: border-box; cursor: pointer; position: relative; gap: 0;";
+        if (isSelected) return b + " background: #1d4ed8; color: #fff; font-weight: 700;";
+        if (hasPhotos) return b + " background: #e0f2fe; color: #0284c7; font-weight: 600;";
+        return b + " color: #1f2937;";
+    }
+}

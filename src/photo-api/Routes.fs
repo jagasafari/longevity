@@ -95,11 +95,11 @@ let photos config pgConnStr (ctx: HttpContext) = task {
         |> Option.defaultValue 50
     let dateFilter = q "date"   |> Option.bind tryParseDateOnly
     let before     = q "before" |> Option.bind tryParseDate
-    let categoryId = q "categoryId" |> Option.bind tryParseInt
+    let groupName  = q "groupName"
     let! allowedNames =
-        match categoryId with
-        | Some cid -> task {
-            let! names = Categories.photoNamesForCategory pgConnStr cid
+        match groupName with
+        | Some name -> task {
+            let! names = GroupNames.photoNamesForGroupName pgConnStr name
             return Some names }
         | None -> Task.FromResult None
     let! page = Storage.listPhotoPage config limit dateFilter before allowedNames
@@ -240,18 +240,18 @@ let private notifyChanged
     (hub: IHubContext<PhotoHub.PhotoHub>) =
     hub.Clients.All.SendAsync("PhotosChanged")
 
-let assignCategory
+let assignGroupName
     (assign: string -> string -> Task<unit>)
     (ctx: HttpContext)
     (hub: IHubContext<PhotoHub.PhotoHub>) = task {
     let groupId = routeStr "groupId" ctx
     let! body =
         ctx.Request
-            .ReadFromJsonAsync<{| categoryName: string |}>()
+            .ReadFromJsonAsync<{| name: string |}>()
     let name =
         match isNull (box body) with
         | true  -> None
-        | false -> validName body.categoryName
+        | false -> validName body.name
     match groupId, name with
     | Some gid, Some n ->
         do! assign gid n
@@ -261,13 +261,15 @@ let assignCategory
         return Results.BadRequest {| error = "missing_fields" |}
 }
 
-let removeGroupCategory
-    (remove: string -> int -> Task<unit>)
+let removeGroupName
+    (remove: string -> string -> Task<unit>)
     (ctx: HttpContext)
     (hub: IHubContext<PhotoHub.PhotoHub>) = task {
-    match routeStr "groupId" ctx, routeInt "categoryId" ctx with
-    | Some gid, Some cid ->
-        do! remove gid cid
+    let groupId = routeStr "groupId" ctx
+    let name = routeStr "name" ctx
+    match groupId, name with
+    | Some gid, Some n ->
+        do! remove gid n
         do! notifyChanged hub
         return Results.NoContent()
     | _ ->

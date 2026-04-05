@@ -44,7 +44,7 @@ type internal MoveIntent =
 type internal GroupState =
     | Empty
     | Singleton
-    | HasCategories
+    | HasNames
     | HasChildren
     | Healthy
 
@@ -70,18 +70,18 @@ let internal planMove sourceGroup targetGroupId =
     | Some source -> MoveFromGroup source
     | None -> AddToGroup
 
-let internal classifyGroup photoCount childCount categoryCount =
-    match photoCount, childCount, categoryCount with
+let internal classifyGroup photoCount childCount nameCount =
+    match photoCount, childCount, nameCount with
     | 0, 0, 0            -> Empty
     | pc, 0, 0 when pc <= 1 -> Singleton
-    | _, _, cc when cc > 0  -> HasCategories
+    | _, _, nc when nc > 0  -> HasNames
     | _, cc, _ when cc > 0  -> HasChildren
     | _                     -> Healthy
 
 let internal decideCleanup groupState =
     match groupState with
     | Empty | Singleton -> DeleteGroup
-    | HasCategories | HasChildren | Healthy -> KeepGroup
+    | HasNames | HasChildren | Healthy -> KeepGroup
 
 let private withTransaction connStr work = task {
     use conn = new NpgsqlConnection(connStr)
@@ -219,10 +219,10 @@ let private deleteGroup
                 "DELETE FROM photo_group_members WHERE group_id = @g",
                 {| g = gid |},
                 tx)
-        // Remove category assignments
+        // Remove name assignments
         let! _ =
             conn.ExecuteAsync(
-                "DELETE FROM photo_group_categories WHERE group_id = @g",
+                "DELETE FROM photo_group_names WHERE group_id = @g",
                 {| g = gid |},
                 tx)
         // Children become root groups (FK is SET NULL),
@@ -272,14 +272,14 @@ let private countChildren
         return count
     }
 
-let private countCategories
+let private countNames
     (conn: NpgsqlConnection)
     (tx: NpgsqlTransaction)
     gid =
     task {
         let! count =
             conn.ExecuteScalarAsync<int>(
-                "SELECT COUNT(*) FROM photo_group_categories WHERE group_id = @g",
+                "SELECT COUNT(*) FROM photo_group_names WHERE group_id = @g",
                 {| g = gid |},
                 tx)
         return count
@@ -305,8 +305,8 @@ let private cleanupGroup
     task {
         let! photoCount = countPhotos conn tx gid
         let! childCount = countChildren conn tx gid
-        let! categoryCount = countCategories conn tx gid
-        let state = classifyGroup photoCount childCount categoryCount
+        let! nameCount = countNames conn tx gid
+        let state = classifyGroup photoCount childCount nameCount
         match decideCleanup state with
         | DeleteGroup -> do! deleteGroup conn tx gid
         | KeepGroup -> ()

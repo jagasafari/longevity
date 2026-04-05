@@ -16,31 +16,14 @@
             <div class="photo-grid">
                 @foreach (var photo in nodePhotos)
                 {
-                    <div class="photo-card"
-                         data-photo-name="@photo.Name"
-                         draggable="true"
-                         @ondragstart="() => StartDrag(photo.Name)"
-                         @ondragend="EndDrag"
-                         @ondragover:preventDefault
-                         @ondrop="() => DropOnPhoto(photo.Name)">
-                        <img src="@(photo.ThumbnailUrl ?? photo.Url)"
-                             alt="@photo.Name"
-                             loading="lazy"
-                             @onclick="() => OpenLightbox(photo)"
-                             @onclick:stopPropagation="true" />
-                        <div class="card-actions">
-                            <button class="ungroup-btn"
-                                    aria-label="Ungroup @photo.Name"
-                                    @onclick="() => Ungroup(photo)">
-                                Ungroup
-                            </button>
-                            <button class="delete-btn"
-                                    aria-label="Delete @photo.Name"
-                                    @onclick="() => Delete(photo)">
-                                Delete
-                            </button>
-                        </div>
-                    </div>
+                    <PhotoCard Photo="photo"
+                               ShowUngroup="true"
+                               OnStartDrag="EventCallback.Factory.Create<string>(this, StartDrag)"
+                               OnEndDrag="EventCallback.Factory.Create(this, EndDrag)"
+                               OnDrop="EventCallback.Factory.Create<string>(this, DropOnPhoto)"
+                               OnClick="OnOpenLightbox"
+                               OnUngroup="EventCallback.Factory.Create<PhotoInfo>(this, Ungroup)"
+                               OnDelete="EventCallback.Factory.Create<PhotoInfo>(this, Delete)" />
                 }
             </div>
         }

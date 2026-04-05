@@ -20,17 +20,17 @@
     else
     {
         <div class="calendar-toggle-row">
-            <button class="btn-all @(_selectedDay is null && _selectedCategoryId is null ? "active" : "")" @onclick="() => ClearFilters()">All</button>
+            <button class="btn-all @(_selectedDay is null && _selectedGroupName is null ? "active" : "")" @onclick="() => ClearFilters()">All</button>
             <button class="calendar-toggle" @onclick="ToggleCalendar">
                 @CalendarButtonLabel()
             </button>
 
             <div class="category-filter">
-                <select @onchange="OnCategoryFilterChanged">
-                    <option value="" selected="@(_selectedCategoryId is null)">All categories</option>
-                    @foreach (var cat in _allCategories)
+                <select @onchange="OnGroupNameFilterChanged">
+                    <option value="" selected="@(_selectedGroupName is null)">All groups</option>
+                    @foreach (var name in _allGroupNames)
                     {
-                        <option value="@cat.Id" selected="@(_selectedCategoryId == cat.Id)">@cat.Name</option>
+                        <option value="@name" selected="@(_selectedGroupName == name)">@name</option>
                     }
                 </select>
             </div>
@@ -42,42 +42,11 @@
                 </button>
             }
 
-            @if (_calendarOpen)
-            {
-                <div class="calendar-backdrop" @onclick="ToggleCalendar"></div>
-                <div class="calendar-popup">
-                    <div class="calendar-header">
-                        <button @onclick="PrevMonth" @onclick:stopPropagation>&lsaquo;</button>
-                        <span>@_calendarMonth.ToString("MMMM yyyy", CultureInfo.InvariantCulture)</span>
-                        <button @onclick="NextMonth" @onclick:stopPropagation>&rsaquo;</button>
-                    </div>
-                    <div style="display: grid; grid-template-columns: repeat(7, 32px); gap: 2px; text-align: center; font-size: 0.7rem; color: #64748b; margin-bottom: 4px;">
-                        <span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span><span>Su</span>
-                    </div>
-                    <div style="display: grid; grid-template-columns: repeat(7, 32px); gap: 2px;">
-                        @foreach (var cell in CalendarCells())
-                        {
-                            @if (cell is null)
-                            {
-                                <span style="width: 32px; height: 38px;"></span>
-                            }
-                            else
-                            {
-                                var day = cell.Value;
-                                var count = GetPhotoCount(day);
-                                var isSelected = _selectedDay is not null && day.Date == _selectedDay.Value.Date;
-                                <button style="@DayStyle(isSelected, count > 0)" @onclick="() => SelectDate(day)" @onclick:stopPropagation>
-                                    <span style="line-height: 1;">@day.Day</span>
-                                    @if (count > 0)
-                                    {
-                                        <span style="font-size: 0.5rem; line-height: 1; margin-top: 1px;">@count</span>
-                                    }
-                                </button>
-                            }
-                        }
-                    </div>
-                </div>
-            }
+            <CalendarPopup IsOpen="_calendarOpen"
+                           SelectedDay="_selectedDay"
+                           PhotoCounts="_photoCounts"
+                           Toggle="ToggleCalendar"
+                           OnSelectDay="SelectDate" />
         </div>
 
         @if (_photos.Count == 0)
@@ -88,119 +57,52 @@
         {
             @foreach (var groupNode in RootGroups())
             {
-                var groupId = groupNode.GroupId;
-                var group = GroupPhotos(groupNode);
-                var cats = GetGroupCategoryNames(groupId);
-            <section class="group-section">
-                <div class="group-header"
-                     data-group-id="@groupId"
-                     @ondragover:preventDefault
-                     @ondrop="() => DropIntoGroup(groupId)">
-                    <h2>@(cats.Length > 0 ? string.Join(", ", cats) : "Group")</h2>
-                    <div class="category-tags">
-                        @foreach (var cat in GetGroupCategories(groupId))
-                        {
-                            <span class="category-tag">
-                                @cat.Name
-                                <button class="tag-remove" aria-label="Remove category @cat.Name" @onclick="() => RemoveGroupCategory(groupId, cat.Id)">&times;</button>
-                            </span>
-                        }
-                    </div>
-                    <div class="category-assign">
-                        @if (_assigningGroupId == groupId)
-                        {
-                            <input class="category-input" placeholder="New or existing category..."
-                                   list="category-suggestions"
-                                   @bind="_categoryInput" @bind:event="oninput"
-                                   @onkeydown="OnCategoryKeyDown" />
-                            <datalist id="category-suggestions">
-                                @foreach (var cat in _allCategories)
-                                {
-                                    <option value="@cat.Name" />
-                                }
-                            </datalist>
-                            <button class="btn-tag-save" @onclick="SaveCategory">Add</button>
-                            <button class="btn-tag-cancel" @onclick="() => _assigningGroupId = null">Cancel</button>
-                        }
-                        else
-                        {
-                            <button class="btn-tag-add" @onclick="() => StartAssigningCategory(groupId)">+ Category</button>
-                        }
-                    </div>
-                </div>
-                <div class="photo-grid">
-                    @foreach (var photo in group)
-                    {
-                        <div class="photo-card"
-                             data-photo-name="@photo.Name"
-                             draggable="true"
-                             @ondragstart="() => StartDrag(photo.Name)"
-                                @ondragend="EndDrag"
-                             @ondragover:preventDefault
-                             @ondrop="() => DropOn(photo.Name)">
-                            <img src="@(photo.ThumbnailUrl ?? photo.Url)" alt="@photo.Name" loading="lazy"
-                                 @onclick="() => OpenLightbox(photo)" @onclick:stopPropagation />
-                            <div class="card-actions">
-                                <button class="ungroup-btn" aria-label="Ungroup @photo.Name" @onclick="() => UngroupPhoto(photo)">Ungroup</button>
-                                <button class="delete-btn" aria-label="Delete @photo.Name" @onclick="() => DeletePhoto(photo)">Delete</button>
-                            </div>
-                        </div>
-                    }
-                </div>
+                <RootGroupSection Node="groupNode"
+                                  Names="GetGroupNames(groupNode.GroupId)"
+                                  AllGroupNames="_allGroupNames"
+                                  Photos="GroupPhotos(groupNode)"
+                                  Children="ChildGroups(groupNode.GroupId)"
+                                  PhotosByName="_photosByName"
+                                  ChildrenByParent="_childrenByParent"
+                                  IsGroupVisible="IsGroupVisible"
+                                  OnStartDrag="StartDrag"
+                                  OnEndDrag="EndDrag"
+                                  OnDropOnPhoto="DropOn"
+                                  OnDropIntoGroup="DropIntoGroup"
+                                  OnOpenLightbox="OpenLightbox"
+                                  OnUngroup="UngroupPhoto"
+                                  OnDelete="DeletePhoto"
+                                  OnAssignName="AssignName"
+                                  OnRemoveName="RemoveName" />
+            }
 
-                @if (ChildGroups(groupId).Length > 0)
-                {
-                    <div class="subgroups-container">
-                        @foreach (var child in ChildGroups(groupId))
+            @if (UngroupedPhotos().Length > 0)
+            {
+                <section class="group-section">
+                    <h2>Ungrouped</h2>
+                    <div class="photo-grid">
+                        @foreach (var photo in UngroupedPhotos())
                         {
-                            <GroupTreeNode Node="child"
-                                           Depth="1"
-                                           PhotosByName="_photosByName"
-                                           ChildrenByParent="_childrenByParent"
-                                           IsVisible="IsGroupVisible"
-                                           OnStartDrag="StartDrag"
-                                           OnEndDrag="EndDrag"
-                                           OnDropOnPhoto="DropOn"
-                                           OnDropIntoGroup="DropIntoGroup"
-                                           OnOpenLightbox="OpenLightbox"
-                                           OnUngroup="UngroupPhoto"
-                                           OnDelete="DeletePhoto" />
+                            <PhotoCard Photo="photo"
+                                       OnStartDrag="StartDrag"
+                                       OnEndDrag="EndDrag"
+                                       OnDrop="DropOn"
+                                       OnClick="OpenLightbox"
+                                       OnUngroup="UngroupPhoto"
+                                       OnDelete="DeletePhoto" />
                         }
                     </div>
-                }
-            </section>
-        }
+                </section>
+            }
 
-        @if (UngroupedPhotos().Length > 0)
-        {
-            <section class="group-section">
-                <h2>Ungrouped</h2>
-                <div class="photo-grid">
-                    @foreach (var photo in UngroupedPhotos())
-                    {
-                        <div class="photo-card"
-                             data-photo-name="@photo.Name"
-                             draggable="true"
-                             @ondragstart="() => StartDrag(photo.Name)"
-                                @ondragend="EndDrag"
-                             @ondragover:preventDefault
-                             @ondrop="() => DropOn(photo.Name)">
-                            <img src="@(photo.ThumbnailUrl ?? photo.Url)" alt="@photo.Name" loading="lazy"
-                                 @onclick="() => OpenLightbox(photo)" @onclick:stopPropagation />
-                            <button class="delete-btn" aria-label="Delete @photo.Name" @onclick="() => DeletePhoto(photo)">Delete</button>
-                        </div>
-                    }
+            @if (_nextBefore is not null)
+            {
+                <div style="text-align: center; margin-top: 1rem;">
+                    <button class="btn-all" @onclick="LoadMoreAsync" disabled="@_loadingMore">
+                        @(_loadingMore ? "Loading..." : "Load more")
+                    </button>
                 </div>
-            </section>
-        }
-        @if (_nextBefore is not null)
-        {
-            <div style="text-align: center; margin-top: 1rem;">
-                <button class="btn-all" @onclick="LoadMoreAsync" disabled="@_loadingMore">
-                    @(_loadingMore ? "Loading..." : "Load more")
-                </button>
-            </div>
-        }
+            }
         }
     }
 }
@@ -227,15 +129,11 @@
     private IJSObjectReference? _touchModule;
     private DotNetObjectReference<Home>? _dotNetRef;
     private bool _calendarOpen;
-    private DateTime _calendarMonth = DateTime.Today;
 
-    private CategoryDto[] _allCategories = [];
-    private Dictionary<int, CategoryDto> _categoryById = [];
-    private Dictionary<string, int[]> _groupCategories = [];
+    private string[] _allGroupNames = [];
+    private Dictionary<string, string[]> _groupNameAssignments = [];
     private Dictionary<DateOnly, int> _photoCounts = [];
-    private int? _selectedCategoryId;
-    private string? _assigningGroupId;
-    private string _categoryInput = "";
+    private string? _selectedGroupName;
 
     protected override async Task OnInitializedAsync()
     {
@@ -296,37 +194,14 @@
         }
     }
 
-    private async Task LoadFirstPage(DateOnly? date = null)
-    {
-        _photos = null;
-        _nextBefore = null;
-        var page = await Photos.LoadPageAsync(date: date, categoryId: _selectedCategoryId);
-        _photos = [..page.Items];
-        _nextBefore = page.NextBefore;
-    }
-
-    private async Task LoadMoreAsync()
-    {
-        if (_nextBefore is null || _loadingMore) return;
-        _loadingMore = true;
-        try
-        {
-            var date = _selectedDay.HasValue ? DateOnly.FromDateTime(_selectedDay.Value) : (DateOnly?)null;
-            var page = await Photos.LoadPageAsync(before: _nextBefore, date: date, categoryId: _selectedCategoryId);
-            _photos!.AddRange(page.Items);
-            _photosByName = _photos.ToDictionary(photo => photo.Name, StringComparer.Ordinal);
-            _nextBefore = page.NextBefore;
-        }
-        finally
-        {
-            _loadingMore = false;
-        }
-    }
-
     private async Task ReloadAsync()
     {
         var date = _selectedDay.HasValue ? DateOnly.FromDateTime(_selectedDay.Value) : (DateOnly?)null;
-        await LoadFirstPage(date);
+        _photos = null;
+        _nextBefore = null;
+        var page = await Photos.LoadPageAsync(date: date, groupName: _selectedGroupName);
+        _photos = [..page.Items];
+        _nextBefore = page.NextBefore;
         _groupTree = await Photos.LoadGroupTreeAsync();
         _childrenByParent = _groupTree
             .Where(node => !string.IsNullOrWhiteSpace(node.ParentGroupId))
@@ -334,9 +209,8 @@
             .ToDictionary(g => g.Key, g => g.ToArray());
         _photosByName = (_photos ?? [])
             .ToDictionary(photo => photo.Name, StringComparer.Ordinal);
-        _allCategories = await Photos.LoadCategoriesAsync();
-        _categoryById = _allCategories.ToDictionary(c => c.Id);
-        _groupCategories = await Photos.LoadGroupCategoriesAsync();
+        _allGroupNames = await Photos.LoadGroupNamesAsync();
+        _groupNameAssignments = await Photos.LoadGroupNameAssignmentsAsync();
         _photoCounts = await Photos.LoadPhotoCountsAsync();
     }
 
@@ -347,10 +221,29 @@
             .Where(node => !string.IsNullOrWhiteSpace(node.ParentGroupId))
             .GroupBy(node => node.ParentGroupId!)
             .ToDictionary(g => g.Key, g => g.ToArray());
-        _groupCategories = await Photos.LoadGroupCategoriesAsync();
-        _allCategories = await Photos.LoadCategoriesAsync();
-        _categoryById = _allCategories.ToDictionary(c => c.Id);
+        _groupNameAssignments = await Photos.LoadGroupNameAssignmentsAsync();
+        _allGroupNames = await Photos.LoadGroupNamesAsync();
     }
+
+    private async Task LoadMoreAsync()
+    {
+        if (_nextBefore is null || _loadingMore) return;
+        _loadingMore = true;
+        try
+        {
+            var date = _selectedDay.HasValue ? DateOnly.FromDateTime(_selectedDay.Value) : (DateOnly?)null;
+            var page = await Photos.LoadPageAsync(before: _nextBefore, date: date, groupName: _selectedGroupName);
+            _photos!.AddRange(page.Items);
+            _photosByName = _photos.ToDictionary(photo => photo.Name, StringComparer.Ordinal);
+            _nextBefore = page.NextBefore;
+        }
+        finally
+        {
+            _loadingMore = false;
+        }
+    }
+
+    // ── Derived data ─────────────────────────────────────────
 
     private bool HasVisiblePhotos(GroupTreeNodeDto node) =>
         GroupPhotos(node).Length > 0
@@ -370,9 +263,7 @@
             .ToArray();
 
     private GroupTreeNodeDto[] ChildGroups(string groupId) =>
-        _childrenByParent.TryGetValue(groupId, out var children)
-            ? children
-            : [];
+        _childrenByParent.TryGetValue(groupId, out var children) ? children : [];
 
     private PhotoInfo[] GroupPhotos(GroupTreeNodeDto node) =>
         node.Photos
@@ -381,117 +272,81 @@
             .OrderByDescending(photo => photo.LastModified)
             .ToArray();
 
-    private bool IsGroupVisible(string groupId)
+    private PhotoInfo[] UngroupedPhotos()
     {
-        if (_selectedCategoryId is null) return true;
-
-        var selectedCategoryId = _selectedCategoryId.Value;
-
-        if (AncestorHasCategory(groupId, selectedCategoryId)) return true;
-
-        return DescendantHasCategory(groupId, selectedCategoryId);
+        if (_selectedGroupName is not null) return [];
+        var groupedNames = _groupTree.SelectMany(g => g.Photos).ToHashSet(StringComparer.Ordinal);
+        return (_photos?.ToArray() ?? [])
+            .Where(p => !groupedNames.Contains(p.Name))
+            .OrderByDescending(p => p.LastModified)
+            .ToArray();
     }
 
-    private bool AncestorHasCategory(string groupId, int categoryId)
+    private string[] GetGroupNames(string groupId) =>
+        _groupNameAssignments.TryGetValue(groupId, out var names) ? names : [];
+
+    private bool IsGroupVisible(string groupId)
+    {
+        if (_selectedGroupName is null) return true;
+        return AncestorHasName(groupId, _selectedGroupName)
+            || DescendantHasName(groupId, _selectedGroupName);
+    }
+
+    private bool AncestorHasName(string groupId, string name)
     {
         var current = groupId;
         while (current is not null)
         {
-            if (_groupCategories.TryGetValue(current, out var cats) && cats.Contains(categoryId))
+            if (_groupNameAssignments.TryGetValue(current, out var n) && n.Contains(name))
                 return true;
-            var node = _groupTree.FirstOrDefault(n => n.GroupId == current);
-            current = node?.ParentGroupId;
+            current = _groupTree.FirstOrDefault(x => x.GroupId == current)?.ParentGroupId;
         }
         return false;
     }
 
-    private bool DescendantHasCategory(string groupId, int categoryId)
+    private bool DescendantHasName(string groupId, string name)
     {
         var children = _childrenByParent.TryGetValue(groupId, out var c) ? c : [];
         return children.Any(child =>
-            (_groupCategories.TryGetValue(child.GroupId, out var cats) && cats.Contains(categoryId))
-            || DescendantHasCategory(child.GroupId, categoryId));
+            (_groupNameAssignments.TryGetValue(child.GroupId, out var n) && n.Contains(name))
+            || DescendantHasName(child.GroupId, name));
     }
 
-    private PhotoInfo[] UngroupedPhotos()
-    {
-        // When filtering by category, hide ungrouped photos entirely
-        if (_selectedCategoryId is not null) return [];
+    // ── Filter / calendar ────────────────────────────────────
 
-        var groupedNames = _groupTree
-            .SelectMany(group => group.Photos)
-            .ToHashSet(StringComparer.Ordinal);
-
-        return VisiblePhotos()
-            .Where(photo => !groupedNames.Contains(photo.Name))
-            .OrderByDescending(photo => photo.LastModified)
-            .ToArray();
-    }
-
-    private PhotoInfo[] VisiblePhotos() => _photos?.ToArray() ?? [];
-
-    private static DateTime PhotoDate(PhotoInfo photo)
-    {
-        if (photo.Name.Length >= 8
-            && DateTime.TryParseExact(
-                photo.Name[..8],
-                "yyyyMMdd",
-                CultureInfo.InvariantCulture,
-                DateTimeStyles.None,
-                out var fromName))
-        {
-            return fromName.Date;
-        }
-
-        return photo.LastModified.ToLocalTime().Date;
-    }
-
-    private string CalendarButtonLabel()
-    {
-        if (_selectedDay is not null)
-            return _selectedDay.Value.ToString("dd MMM yyyy", CultureInfo.InvariantCulture);
-        return "Calendar";
-    }
+    private string CalendarButtonLabel() =>
+        _selectedDay is not null
+            ? _selectedDay.Value.ToString("dd MMM yyyy", CultureInfo.InvariantCulture)
+            : "Calendar";
 
     private void ToggleCalendar() => _calendarOpen = !_calendarOpen;
 
-    private void PrevMonth() => _calendarMonth = _calendarMonth.AddMonths(-1);
-    private void NextMonth() => _calendarMonth = _calendarMonth.AddMonths(1);
-
-    private DateTime?[] CalendarCells()
+    private async Task SelectDate(DateTime day)
     {
-        var first = new DateTime(_calendarMonth.Year, _calendarMonth.Month, 1);
-        var offset = ((int)first.DayOfWeek + 6) % 7;
-        var daysInMonth = DateTime.DaysInMonth(first.Year, first.Month);
-        var cells = new DateTime?[offset + daysInMonth];
-        for (var i = 0; i < offset; i++) cells[i] = null;
-        for (var d = 1; d <= daysInMonth; d++) cells[offset + d - 1] = new DateTime(first.Year, first.Month, d);
-        return cells;
-    }
-
-    private int GetPhotoCount(DateTime day) =>
-        _photoCounts.TryGetValue(DateOnly.FromDateTime(day), out var count) ? count : 0;
-
-    private static string DayStyle(bool isSelected, bool hasPhotos)
-    {
-        var baseStyle = "all: unset; width: 32px; height: 38px; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 8px; font-size: 0.85rem; box-sizing: border-box; cursor: pointer; position: relative; gap: 0;";
-        if (isSelected)
-            return baseStyle + " background: #1d4ed8; color: #fff; font-weight: 700;";
-        if (hasPhotos)
-            return baseStyle + " background: #e0f2fe; color: #0284c7; font-weight: 600;";
-        return baseStyle + " color: #1f2937;";
-    }
-
-    private async Task SelectDate(DateTime? day)
-    {
-        _selectedDay = day?.Date;
-        if (day is not null)
-        {
-            _calendarMonth = new DateTime(day.Value.Year, day.Value.Month, 1);
-            _calendarOpen = false;
-        }
+        _selectedDay = day.Date;
+        _calendarOpen = false;
         await ReloadAsync();
     }
+
+    private async Task ClearFilters()
+    {
+        _selectedDay = null;
+        _selectedGroupName = null;
+        await ReloadAsync();
+    }
+
+    private async Task OnGroupNameFilterChanged(ChangeEventArgs e)
+    {
+        var val = e.Value?.ToString();
+        _selectedGroupName = string.IsNullOrEmpty(val) ? null : val;
+        await ReloadAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    // ── Actions ──────────────────────────────────────────────
+
+    private void StartDrag(string name) => _draggedPhotoName = name;
+    private void EndDrag() => _draggedPhotoName = null;
 
     private void OpenLightbox(PhotoInfo photo)
     {
@@ -499,53 +354,28 @@
         _lightboxPhoto = photo;
     }
 
-    private void CloseLightbox()
-    {
-        _lightboxPhoto = null;
-    }
-
-    private void StartDrag(string photoName)
-    {
-        _draggedPhotoName = photoName;
-    }
-
-    private void EndDrag()
-    {
-        _draggedPhotoName = null;
-    }
+    private void CloseLightbox() => _lightboxPhoto = null;
 
     private async Task DropOn(string targetName)
     {
         if (string.IsNullOrWhiteSpace(_draggedPhotoName) || _draggedPhotoName == targetName)
-        {
-            _draggedPhotoName = null;
-            return;
-        }
+        { _draggedPhotoName = null; return; }
 
-        var sourceName = _draggedPhotoName;
+        var source = _draggedPhotoName;
         _draggedPhotoName = null;
-
-        if (await Photos.GroupAsync(sourceName, targetName))
-        {
+        if (await Photos.GroupAsync(source, targetName))
             await RefreshGroupsAsync();
-        }
     }
 
     private async Task DropIntoGroup(string targetGroupId)
     {
         if (string.IsNullOrWhiteSpace(_draggedPhotoName))
-        {
-            _draggedPhotoName = null;
-            return;
-        }
+        { _draggedPhotoName = null; return; }
 
-        var sourceName = _draggedPhotoName;
+        var source = _draggedPhotoName;
         _draggedPhotoName = null;
-
-        if (await Photos.MovePhotoToGroupAsync(sourceName, targetGroupId))
-        {
+        if (await Photos.MovePhotoToGroupAsync(source, targetGroupId))
             await RefreshGroupsAsync();
-        }
     }
 
     private async Task DeletePhoto(PhotoInfo photo)
@@ -561,69 +391,19 @@
     private async Task UngroupPhoto(PhotoInfo photo)
     {
         if (await Photos.UngroupAsync(photo.Name))
-        {
             await RefreshGroupsAsync();
-        }
     }
 
-    private string[] GetGroupCategoryNames(string groupId)
+    private async Task AssignName((string GroupId, string Name) args)
     {
-        if (string.IsNullOrEmpty(groupId)) return [];
-        if (!_groupCategories.TryGetValue(groupId, out var catIds)) return [];
-        return catIds.Where(_categoryById.ContainsKey).Select(id => _categoryById[id].Name).ToArray();
-    }
-
-    private CategoryDto[] GetGroupCategories(string groupId)
-    {
-        if (string.IsNullOrEmpty(groupId)) return [];
-        if (!_groupCategories.TryGetValue(groupId, out var catIds)) return [];
-        return catIds.Where(_categoryById.ContainsKey).Select(id => _categoryById[id]).ToArray();
-    }
-
-    private void StartAssigningCategory(string groupId)
-    {
-        _assigningGroupId = groupId;
-        _categoryInput = "";
-    }
-
-    private async Task SaveCategory()
-    {
-        if (string.IsNullOrWhiteSpace(_assigningGroupId) || string.IsNullOrWhiteSpace(_categoryInput)) return;
-        if (await Photos.AssignCategoryAsync(_assigningGroupId, _categoryInput.Trim()))
-        {
-            _assigningGroupId = null;
-            _categoryInput = "";
+        if (await Photos.AssignGroupNameAsync(args.GroupId, args.Name))
             await RefreshGroupsAsync();
-        }
     }
 
-    private async Task OnCategoryKeyDown(Microsoft.AspNetCore.Components.Web.KeyboardEventArgs e)
+    private async Task RemoveName((string GroupId, string Name) args)
     {
-        if (e.Key == "Enter") await SaveCategory();
-        if (e.Key == "Escape") _assigningGroupId = null;
-    }
-
-    private async Task RemoveGroupCategory(string groupId, int categoryId)
-    {
-        if (await Photos.RemoveCategoryAsync(groupId, categoryId))
-        {
+        if (await Photos.RemoveGroupNameAsync(args.GroupId, args.Name))
             await RefreshGroupsAsync();
-        }
-    }
-
-    private async Task ClearFilters()
-    {
-        _selectedDay = null;
-        _selectedCategoryId = null;
-        await ReloadAsync();
-    }
-
-    private async Task OnCategoryFilterChanged(ChangeEventArgs e)
-    {
-        var val = e.Value?.ToString();
-        _selectedCategoryId = int.TryParse(val, out var id) ? id : null;
-        await ReloadAsync();
-        await InvokeAsync(StateHasChanged);
     }
 
     public async ValueTask DisposeAsync()
@@ -635,8 +415,6 @@
         }
         _dotNetRef?.Dispose();
         if (_hubConnection is not null)
-        {
             await _hubConnection.DisposeAsync();
-        }
     }
 }
