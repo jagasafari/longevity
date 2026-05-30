@@ -1,16 +1,16 @@
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+FROM node:22-alpine AS build
 WORKDIR /src
 
-COPY web.csproj .
-RUN dotnet restore
+COPY package.json package-lock.json* ./
+RUN npm install --no-audit --no-fund
 
 COPY . .
-RUN dotnet publish -c Release -o /app/publish
+RUN npm run build
 
 FROM nginx:alpine
 WORKDIR /usr/share/nginx/html
 
-COPY --from=build /app/publish/wwwroot .
+COPY --from=build /src/dist ./
 COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
 
 ARG APP_INSIGHTS_CONN_STR
