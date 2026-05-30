@@ -6,6 +6,14 @@
 
 # Longevity App
 
+[![GitHub stars](https://img.shields.io/github/stars/jagasafari/longevity?style=social)](https://github.com/jagasafari/longevity/stargazers)
+
+<p align="center">
+  <img src="docs/poster.png" alt="Longevity App Architecture" width="800" />
+</p>
+
+> If this project is useful or interesting to you, consider giving it a ⭐ on GitHub — it helps others discover it!
+
 Personal photo gallery: upload to Azure Storage, auto-generate thumbnails, browse in real time via a React + TypeScript SPA.
 
 ## Chapters
