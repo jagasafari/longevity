@@ -38,10 +38,10 @@ function NavTab({
     <button
       onClick={onClick}
       className={[
-        'px-4 py-1.5 text-sm rounded-sm transition-colors',
+        'px-3 pb-1 text-sm border-b-2 transition-colors',
         active
-          ? 'bg-accent text-paper'
-          : 'text-muted hover:text-ink',
+          ? 'border-accent text-ink font-medium'
+          : 'border-transparent text-muted hover:text-ink',
       ].join(' ')}
     >
       {children}

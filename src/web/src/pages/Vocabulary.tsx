@@ -9,7 +9,6 @@ import {
   useInvalidateAll,
   useMe,
   useVocabularyGroupIds,
-  useRemoveFromVocabulary,
   useCategories,
   useGroupCategories,
 } from '../api/hooks'
@@ -84,7 +83,6 @@ function VocabularyContent() {
   const moveMut = useMoveToGroup()
   const deleteMut = useDeletePhoto()
   const ungroupMut = useUngroup()
-  const removeFromVocab = useRemoveFromVocabulary()
 
   const handlers: GroupSectionHandlers = {
     onStartDrag: (name) => ui.startDrag(name),
@@ -150,13 +148,6 @@ function VocabularyContent() {
               <h2 className="text-lg m-0">
                 {groupCategoryList(node.groupId).map((c) => c.name).join(', ') || 'Group'}
               </h2>
-              <button
-                type="button"
-                onClick={() => removeFromVocab.mutate(node.groupId)}
-                className="px-2 py-0.5 text-xs rounded-sm border border-rule text-muted hover:text-danger hover:border-danger"
-              >
-                − Vocabulary
-              </button>
             </header>
           }
         />
