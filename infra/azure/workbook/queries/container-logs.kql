@@ -2,5 +2,5 @@ ContainerLogV2
 | where TimeGenerated {TimeRange}
 | where PodNamespace == "{Namespace}"
 | where ContainerName in ({Container})
-| project TimeGenerated, PodName, LogEntry = tostring(LogMessage)
+| project TimeGenerated, Container = ContainerName, LogEntry = tostring(LogMessage)
 | order by TimeGenerated desc

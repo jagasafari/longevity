@@ -40,11 +40,11 @@ parameters:
     kind: dropdown
     multi_select: true
     values:
-      - backend
+      - photo-api
       - thumbnail-worker
       - nginx
       - redis
-    default: backend
+    default: photo-api
 
 queries:
   - file: container-logs.kql
@@ -52,7 +52,7 @@ queries:
     visualization: table
     column_formatters:
       TimeGenerated: "20ch"
-      PodName: "35ch"
+      Container: "20ch"
       LogEntry: "500ch"
     sort_by: TimeGenerated
 
