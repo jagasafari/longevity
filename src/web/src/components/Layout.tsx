@@ -5,19 +5,21 @@ import { useUi } from '../store/ui'
 export function Layout({ children }: { children: ReactNode }) {
   const { view, setView } = useUi()
   return (
-    <div className="min-h-full max-w-5xl mx-auto px-6 py-6">
-      <header className="flex items-baseline justify-between mb-4 pb-3 border-b border-rule">
-        <h1 className="text-2xl">Longevity</h1>
+    <div className="min-h-full px-6 py-4">
+      <header className="flex items-center justify-between mb-6 pb-3 border-b border-rule">
+        <div className="flex items-baseline gap-6">
+          <h1 className="text-2xl">Longevity</h1>
+          <nav className="flex gap-0.5">
+            <NavTab active={view === 'gallery'} onClick={() => setView('gallery')}>
+              Gallery
+            </NavTab>
+            <NavTab active={view === 'vocabulary'} onClick={() => setView('vocabulary')}>
+              Vocabulary
+            </NavTab>
+          </nav>
+        </div>
         <LoginDisplay />
       </header>
-      <nav className="flex gap-1 mb-6">
-        <NavTab active={view === 'gallery'} onClick={() => setView('gallery')}>
-          Gallery
-        </NavTab>
-        <NavTab active={view === 'vocabulary'} onClick={() => setView('vocabulary')}>
-          Vocabulary
-        </NavTab>
-      </nav>
       <main>{children}</main>
     </div>
   )
