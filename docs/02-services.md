@@ -4,40 +4,51 @@
 
 ---
 
-## Frontend — Blazor WebAssembly
+## Frontend — React + TypeScript SPA
 
 **Source:** [src/web](../src/web)
 
-A Blazor WebAssembly single-page application served as static files by nginx.
-The `.wasm` bundle runs entirely in the browser — no server-side rendering.
+A Vite-built React + TypeScript single-page application served as static
+files by nginx. All logic runs client-side; the backend is hit only for
+data and auth.
+
+### Stack
+
+- Vite 6 + React 19 + TypeScript (strict)
+- TanStack Query v5 (server state, infinite pagination)
+- Zustand (UI state)
+- Zod (runtime validation at API boundaries)
+- Tailwind CSS v4 (CSS-first `@theme` config)
+- `@microsoft/signalr` for the `/hubs/photos` real-time channel
+- Vitest + Testing Library
 
 ### Pages & components
 
-| Path | File | Purpose |
-|------|------|---------|
-| `/` | [Pages/Home.razor](../src/web/Pages/Home.razor) | Photo gallery with group tree |
-| `*` (not found) | [Pages/NotFound.razor](../src/web/Pages/NotFound.razor) | 404 fallback |
-
-| Component | File | Purpose |
-|-----------|------|---------|
-| `LoginDisplay` | [Components/LoginDisplay.razor](../src/web/Components/LoginDisplay.razor) | Auth status bar (email / sign-in link) |
-| `PhotoCard` | [Components/PhotoCard.razor](../src/web/Components/PhotoCard.razor) | Single photo tile with thumbnail |
-| `GroupTreeNode` | [Components/GroupTreeNode.razor](../src/web/Components/GroupTreeNode.razor) | Recursive node in the group tree sidebar |
-| `RootGroupSection` | [Components/RootGroupSection.razor](../src/web/Components/RootGroupSection.razor) | Top-level group section wrapper |
-| `CalendarPopup` | [Components/CalendarPopup.razor](../src/web/Components/CalendarPopup.razor) | Date-picker for filtering photos by day |
+| File | Purpose |
+|------|---------|
+| [src/web/src/pages/Home.tsx](../src/web/src/pages/Home.tsx) | Photo gallery with group tree, filters, calendar |
+| [src/web/src/components/Layout.tsx](../src/web/src/components/Layout.tsx) | Page shell with sign-in / sign-out bar |
+| [src/web/src/components/PhotoCard.tsx](../src/web/src/components/PhotoCard.tsx) | Single photo tile with thumbnail + drag handlers |
+| [src/web/src/components/GroupSection.tsx](../src/web/src/components/GroupSection.tsx) | Recursive group section (renders subgroups + photos) |
+| [src/web/src/components/GroupHeader.tsx](../src/web/src/components/GroupHeader.tsx) | Group title + category chips + assign UI |
+| [src/web/src/components/CalendarPopup.tsx](../src/web/src/components/CalendarPopup.tsx) | Date-picker for filtering photos by day |
+| [src/web/src/components/Lightbox.tsx](../src/web/src/components/Lightbox.tsx) | Full-size view |
+| [src/web/src/api/client.ts](../src/web/src/api/client.ts) | Typed fetch client + Zod parsing |
+| [src/web/src/api/hooks.ts](../src/web/src/api/hooks.ts) | TanStack Query hooks for every endpoint |
+| [src/web/src/api/signalr.ts](../src/web/src/api/signalr.ts) | SignalR `PhotosChanged` subscription |
 
 ### nginx configuration
 
-nginx serves the static Blazor bundle and applies a `try_files` catch-all so
-all unknown paths return `index.html` (required for SPA client-side routing).
-See [src/web/docker](../src/web/docker) for the nginx config.
+nginx serves the static Vite build output and applies a `try_files`
+catch-all so unknown paths return `index.html` (required for SPA
+client-side routing). See [src/web/docker](../src/web/docker).
 
 ### Service topology
 
 ```mermaid
 graph LR
    subgraph Browser
-      Blazor[Blazor WASM App]
+      SPA[React SPA]
    end
 
    subgraph Frontend Pod
@@ -48,11 +59,12 @@ graph LR
       API[F# API :8080]
    end
 
-   Blazor -->|index.html + .wasm| Nginx
-   Blazor -->|GET /api/*| API
-   Blazor -->|GET /auth/*| API
+   SPA -->|index.html + JS bundle| Nginx
+   SPA -->|GET /api/*| API
+   SPA -->|GET /auth/*| API
+   SPA -->|WebSocket /hubs/photos| API
 
-   style Blazor fill:#4a6fa5,color:#fff
+   style SPA fill:#4a6fa5,color:#fff
    style Nginx fill:#2d8659,color:#fff
    style API fill:#8a5a44,color:#fff
 ```
@@ -61,40 +73,30 @@ graph LR
 
 ```mermaid
 sequenceDiagram
-    participant SPA as Blazor SPA (Browser)
+    participant SPA as React SPA (Browser)
     participant Ingress as nginx Ingress
     participant Files as Static Files (nginx)
     participant BE as Backend Pod (F# API)
 
-    Note over SPA: Single-page application running client-side in browser
+    Note over SPA: Single-page application running client-side
 
     Note over SPA,Files: Initial Page Load
 
     SPA->>Ingress: GET /
     Ingress->>Files: Route to frontend-svc
-    Files-->>SPA: index.html + Blazor WASM bundle
-    Note right of Files: ~5 MB first load .NET runtime + app DLLs
-    SPA->>SPA: Blazor initializes in browser
+    Files-->>SPA: index.html + Vite JS/CSS bundle
+    Note right of Files: ~110 KB gzip first load
+    SPA->>SPA: React hydrates, TanStack Query boots
 
-    Note over SPA,BE: Client-Side Navigation
-
-    SPA->>SPA: Click "Weather" tab
-    Note right of SPA: Blazor handles routing client-side (no server roundtrip)
-    SPA->>Ingress: GET /api/weatherforecast
+    Note over SPA,BE: Data fetch
+    SPA->>Ingress: GET /api/photos?limit=...
     Ingress->>BE: Route to backend-svc
-    BE-->>SPA: JSON forecast array
-    SPA->>SPA: Blazor renders table
+    BE-->>SPA: JSON page (validated client-side via Zod)
 
     Note over SPA,BE: Deep Link / Refresh
-
-    SPA->>Ingress: GET /weather (browser refresh)
+    SPA->>Ingress: GET /some/path (browser refresh)
     Ingress->>Files: Route to frontend-svc
-    Files-->>SPA: index.html (nginx try_files fallback)
-    Note right of Files: nginx returns index.html for all unknown paths (SPA catch-all)
-    SPA->>SPA: Blazor boots, reads /weather route
-    SPA->>Ingress: GET /api/weatherforecast
-    Ingress->>BE: Route to backend-svc
-    BE-->>SPA: JSON data
+    Files-->>SPA: index.html (try_files fallback)
 ```
 
 ### Authentication in the SPA
@@ -102,54 +104,31 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
    participant User
-   participant SPA as Blazor SPA (Browser)
+   participant SPA as React SPA (Browser)
    participant BE as Backend (F# API)
 
-   Note over SPA: LoginDisplay component renders in MainLayout top bar
-
    Note over User,BE: Check session on page load
-
-   SPA->>SPA: LoginDisplay.OnInitializedAsync
-   SPA->>SPA: AuthService.CheckAsync()
    SPA->>BE: GET /auth/me (cookie auto-attached)
-   Note right of SPA: Browser sends encrypted cookie if it exists — the cookie IS the session
-
-   alt Cookie present -> session active
-      BE->>BE: Decrypt cookie -> ClaimsPrincipal
+   alt Cookie present
       BE-->>SPA: { email }
-      SPA->>SPA: AuthState = (true, email)
       SPA->>User: Shows email + "Sign out"
-   else No cookie -> no session
+   else No cookie
       BE-->>SPA: 401
-      SPA->>SPA: AuthState = (false, null)
       SPA->>User: Shows "Sign in with Google"
    end
 
-   Note over User,BE: Sign in (session created)
-
+   Note over User,BE: Sign in
    User->>SPA: Clicks "Sign in with Google"
    SPA->>BE: Browser navigates to /auth/login
-   Note right of SPA: Full-page navigation, not an SPA fetch — browser follows 302 chain
    BE-->>SPA: 302 -> Google -> consent -> callback
-   BE->>BE: SignInAsync -> new session cookie
-   Note right of BE: Session = encrypted cookie containing ClaimsIdentity. No server-side storage.
    BE-->>SPA: 302 Redirect / + Set-Cookie
-   SPA->>SPA: Blazor re-initializes
-   SPA->>BE: GET /auth/me (new cookie = session)
+   SPA->>BE: GET /auth/me (new cookie)
    BE-->>SPA: { email }
-   SPA->>User: Shows email + "Sign out"
 
-   Note over User,BE: Sign out (session destroyed)
-
+   Note over User,BE: Sign out
    User->>SPA: Clicks "Sign out"
-   SPA->>BE: POST /auth/logout (form submit)
-   BE->>BE: SignOutAsync -> Set-Cookie: expired
-   Note right of BE: Cookie deleted by browser. No server state to clean up — session simply ceases to exist.
-   BE-->>SPA: 302 Redirect /
-   SPA->>SPA: Blazor re-initializes
-   SPA->>BE: GET /auth/me (no cookie)
-   BE-->>SPA: 401
-   SPA->>User: Shows "Sign in with Google"
+   SPA->>BE: POST /auth/logout
+   BE-->>SPA: 302 Redirect / + expired cookie
 ```
 
 ---

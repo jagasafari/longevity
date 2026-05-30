@@ -16,7 +16,7 @@ updates to the browser via SignalR.
 ```mermaid
 graph TB
     subgraph Internet
-        User[Blazor SPA<br/>in Browser]
+        User[React SPA<br/>in Browser]
     end
 
     subgraph Azure
@@ -24,7 +24,7 @@ graph TB
             ING[nginx Ingress<br/>:443 TLS]
 
             subgraph Frontend
-                FE[nginx<br/>Blazor WASM]
+                FE[nginx<br/>React + TS SPA]
             end
 
             subgraph Backend
@@ -95,7 +95,7 @@ graph TB
 
 | Layer | Technology |
 |-------|------------|
-| Frontend | Blazor WebAssembly (.NET 10), nginx |
+| Frontend | React 19 + TypeScript (Vite), nginx |
 | Backend API | F# / ASP.NET Core Minimal API (.NET 10) |
 | Background worker | F# / .NET Generic Host |
 | Database | PostgreSQL (in-cluster) — photo groups |
@@ -138,7 +138,7 @@ graph LR
     ROOT --- DOCS
     INFRA --- HELM
 
-    WEB -.- WD[Blazor WASM + nginx]
+    WEB -.- WD[React + TS SPA + nginx]
     API -.- AD[F# Minimal API]
     WORKER -.- WOD[Thumbnail worker]
     TESTS -.- TD[Unit + smoke + e2e tests]
@@ -160,7 +160,7 @@ longevity-app/
 ├── src/
 │   ├── photo-api/          ← F# backend API      → docs/02-services.md
 │   ├── thumbnail-worker/   ← F# thumbnail worker  → docs/02-services.md
-│   └── web/                ← Blazor WASM frontend → docs/02-services.md
+│   └── web/                ← React + TS frontend   → docs/02-services.md
 ├── infra/
 │   ├── azure/              ← Bicep modules        → docs/06-infrastructure.md
 │   ├── k8s/                ← Helm + K8s manifests → docs/06-infrastructure.md
@@ -176,7 +176,7 @@ longevity-app/
 
 ```mermaid
 sequenceDiagram
-    participant SPA as Blazor SPA (Browser)
+    participant SPA as React SPA (Browser)
     participant ING as nginx Ingress (:443)
     participant Files as Static Files (nginx)
     participant BE as Backend (F# API)
@@ -188,7 +188,7 @@ sequenceDiagram
 
     SPA->>ING: GET / (HTTPS)
     ING->>Files: Route to frontend-svc
-    Files-->>SPA: index.html + Blazor WASM
+    Files-->>SPA: index.html + JS bundle
 
     Note over SPA,BE: API Call
 

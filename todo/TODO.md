@@ -23,27 +23,3 @@ automatically after a deployment completes.
 - [ ] Wire the above into a GitHub Actions workflow that triggers on
       merge to `main`
 
----
-
-## 2. Rewrite frontend to React + TypeScript
-
-Goal: replace Blazor WASM with React + TypeScript to eliminate scoped-CSS
-footguns, reduce initial load size (~10 MB WASM → small JS bundle), and
-get a better component/styling DX.
-
-Keep the F# backend and SignalR hub unchanged.
-
-### Tasks
-- [ ] Scaffold a Vite + React + TypeScript app in `src/web-react/`
-- [ ] Replace `PhotoService.cs` with typed `fetch` wrappers (one file
-      per resource: `groups.ts`, `photos.ts`, `groupNames.ts`)
-- [ ] Connect to the `PhotoHub` SignalR endpoint using
-      `@microsoft/signalr` — subscribe to `PhotosChanged` and
-      invalidate the query cache
-- [ ] Port components: `PhotoCard`, `GroupTreeNode`, `RootGroupSection`,
-      `CalendarPopup`, `Home` (main page)
-- [ ] Move all styles from `app.css` into co-located CSS modules or
-      Tailwind classes — no global style leakage
-- [ ] Update `Dockerfile` and Helm chart to serve the new Vite build
-      output instead of Blazor's `wwwroot`
-- [ ] Delete `src/web/` once the React app is verified in production

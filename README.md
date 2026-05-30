@@ -6,7 +6,7 @@
 
 # Longevity App
 
-Personal photo gallery: upload to Azure Storage, auto-generate thumbnails, browse in real time via Blazor WebAssembly.
+Personal photo gallery: upload to Azure Storage, auto-generate thumbnails, browse in real time via a React + TypeScript SPA.
 
 ## Chapters
 
@@ -30,7 +30,7 @@ Personal photo gallery: upload to Azure Storage, auto-generate thumbnails, brows
 
 ```
 src/photo-api/          F# ASP.NET Core API
-src/web/                Blazor WebAssembly frontend
+src/web/                React + TypeScript frontend
 src/thumbnail-worker/   F# background thumbnail worker
 infra/azure/            Bicep infrastructure
 infra/k8s/              Helm chart and Kubernetes manifests

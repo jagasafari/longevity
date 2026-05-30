@@ -22,7 +22,7 @@ sequenceDiagram
     participant Thumb as Azure Blob (thumbnails)
     participant Redis as Redis
     participant BE as Backend
-    participant SPA as Blazor SPA
+    participant SPA as React SPA
 
     Note over Phone,Blob: Upload
 
@@ -113,7 +113,7 @@ Identity and issues short-lived **User Delegation SAS** tokens.
 
 ```mermaid
 sequenceDiagram
-    participant SPA as Blazor SPA
+    participant SPA as React SPA
     participant App as Backend (F# API)
     participant AAD as Entra ID
     participant Blob as Blob Storage

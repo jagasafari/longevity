@@ -24,7 +24,7 @@ graph TB
             ING[nginx Ingress Controller<br/>LoadBalancer :443]
         end
         subgraph longevity namespace
-            FE[frontend-deployment<br/>nginx + Blazor WASM]
+            FE[frontend-deployment<br/>nginx + React + TS SPA]
             BE[backend-deployment<br/>F# API]
             SEC1[TLS Secret<br/>via ExternalSecret]
             SEC2[OAuth Secret<br/>via ExternalSecret]
