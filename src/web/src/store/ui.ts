@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import type { PhotoInfo } from '../api/schemas'
 
 type UiState = {
+  view: 'gallery' | 'vocabulary'
   selectedDay: Date | null
   selectedCategoryId: number | null
   draggedPhotoName: string | null
@@ -20,11 +21,13 @@ type UiState = {
   startAssigning: (groupId: string | null) => void
   setCategoryInput: (v: string) => void
   clearFilters: () => void
+  setView: (v: 'gallery' | 'vocabulary') => void
 }
 
 const firstOfMonth = (d: Date): Date => new Date(d.getFullYear(), d.getMonth(), 1)
 
 export const useUi = create<UiState>((set) => ({
+  view: 'gallery',
   selectedDay: null,
   selectedCategoryId: null,
   draggedPhotoName: null,
@@ -48,4 +51,5 @@ export const useUi = create<UiState>((set) => ({
   startAssigning: (groupId) => set({ assigningGroupId: groupId, categoryInput: '' }),
   setCategoryInput: (v) => set({ categoryInput: v }),
   clearFilters: () => set({ selectedDay: null, selectedCategoryId: null }),
+  setView: (v) => set({ view: v, selectedDay: null, selectedCategoryId: null }),
 }))

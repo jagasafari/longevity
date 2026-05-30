@@ -82,3 +82,17 @@ export const ungroupedPhotos = (
     .filter((p) => !grouped.has(p.name))
     .sort((a, b) => b.lastModified.localeCompare(a.lastModified))
 }
+
+export const groupsWithCategory = (
+  tree: GroupTreeNode[],
+  groupCategories: Record<string, number[]>,
+  categoryId: number,
+): Set<string> => {
+  const result = new Set<string>()
+  for (const node of tree) {
+    if ((groupCategories[node.groupId] ?? []).includes(categoryId)) {
+      result.add(node.groupId)
+    }
+  }
+  return result
+}

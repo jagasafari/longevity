@@ -25,6 +25,7 @@ import {
   photosByName,
   rootGroups,
   ungroupedPhotos,
+  groupsWithCategory,
 } from '../lib/groupTree'
 import { CalendarPopup, dayLabel } from '../components/CalendarPopup'
 import { GroupHeader } from '../components/GroupHeader'
@@ -74,10 +75,24 @@ function SignedInHome() {
     [categories],
   )
 
+  const vocabularyCategoryId = useMemo(
+    () => categories.find((c) => c.name.toLowerCase() === 'vocabulary')?.id ?? null,
+    [categories],
+  )
+
+  const vocabGroupIds = useMemo(
+    () =>
+      vocabularyCategoryId !== null
+        ? groupsWithCategory(tree, groupCats, vocabularyCategoryId)
+        : new Set<string>(),
+    [tree, groupCats, vocabularyCategoryId],
+  )
+
   const isVisible = useCallback(
     (gid: string) =>
+      !vocabGroupIds.has(gid) &&
       isGroupVisible(gid, ui.selectedCategoryId, groupCats, children),
-    [ui.selectedCategoryId, groupCats, children],
+    [ui.selectedCategoryId, groupCats, children, vocabGroupIds],
   )
 
   const visibleRoots = useMemo(
