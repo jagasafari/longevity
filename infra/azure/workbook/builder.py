@@ -122,15 +122,27 @@ def group_item(i, spec, query):
         "name": f"group - {i} - {spec['title']}",
     }
 
+def clock_item():
+    return {
+        "type": 1,
+        "content": {
+            "json": "Local time: **{now:hh:mm tt}** &nbsp;&nbsp; {now:dddd, d MMMM yyyy}",
+        },
+        "name": "text - local time",
+    }
+
 params = cfg.get("parameters", [])
 time_param_name = next(
     (p["name"] for p in params if p.get("kind", "timerange") == "timerange"),
     None
 )
 foldable_sections = cfg.get("foldable_sections", False)
+show_clock = cfg.get("show_local_time", False)
 items = []
 if params:
     items.append(param_item(params))
+if show_clock:
+    items.append(clock_item())
 for i, spec in enumerate(cfg["queries"]):
     query = query_item(i, spec, time_param_name)
     items.append(group_item(i, spec, query) if foldable_sections else query)
