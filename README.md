@@ -12,8 +12,6 @@
   <img src="docs/poster.png" alt="Longevity App Architecture" width="800" />
 </p>
 
-> If this project is useful or interesting to you, consider giving it a ⭐ on GitHub — it helps others discover it!
-
 Personal photo gallery: upload to Azure Storage, auto-generate thumbnails, browse in real time via a React + TypeScript SPA.
 
 ## Chapters
