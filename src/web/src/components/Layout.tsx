@@ -40,7 +40,7 @@ function NavTab({
       className={[
         'px-4 py-1.5 text-sm rounded-sm transition-colors',
         active
-          ? 'bg-ink text-paper'
+          ? 'bg-accent text-paper'
           : 'text-muted hover:text-ink',
       ].join(' ')}
     >

@@ -10,6 +10,8 @@ import {
   useMe,
   useVocabularyGroupIds,
   useRemoveFromVocabulary,
+  useCategories,
+  useGroupCategories,
 } from '../api/hooks'
 import { usePhotosHub } from '../api/signalr'
 import { useUi } from '../store/ui'
@@ -39,6 +41,8 @@ function VocabularyContent() {
   const photosQuery = usePhotos(null)
   const groupTreeQuery = useGroupTree()
   const vocabQuery = useVocabularyGroupIds()
+  const categoriesQuery = useCategories()
+  const groupCategoriesQuery = useGroupCategories()
 
   const allPhotos: PhotoInfo[] = useMemo(
     () => photosQuery.data?.pages.flatMap((p) => p.items) ?? [],
@@ -52,6 +56,17 @@ function VocabularyContent() {
     () => new Set(vocabQuery.data ?? []),
     [vocabQuery.data],
   )
+
+  const categories = categoriesQuery.data ?? []
+  const groupCats = groupCategoriesQuery.data ?? {}
+  const categoryById = useMemo(
+    () => new Map(categories.map((c) => [c.id, c])),
+    [categories],
+  )
+  const groupCategoryList = (gid: string) =>
+    (groupCats[gid] ?? [])
+      .map((id) => categoryById.get(id))
+      .filter((c): c is NonNullable<typeof c> => c !== undefined)
 
   const isVisible = useCallback(
     (gid: string) => vocabGroupIds.has(gid),
@@ -132,7 +147,9 @@ function VocabularyContent() {
           handlers={handlers}
           header={
             <header className="flex items-center gap-3 mb-3">
-              <h2 className="text-lg m-0">{node.groupId}</h2>
+              <h2 className="text-lg m-0">
+                {groupCategoryList(node.groupId).map((c) => c.name).join(', ') || 'Group'}
+              </h2>
               <button
                 type="button"
                 onClick={() => removeFromVocab.mutate(node.groupId)}
