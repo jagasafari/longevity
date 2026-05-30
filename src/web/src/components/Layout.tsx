@@ -1,6 +1,7 @@
+import type { ReactNode } from 'react'
 import { useMe } from '../api/hooks'
 
-export function Layout({ children }: { children: React.ReactNode }) {
+export function Layout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-full max-w-5xl mx-auto px-6 py-6">
       <header className="flex items-baseline justify-between mb-8 pb-3 border-b border-rule">

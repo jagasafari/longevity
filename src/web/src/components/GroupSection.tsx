@@ -1,4 +1,5 @@
-import type { Category, GroupTreeNode, PhotoInfo } from '../api/schemas'
+import type { ReactNode } from 'react'
+import type { GroupTreeNode, PhotoInfo } from '../api/schemas'
 import { PhotoCard } from './PhotoCard'
 
 export type GroupSectionHandlers = {
@@ -16,12 +17,11 @@ type Props = {
   depth: number
   photos: PhotoInfo[]
   children: GroupTreeNode[]
-  categories: Category[]
   childrenByParent: Map<string, GroupTreeNode[]>
   photosByName: Map<string, PhotoInfo>
   isVisible: (groupId: string) => boolean
   handlers: GroupSectionHandlers
-  header?: React.ReactNode
+  header?: ReactNode
 }
 
 export function GroupSection({
@@ -29,7 +29,6 @@ export function GroupSection({
   depth,
   photos,
   children,
-  categories,
   childrenByParent,
   photosByName,
   isVisible,
@@ -90,7 +89,6 @@ export function GroupSection({
                 depth={depth + 1}
                 photos={childPhotos}
                 children={childrenByParent.get(c.groupId) ?? []}
-                categories={categories}
                 childrenByParent={childrenByParent}
                 photosByName={photosByName}
                 isVisible={isVisible}

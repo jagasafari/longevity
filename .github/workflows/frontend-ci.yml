@@ -14,22 +14,30 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/web
 
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-node@v4
         with:
-          dotnet-version: "10.0.x"
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: src/web/package-lock.json
 
-      - name: Restore
-        run: dotnet restore src/web/web.csproj
+      - name: Install
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm test
 
       - name: Build
-        run: dotnet build src/web/web.csproj --no-restore -c Release
-
-      - name: Publish
-        run: dotnet publish src/web/web.csproj --no-build -c Release -o publish
+        run: npm run build
 
       - name: Verify output
-        run: test -f publish/wwwroot/index.html
+        run: test -f dist/index.html

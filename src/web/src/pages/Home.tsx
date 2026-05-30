@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react'
+import { useCallback, useMemo, type ReactNode } from 'react'
 import {
   useAssignCategory,
   useCategories,
@@ -227,7 +227,6 @@ function SignedInHome() {
               depth={0}
               photos={lookupPhotos(node.photos, byName)}
               children={children.get(node.groupId) ?? []}
-              categories={categories}
               childrenByParent={children}
               photosByName={byName}
               isVisible={isVisible}
@@ -302,7 +301,7 @@ function FilterButton({
   onClick,
   disabled,
 }: {
-  children: React.ReactNode
+  children: ReactNode
   active: boolean
   onClick: () => void
   disabled?: boolean

@@ -9,7 +9,9 @@ export function usePhotosHub(onPhotosChanged: () => void): void {
       .build()
 
     connection.on('PhotosChanged', onPhotosChanged)
-    connection.start().catch(() => {})
+    connection.start().catch((err) => {
+      console.warn('[signalr] connection failed', err)
+    })
 
     return () => {
       void connection.stop()
