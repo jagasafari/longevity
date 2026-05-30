@@ -1,6 +1,6 @@
 # 05 — Photo Pipeline
 
-[Docs Home](README.md) · [Diagrams](diagrams.md) · [Authentication](04-auth.md) · [Infrastructure](06-infrastructure.md)
+[Home](../README.md) · [Diagrams](diagrams.md) · [Authentication](04-auth.md) · [Infrastructure](06-infrastructure.md)
 
 **Source files:**
 [src/thumbnail-worker/ThumbnailProcessor.fs](../src/thumbnail-worker/ThumbnailProcessor.fs) ·

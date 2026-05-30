@@ -1,6 +1,6 @@
 # 06 — Infrastructure
 
-[Docs Home](README.md) · [Diagrams](diagrams.md) · [Photo Pipeline](05-photo-pipeline.md) · [Workload Identity](07-workload-identity.md)
+[Home](../README.md) · [Diagrams](diagrams.md) · [Photo Pipeline](05-photo-pipeline.md) · [Workload Identity](07-workload-identity.md)
 
 **Source:** [infra/azure](../infra/azure) · [infra/k8s](../infra/k8s) · [infra/scripts](../infra/scripts)
 

@@ -1,6 +1,6 @@
 # 08 — Observability
 
-[Docs Home](README.md) · [Workload Identity](07-workload-identity.md) · [Deployment](09-deployment.md)
+[Home](../README.md) · [Workload Identity](07-workload-identity.md) · [Deployment](09-deployment.md)
 
 **Source:** [infra/scripts/azure/check-observability.ps1](../infra/scripts/azure/check-observability.ps1) ·
 [infra/azure/modules/log-analytics.bicep](../infra/azure/modules/log-analytics.bicep) ·

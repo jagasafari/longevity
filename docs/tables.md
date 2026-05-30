@@ -1,6 +1,6 @@
 # Table Index
 
-[Docs Home](README.md)
+[Home](../README.md)
 
 | Table group | Location |
 |-------------|----------|

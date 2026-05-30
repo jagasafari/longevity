@@ -1,6 +1,6 @@
 # 09 — Deployment
 
-[Docs Home](README.md) · [Diagrams](diagrams.md) · [Observability](08-observability.md) · [Local Development](10-local-development.md)
+[Home](../README.md) · [Diagrams](diagrams.md) · [Observability](08-observability.md) · [Local Development](10-local-development.md)
 
 **Source:** [infra/scripts](../infra/scripts)
 

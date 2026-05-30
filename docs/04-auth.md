@@ -1,6 +1,6 @@
 # 04 — Authentication
 
-[Docs Home](README.md) · [Diagrams](diagrams.md) · [API Reference](03-api-reference.md) · [Photo Pipeline](05-photo-pipeline.md)
+[Home](../README.md) · [Diagrams](diagrams.md) · [API Reference](03-api-reference.md) · [Photo Pipeline](05-photo-pipeline.md)
 
 **Source files:** [Auth.fs](../src/photo-api/Auth.fs) ·
 [AuthLogin.fs](../src/photo-api/AuthLogin.fs) ·

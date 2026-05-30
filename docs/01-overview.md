@@ -1,6 +1,6 @@
 # 01 — Overview
 
-[Docs Home](README.md) · [Diagrams](diagrams.md) · [Services](02-services.md)
+[Home](../README.md) · [Diagrams](diagrams.md) · [Services](02-services.md)
 
 ## What it does
 

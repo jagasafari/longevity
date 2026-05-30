@@ -1,6 +1,6 @@
 # Mermaid Diagram Index
 
-[Docs Home](README.md)
+[Home](../README.md)
 
 | Diagram | Location |
 |---------|----------|

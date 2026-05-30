@@ -1,6 +1,6 @@
 # 02 — Services
 
-[Docs Home](README.md) · [Diagrams](diagrams.md) · [Overview](01-overview.md) · [API Reference](03-api-reference.md)
+[Home](../README.md) · [Diagrams](diagrams.md) · [Overview](01-overview.md) · [API Reference](03-api-reference.md)
 
 ---
 

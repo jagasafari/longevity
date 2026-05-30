@@ -1,6 +1,6 @@
 # 07 — Workload Identity
 
-[Docs Home](README.md) · [Diagrams](diagrams.md) · [Infrastructure](06-infrastructure.md) · [Observability](08-observability.md)
+[Home](../README.md) · [Diagrams](diagrams.md) · [Infrastructure](06-infrastructure.md) · [Observability](08-observability.md)
 
 **Source:** [modules/workload-identity.bicep](../infra/azure/modules/workload-identity.bicep) ·
 [modules/aks.bicep](../infra/azure/modules/aks.bicep) ·

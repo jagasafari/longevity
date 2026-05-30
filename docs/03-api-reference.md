@@ -1,6 +1,6 @@
 # 03 — API Reference
 
-[Docs Home](README.md) · [Services](02-services.md) · [Authentication](04-auth.md)
+[Home](../README.md) · [Services](02-services.md) · [Authentication](04-auth.md)
 
 All routes are implemented in [src/photo-api/Routes.fs](../src/photo-api/Routes.fs)
 and registered in [src/photo-api/Program.fs](../src/photo-api/Program.fs).
