@@ -11,6 +11,8 @@ type Props = {
   onChangeInput: (v: string) => void
   onSave: () => void
   onRemove: (categoryId: number) => void
+  inVocabulary?: boolean
+  onToggleVocabulary?: () => void
 }
 
 export function GroupHeader({
@@ -24,6 +26,8 @@ export function GroupHeader({
   onChangeInput,
   onSave,
   onRemove,
+  inVocabulary,
+  onToggleVocabulary,
 }: Props) {
   const title =
     categories.length > 0 ? categories.map((c) => c.name).join(', ') : 'Group'
@@ -93,7 +97,22 @@ export function GroupHeader({
             + Category
           </button>
         )}
+        {onToggleVocabulary && (
+          <button
+            type="button"
+            onClick={onToggleVocabulary}
+            className={[
+              'px-2 py-0.5 text-xs rounded-sm border',
+              inVocabulary
+                ? 'border-rule text-muted hover:text-danger hover:border-danger'
+                : 'border-accent-soft text-accent hover:bg-accent-soft',
+            ].join(' ')}
+          >
+            {inVocabulary ? '− Vocabulary' : '+ Vocabulary'}
+          </button>
+        )}
       </div>
     </header>
   )
 }
+

@@ -14,6 +14,7 @@ export const qk = {
   categories: ['categories'] as const,
   groupCategories: ['group-categories'] as const,
   photoCounts: ['photo-counts'] as const,
+  vocabularyGroups: ['vocabulary-groups'] as const,
 }
 
 export const useMe = () =>
@@ -52,6 +53,28 @@ export const useGroupCategories = () =>
 export const usePhotoCounts = () =>
   useQuery({ queryKey: qk.photoCounts, queryFn: () => photoApi.photoCounts() })
 
+export const useVocabularyGroupIds = () =>
+  useQuery({
+    queryKey: qk.vocabularyGroups,
+    queryFn: () => photoApi.vocabularyGroupIds(),
+  })
+
+export const useAddToVocabulary = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (groupId: string) => photoApi.addToVocabulary(groupId),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: qk.vocabularyGroups }),
+  })
+}
+
+export const useRemoveFromVocabulary = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (groupId: string) => photoApi.removeFromVocabulary(groupId),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: qk.vocabularyGroups }),
+  })
+}
+
 export const useInvalidateAll = () => {
   const qc = useQueryClient()
   return () => {
@@ -60,6 +83,7 @@ export const useInvalidateAll = () => {
     void qc.invalidateQueries({ queryKey: qk.groupCategories })
     void qc.invalidateQueries({ queryKey: qk.categories })
     void qc.invalidateQueries({ queryKey: qk.photoCounts })
+    void qc.invalidateQueries({ queryKey: qk.vocabularyGroups })
   }
 }
 

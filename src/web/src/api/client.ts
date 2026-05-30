@@ -114,6 +114,15 @@ export const photoApi = {
       `/api/group-categories/${encodeURIComponent(groupId)}/${categoryId}`,
       { method: 'DELETE' },
     ),
+
+  vocabularyGroupIds: (): Promise<string[]> =>
+    request('/api/vocabulary/groups', z.array(z.string())),
+
+  addToVocabulary: (groupId: string): Promise<void> =>
+    send(`/api/vocabulary/groups/${encodeURIComponent(groupId)}`, { method: 'POST' }),
+
+  removeFromVocabulary: (groupId: string): Promise<void> =>
+    send(`/api/vocabulary/groups/${encodeURIComponent(groupId)}`, { method: 'DELETE' }),
 }
 
 export { HttpError }

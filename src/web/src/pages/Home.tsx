@@ -13,6 +13,9 @@ import {
   usePhotos,
   useRemoveCategory,
   useUngroup,
+  useVocabularyGroupIds,
+  useAddToVocabulary,
+  useRemoveFromVocabulary,
 } from '../api/hooks'
 import { usePhotosHub } from '../api/signalr'
 import type { PhotoInfo } from '../api/schemas'
@@ -25,7 +28,6 @@ import {
   photosByName,
   rootGroups,
   ungroupedPhotos,
-  groupsWithCategory,
 } from '../lib/groupTree'
 import { CalendarPopup, dayLabel } from '../components/CalendarPopup'
 import { GroupHeader } from '../components/GroupHeader'
@@ -49,6 +51,7 @@ function SignedInHome() {
   const categoriesQuery = useCategories()
   const groupCategoriesQuery = useGroupCategories()
   const photoCountsQuery = usePhotoCounts()
+  const vocabQuery = useVocabularyGroupIds()
 
   const allPhotos: PhotoInfo[] = useMemo(
     () => photosQuery.data?.pages.flatMap((p) => p.items) ?? [],
@@ -75,17 +78,9 @@ function SignedInHome() {
     [categories],
   )
 
-  const vocabularyCategoryId = useMemo(
-    () => categories.find((c) => c.name.toLowerCase() === 'vocabulary')?.id ?? null,
-    [categories],
-  )
-
   const vocabGroupIds = useMemo(
-    () =>
-      vocabularyCategoryId !== null
-        ? groupsWithCategory(tree, groupCats, vocabularyCategoryId)
-        : new Set<string>(),
-    [tree, groupCats, vocabularyCategoryId],
+    () => new Set(vocabQuery.data ?? []),
+    [vocabQuery.data],
   )
 
   const isVisible = useCallback(
@@ -112,6 +107,8 @@ function SignedInHome() {
   const ungroupMut = useUngroup()
   const assignMut = useAssignCategory()
   const removeMut = useRemoveCategory()
+  const addToVocab = useAddToVocabulary()
+  const removeFromVocab = useRemoveFromVocabulary()
 
   const handlers: GroupSectionHandlers = {
     onStartDrag: (name) => ui.startDrag(name),
@@ -266,6 +263,12 @@ function SignedInHome() {
                   }}
                   onRemove={(categoryId) =>
                     removeMut.mutate({ groupId: node.groupId, categoryId })
+                  }
+                  inVocabulary={vocabGroupIds.has(node.groupId)}
+                  onToggleVocabulary={() =>
+                    vocabGroupIds.has(node.groupId)
+                      ? removeFromVocab.mutate(node.groupId)
+                      : addToVocab.mutate(node.groupId)
                   }
                 />
               }

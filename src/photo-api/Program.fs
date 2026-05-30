@@ -197,6 +197,44 @@ let main args =
         .RequireAuthorization()
     |> ignore
 
+    // Vocabulary endpoints
+    app.MapGet("/api/vocabulary/groups",
+        Func<_>(Vocabulary.listGroupIds pgConnStr))
+        .RequireAuthorization()
+    |> ignore
+
+    app.MapPost("/api/vocabulary/groups/{groupId}",
+        Func<HttpContext, IHubContext<PhotoHub.PhotoHub>, _>(fun ctx hub ->
+            let groupId =
+                match ctx.Request.RouteValues.TryGetValue "groupId" with
+                | true, v -> string v | _ -> ""
+            task {
+                if System.String.IsNullOrWhiteSpace groupId then
+                    return Results.BadRequest {| error = "missing_group_id" |}
+                else
+                    do! Vocabulary.addGroup pgConnStr groupId
+                    do! hub.Clients.All.SendAsync("PhotosChanged")
+                    return Results.NoContent()
+            }))
+        .RequireAuthorization()
+    |> ignore
+
+    app.MapDelete("/api/vocabulary/groups/{groupId}",
+        Func<HttpContext, IHubContext<PhotoHub.PhotoHub>, _>(fun ctx hub ->
+            let groupId =
+                match ctx.Request.RouteValues.TryGetValue "groupId" with
+                | true, v -> string v | _ -> ""
+            task {
+                if System.String.IsNullOrWhiteSpace groupId then
+                    return Results.BadRequest {| error = "missing_group_id" |}
+                else
+                    do! Vocabulary.removeGroup pgConnStr groupId
+                    do! hub.Clients.All.SendAsync("PhotosChanged")
+                    return Results.NoContent()
+            }))
+        .RequireAuthorization()
+    |> ignore
+
     app.MapGet("/api/photo-counts",
         Func<_>(PhotoCountCache.list cache))
         .RequireAuthorization()
