@@ -2,6 +2,5 @@ ContainerLogV2
 | where TimeGenerated {TimeRange}
 | where PodNamespace == "{Namespace}"
 | where ContainerName in ({Container})
-| extend TraceId = extract(@"\[([0-9a-f]{32})\]", 1, tostring(LogMessage))
-| project TimeGenerated, Container = ContainerName, PodName, TraceId, LogEntry = tostring(LogMessage)
+| project TimeGenerated, PodName, LogEntry = tostring(LogMessage)
 | order by TimeGenerated desc

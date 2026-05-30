@@ -120,14 +120,26 @@ function Convert-LogAnalyticsRows {
         return @()
     }
 
-    $tables = @($Result.tables)
+    # az CLI may return either:
+    #   [{name:"PrimaryResult", columns:[...], rows:[...]}]  (flat array, CLI <2.x)
+    #   {tables:[{name:"PrimaryResult", columns:[...], rows:[...]}]}  (wrapped, newer)
+    $tables = if ($Result -is [System.Array]) {
+        @($Result)
+    } else {
+        @($Result.tables)
+    }
+
     if ($tables.Count -eq 0) {
         return @()
     }
 
     $table = $tables[0]
+    if ($null -eq $table) {
+        return @()
+    }
+
     $columns = @($table.columns)
-    $rows = @($table.rows)
+    $rows = if ($null -eq $table.rows) { @() } else { @($table.rows) }
 
     @(
         foreach ($row in $rows) {
