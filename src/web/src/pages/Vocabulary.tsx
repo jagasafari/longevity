@@ -2,10 +2,6 @@ import { useCallback, useMemo } from 'react'
 import {
   usePhotos,
   useGroupTree,
-  useGroupPhotos,
-  useMoveToGroup,
-  useDeletePhoto,
-  useUngroup,
   useInvalidateAll,
   useMe,
   useVocabularyGroupIds,
@@ -16,15 +12,15 @@ import { usePhotosHub } from '../api/signalr'
 import { useUi } from '../store/ui'
 import type { PhotoInfo } from '../api/schemas'
 import {
-  photosByName,
+  categoriesForGroup,
   childrenByParent,
   lookupPhotos,
+  photosByName,
   rootGroups,
 } from '../lib/groupTree'
+import { useGalleryHandlers } from '../lib/galleryHandlers'
 import { GroupSection } from '../components/GroupSection'
-import type { GroupSectionHandlers } from '../components/GroupSection'
 import { Lightbox } from '../components/Lightbox'
-import { useTouchDrag } from '../lib/touchDrag'
 
 export function Vocabulary() {
   const me = useMe()
@@ -62,10 +58,6 @@ function VocabularyContent() {
     () => new Map(categories.map((c) => [c.id, c])),
     [categories],
   )
-  const groupCategoryList = (gid: string) =>
-    (groupCats[gid] ?? [])
-      .map((id) => categoryById.get(id))
-      .filter((c): c is NonNullable<typeof c> => c !== undefined)
 
   const isVisible = useCallback(
     (gid: string) => vocabGroupIds.has(gid),
@@ -79,45 +71,7 @@ function VocabularyContent() {
 
   usePhotosHub(useCallback(() => inv(), [inv]))
 
-  const groupMut = useGroupPhotos()
-  const moveMut = useMoveToGroup()
-  const deleteMut = useDeletePhoto()
-  const ungroupMut = useUngroup()
-
-  const handlers: GroupSectionHandlers = {
-    onStartDrag: (name) => ui.startDrag(name),
-    onEndDrag: () => ui.startDrag(null),
-    onDropOnPhoto: (targetName) => {
-      const source = ui.draggedPhotoName
-      ui.startDrag(null)
-      if (!source || source === targetName) return
-      groupMut.mutate({ sourceName: source, targetName })
-    },
-    onDropIntoGroup: (groupId) => {
-      const source = ui.draggedPhotoName
-      ui.startDrag(null)
-      if (!source) return
-      moveMut.mutate({ photoName: source, targetGroupId: groupId })
-    },
-    onOpenLightbox: (p) => {
-      if (ui.draggedPhotoName) return
-      ui.openLightbox(p)
-    },
-    onDelete: (p) => deleteMut.mutate(p.name),
-    onUngroup: (p) => ungroupMut.mutate(p.name),
-  }
-
-  useTouchDrag(
-    useMemo(
-      () => ({
-        onDropOnPhoto: (s, t) =>
-          groupMut.mutate({ sourceName: s, targetName: t }),
-        onDropIntoGroup: (s, g) =>
-          moveMut.mutate({ photoName: s, targetGroupId: g }),
-      }),
-      [groupMut, moveMut],
-    ),
-  )
+  const handlers = useGalleryHandlers()
 
   if (photosQuery.isPending) return <p className="text-muted">Loading…</p>
 
@@ -146,7 +100,9 @@ function VocabularyContent() {
           header={
             <header className="flex items-center gap-3 mb-3">
               <h2 className="text-lg m-0">
-                {groupCategoryList(node.groupId).map((c) => c.name).join(', ') || 'Group'}
+                {categoriesForGroup(node.groupId, groupCats, categoryById)
+                  .map((c) => c.name)
+                  .join(', ') || 'Group'}
               </h2>
             </header>
           }

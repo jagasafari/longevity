@@ -2,17 +2,13 @@ import { useCallback, useMemo, type ReactNode } from 'react'
 import {
   useAssignCategory,
   useCategories,
-  useDeletePhoto,
   useGroupCategories,
-  useGroupPhotos,
   useGroupTree,
   useInvalidateAll,
   useMe,
-  useMoveToGroup,
   usePhotoCounts,
   usePhotos,
   useRemoveCategory,
-  useUngroup,
   useVocabularyGroupIds,
   useAddToVocabulary,
   useRemoveFromVocabulary,
@@ -20,8 +16,8 @@ import {
 import { usePhotosHub } from '../api/signalr'
 import type { PhotoInfo } from '../api/schemas'
 import { useUi } from '../store/ui'
-import { useTouchDrag } from '../lib/touchDrag'
 import {
+  categoriesForGroup,
   childrenByParent,
   isGroupVisible,
   lookupPhotos,
@@ -29,9 +25,10 @@ import {
   rootGroups,
   ungroupedPhotos,
 } from '../lib/groupTree'
+import { useGalleryHandlers } from '../lib/galleryHandlers'
 import { CalendarPopup, dayLabel } from '../components/CalendarPopup'
 import { GroupHeader } from '../components/GroupHeader'
-import { GroupSection, type GroupSectionHandlers } from '../components/GroupSection'
+import { GroupSection } from '../components/GroupSection'
 import { Lightbox } from '../components/Lightbox'
 import { PhotoCard } from '../components/PhotoCard'
 
@@ -101,54 +98,14 @@ function SignedInHome() {
 
   usePhotosHub(useCallback(() => inv(), [inv]))
 
-  const groupMut = useGroupPhotos()
-  const moveMut = useMoveToGroup()
-  const deleteMut = useDeletePhoto()
-  const ungroupMut = useUngroup()
+  const handlers = useGalleryHandlers()
   const assignMut = useAssignCategory()
   const removeMut = useRemoveCategory()
   const addToVocab = useAddToVocabulary()
   const removeFromVocab = useRemoveFromVocabulary()
 
-  const handlers: GroupSectionHandlers = {
-    onStartDrag: (name) => ui.startDrag(name),
-    onEndDrag: () => ui.startDrag(null),
-    onDropOnPhoto: (targetName) => {
-      const source = ui.draggedPhotoName
-      ui.startDrag(null)
-      if (!source || source === targetName) return
-      groupMut.mutate({ sourceName: source, targetName })
-    },
-    onDropIntoGroup: (groupId) => {
-      const source = ui.draggedPhotoName
-      ui.startDrag(null)
-      if (!source) return
-      moveMut.mutate({ photoName: source, targetGroupId: groupId })
-    },
-    onOpenLightbox: (p) => {
-      if (ui.draggedPhotoName) return
-      ui.openLightbox(p)
-    },
-    onDelete: (p) => deleteMut.mutate(p.name),
-    onUngroup: (p) => ungroupMut.mutate(p.name),
-  }
-
-  useTouchDrag(
-    useMemo(
-      () => ({
-        onDropOnPhoto: (s, t) =>
-          groupMut.mutate({ sourceName: s, targetName: t }),
-        onDropIntoGroup: (s, g) =>
-          moveMut.mutate({ photoName: s, targetGroupId: g }),
-      }),
-      [groupMut, moveMut],
-    ),
-  )
-
   const groupCategoryList = (gid: string) =>
-    (groupCats[gid] ?? [])
-      .map((id) => categoryById.get(id))
-      .filter((c): c is NonNullable<typeof c> => c !== undefined)
+    categoriesForGroup(gid, groupCats, categoryById)
 
   return (
     <>

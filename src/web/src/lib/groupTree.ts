@@ -1,4 +1,4 @@
-import type { GroupTreeNode, PhotoInfo } from '../api/schemas'
+import type { Category, GroupTreeNode, PhotoInfo } from '../api/schemas'
 
 export const photosByName = (photos: PhotoInfo[]): Map<string, PhotoInfo> =>
   new Map(photos.map((p) => [p.name, p]))
@@ -83,16 +83,12 @@ export const ungroupedPhotos = (
     .sort((a, b) => b.lastModified.localeCompare(a.lastModified))
 }
 
-export const groupsWithCategory = (
-  tree: GroupTreeNode[],
+export const categoriesForGroup = (
+  groupId: string,
   groupCategories: Record<string, number[]>,
-  categoryId: number,
-): Set<string> => {
-  const result = new Set<string>()
-  for (const node of tree) {
-    if ((groupCategories[node.groupId] ?? []).includes(categoryId)) {
-      result.add(node.groupId)
-    }
-  }
-  return result
-}
+  categoryById: Map<number, Category>,
+): Category[] =>
+  (groupCategories[groupId] ?? []).flatMap((id) => {
+    const c = categoryById.get(id)
+    return c ? [c] : []
+  })
