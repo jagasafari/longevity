@@ -8,7 +8,6 @@ export function Layout({ children }: { children: ReactNode }) {
     <div className="min-h-full px-6 py-4">
       <header className="flex items-center justify-between mb-6 pb-3 border-b border-rule">
         <div className="flex items-baseline gap-6">
-          <h1 className="text-2xl">Longevity</h1>
           <nav className="flex gap-0.5">
             <NavTab active={view === 'gallery'} onClick={() => setView('gallery')}>
               Gallery
