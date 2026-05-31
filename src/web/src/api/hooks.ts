@@ -189,21 +189,15 @@ export const useRemoveCategory = () => {
   })
 }
 
-export const useLabelPhoto = () => {
-  const qc = useQueryClient()
-  return useMutation({
+export const useLabelPhoto = () =>
+  useMutation({
     mutationFn: (photoName: string) => photoApi.labelPhoto(photoName),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: qk.vocabularyGroups }),
   })
-}
 
-export const useLabelAllInGroup = () => {
-  const qc = useQueryClient()
-  return useMutation({
+export const useLabelAllInGroup = () =>
+  useMutation({
     mutationFn: (groupId: string) => photoApi.labelAllInGroup(groupId),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: qk.vocabularyGroups }),
   })
-}
 
 export const useMatchSubgroups = () =>
   useMutation({
