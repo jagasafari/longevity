@@ -34,6 +34,7 @@ jobs:
       photo-api: ${{ steps.filter.outputs.photo-api }}
       web: ${{ steps.filter.outputs.web }}
       worker: ${{ steps.filter.outputs.worker }}
+      any: ${{ steps.filter.outputs.any }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -52,43 +53,40 @@ jobs:
               - 'src/thumbnail-worker/**'
               - 'infra/k8s/web-helm-chart/**'
               - '.github/workflows/deploy.yml'
+            any:
+              - 'src/**'
+              - 'infra/k8s/web-helm-chart/**'
+              - '.github/workflows/deploy.yml'
 
-  deploy:
+  build:
     needs: changes
-    if: |
-      needs.changes.outputs.photo-api == 'true' ||
-      needs.changes.outputs.web == 'true' ||
-      needs.changes.outputs.worker == 'true'
+    if: needs.changes.outputs.any == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
         include:
           - service: photo-api
             image: photo-api
-            helm_key: photoApi
             src: src/photo-api
             changed_key: photo-api
           - service: web
             image: web
-            helm_key: web
             src: src/web
             changed_key: web
           - service: worker
             image: thumbnail-worker
-            helm_key: worker
             src: src/thumbnail-worker
             changed_key: worker
     steps:
-      - name: Skip if unchanged
+      - name: Gate
         id: gate
         run: |
           changed='${{ toJson(needs.changes.outputs) }}'
           key='${{ matrix.changed_key }}'
           val=$(echo "$changed" | jq -r --arg k "$key" '.[$k]')
           echo "should_run=$val" >> "$GITHUB_OUTPUT"
-          echo "service=${{ matrix.service }} changed=$val"
 
       - uses: actions/checkout@v4
         if: steps.gate.outputs.should_run == 'true'
@@ -141,8 +139,20 @@ jobs:
           cache-from: type=gha,scope=${{ matrix.service }}
           cache-to: type=gha,mode=max,scope=${{ matrix.service }}
 
+  deploy:
+    needs: [changes, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
       - name: Get AKS credentials
-        if: steps.gate.outputs.should_run == 'true'
         run: |
           az aks get-credentials \
             --resource-group "$AKS_RG" \
@@ -150,18 +160,30 @@ jobs:
             --overwrite-existing
 
       - name: Helm upgrade
-        if: steps.gate.outputs.should_run == 'true'
+        env:
+          CHANGED_PHOTO_API: ${{ needs.changes.outputs.photo-api }}
+          CHANGED_WEB: ${{ needs.changes.outputs.web }}
+          CHANGED_WORKER: ${{ needs.changes.outputs.worker }}
+          SHA: ${{ github.sha }}
         run: |
+          set -euo pipefail
+          SETS=()
+          [ "$CHANGED_PHOTO_API" = "true" ] && \
+            SETS+=(--set "photoApi.image.tag=$SHA")
+          [ "$CHANGED_WEB" = "true" ] && \
+            SETS+=(--set "web.image.tag=$SHA")
+          [ "$CHANGED_WORKER" = "true" ] && \
+            SETS+=(--set "worker.image.tag=$SHA")
+          echo "Helm sets: ${SETS[*]}"
           helm upgrade --install "$HELM_RELEASE" "$CHART_PATH" \
             --namespace "$NAMESPACE" \
             --create-namespace \
             --reset-then-reuse-values \
-            --set "${{ matrix.helm_key }}.image.tag=${{ github.sha }}" \
+            "${SETS[@]}" \
             --wait --timeout 10m
 
   e2e:
     needs: deploy
-    if: ${{ !cancelled() && needs.deploy.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
