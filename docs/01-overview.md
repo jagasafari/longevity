@@ -176,7 +176,7 @@ longevity-app/
 
 ```mermaid
 sequenceDiagram
-    participant SPA as Blazor SPA (Browser)
+    participant SPA as React SPA (Browser)
     participant ING as nginx Ingress (:443)
     participant Files as Static Files (nginx)
     participant BE as Backend (F# API)
@@ -188,7 +188,7 @@ sequenceDiagram
 
     SPA->>ING: GET / (HTTPS)
     ING->>Files: Route to frontend-svc
-    Files-->>SPA: index.html + Blazor WASM
+    Files-->>SPA: index.html + JS bundle
 
     Note over SPA,BE: API Call
 

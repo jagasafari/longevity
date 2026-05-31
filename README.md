@@ -31,7 +31,6 @@ Personal photo gallery: upload to Azure Storage, auto-generate thumbnails, brows
 ```
 src/photo-api/          F# ASP.NET Core API
 src/web/                React + TypeScript frontend
-ntend
 src/thumbnail-worker/   F# background thumbnail worker
 infra/azure/            Bicep infrastructure
 infra/k8s/              Helm chart and Kubernetes manifests
