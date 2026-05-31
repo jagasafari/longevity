@@ -413,11 +413,11 @@ function VocabPhoto({
           <button type="button" className="text-xs px-1 py-0.5 border border-rule rounded-sm" onClick={() => setEditingWord(false)}>×</button>
         </form>
       )}
-      <div className="absolute inset-0 flex flex-col justify-end opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto p-1 gap-1">
+      <div className="absolute inset-0 flex flex-col justify-end opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none p-1 gap-1">
         {onLabel && !photo.word && (
           <button
             type="button"
-            className="text-xs bg-paper border border-rule rounded-sm px-1 py-0.5 w-full hover:border-accent hover:text-accent"
+            className="pointer-events-auto text-xs bg-paper border border-rule rounded-sm px-1 py-0.5 w-full hover:border-accent hover:text-accent"
             disabled={labelPending}
             onClick={(e) => { e.stopPropagation(); onLabel() }}
           >
@@ -426,7 +426,7 @@ function VocabPhoto({
         )}
         {onMove && groups.length > 0 && (
           <select
-            className="text-xs bg-paper border border-rule rounded-sm px-1 py-0.5 w-full cursor-pointer"
+            className="pointer-events-auto text-xs bg-paper border border-rule rounded-sm px-1 py-0.5 w-full cursor-pointer"
             defaultValue=""
             onChange={(e) => {
               if (e.target.value) onMove(e.target.value)
@@ -442,7 +442,7 @@ function VocabPhoto({
         {onRemove && (
           <button
             type="button"
-            className="text-xs bg-paper border border-rule rounded-sm px-1 py-0.5 w-full text-muted hover:text-danger hover:border-danger"
+            className="pointer-events-auto text-xs bg-paper border border-rule rounded-sm px-1 py-0.5 w-full text-muted hover:text-danger hover:border-danger"
             onClick={(e) => { e.stopPropagation(); onRemove() }}
           >
             × Remove
