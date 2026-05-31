@@ -60,3 +60,9 @@ export const VocabGroupSchema = z.object({
   ungroupedPhotos: z.array(PhotoInfoSchema),
 })
 export type VocabGroup = z.infer<typeof VocabGroupSchema>
+
+export const SubgroupSuggestionSchema = z.object({
+  word: z.string(),
+  photoNames: z.array(z.string()),
+})
+export type SubgroupSuggestion = z.infer<typeof SubgroupSuggestionSchema>

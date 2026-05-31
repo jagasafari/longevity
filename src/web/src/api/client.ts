@@ -6,6 +6,7 @@ import {
   MeSchema,
   PhotoCountSchema,
   PhotoPageSchema,
+  SubgroupSuggestionSchema,
   VocabGroupSchema,
   VocabSuggestionSchema,
   type Category,
@@ -14,6 +15,7 @@ import {
   type Me,
   type PhotoCount,
   type PhotoPage,
+  type SubgroupSuggestion,
   type VocabGroup,
   type VocabSuggestion,
 } from './schemas'
@@ -130,6 +132,19 @@ export const photoApi = {
 
   suggestVocabulary: (): Promise<VocabSuggestion[]> =>
     request('/api/vocabulary/suggest', z.array(VocabSuggestionSchema), { method: 'POST' }),
+
+  suggestSubgroups: (vocabGroupId: string): Promise<SubgroupSuggestion[]> =>
+    request(
+      `/api/vocabulary/groups/${encodeURIComponent(vocabGroupId)}/suggest-subgroups`,
+      z.array(SubgroupSuggestionSchema),
+      { method: 'POST' },
+    ),
+
+  applySubgroups: (vocabGroupId: string, suggestions: SubgroupSuggestion[]): Promise<void> =>
+    send(
+      `/api/vocabulary/groups/${encodeURIComponent(vocabGroupId)}/subgroups`,
+      { method: 'POST', body: JSON.stringify(suggestions) },
+    ),
 }
 
 export { HttpError }

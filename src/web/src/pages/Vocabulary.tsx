@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import {
   useInvalidateAll,
   useMe,
@@ -6,10 +6,12 @@ import {
   useMoveGroupToVocabulary,
   useRemoveFromVocabulary,
   useSuggestVocabulary,
+  useSuggestSubgroups,
+  useApplySubgroups,
 } from '../api/hooks'
 import { usePhotosHub } from '../api/signalr'
 import { useUi } from '../store/ui'
-import type { PhotoInfo, VocabSuggestion } from '../api/schemas'
+import type { PhotoInfo, SubgroupSuggestion, VocabSuggestion } from '../api/schemas'
 import { Lightbox } from '../components/Lightbox'
 
 export function Vocabulary() {
@@ -27,6 +29,10 @@ function VocabularyContent() {
   const moveToVocab = useMoveGroupToVocabulary()
   const removeGroup = useRemoveFromVocabulary()
   const suggest = useSuggestVocabulary()
+  const suggestSub = useSuggestSubgroups()
+  const applySub = useApplySubgroups()
+
+  const [pending, setPending] = useState<{ groupId: string; suggestions: SubgroupSuggestion[] } | null>(null)
 
   usePhotosHub(useCallback(() => inv(), [inv]))
 
@@ -88,6 +94,22 @@ function VocabularyContent() {
         <section key={group.id} className="mb-12">
           <header className="flex items-center gap-3 mb-3">
             <h2 className="text-lg m-0">{group.name}</h2>
+            {group.ungroupedPhotos.length > 0 && (
+              <button
+                type="button"
+                onClick={() =>
+                  suggestSub.mutate(group.id, {
+                    onSuccess: (data) => setPending({ groupId: group.id, suggestions: data }),
+                  })
+                }
+                disabled={suggestSub.isPending && suggestSub.variables === group.id}
+                className="px-2 py-0.5 text-xs rounded-sm border border-accent text-accent hover:bg-accent/10"
+              >
+                {suggestSub.isPending && suggestSub.variables === group.id
+                  ? 'Analysing…'
+                  : '✦ Suggest subgroups'}
+              </button>
+            )}
             <button
               type="button"
               onClick={() => removeGroup.mutate(group.id)}
@@ -97,6 +119,46 @@ function VocabularyContent() {
               − Remove
             </button>
           </header>
+
+          {pending?.groupId === group.id && (
+            <div className="mb-4 p-4 rounded-xl border border-accent/30 bg-accent/5">
+              <p className="text-sm font-medium mb-3">
+                AI subgroup suggestions — review and apply:
+              </p>
+              <ul className="flex flex-col gap-3 mb-3">
+                {pending.suggestions.map((s) => (
+                  <li key={s.word} className="text-sm">
+                    <span className="font-mono font-medium">{s.word}</span>
+                    <span className="text-muted ml-2 text-xs">
+                      {s.photoNames.join(', ')}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  className="btn-primary text-xs px-3 py-1"
+                  disabled={applySub.isPending}
+                  onClick={() =>
+                    applySub.mutate(
+                      { vocabGroupId: group.id, suggestions: pending.suggestions },
+                      { onSuccess: () => setPending(null) },
+                    )
+                  }
+                >
+                  {applySub.isPending ? 'Saving…' : 'Apply subgroups'}
+                </button>
+                <button
+                  type="button"
+                  className="btn-secondary text-xs px-3 py-1"
+                  onClick={() => setPending(null)}
+                >
+                  Discard
+                </button>
+              </div>
+            </div>
+          )}
           {group.subgroups.map((sub) => (
             <div key={sub.id} className="flex gap-2 mb-3">
               {sub.photos.map((photo) => (

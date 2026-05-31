@@ -244,6 +244,22 @@ let main args =
         .RequireAuthorization()
     |> ignore
 
+    app.MapPost("/api/vocabulary/groups/{groupId}/subgroups",
+        Func<HttpContext, _>(fun ctx ->
+            let groupId =
+                match ctx.Request.RouteValues.TryGetValue "groupId" with
+                | true, v -> string v | _ -> ""
+            task {
+                if System.String.IsNullOrWhiteSpace groupId then
+                    return Results.BadRequest {| error = "missing_group_id" |}
+                else
+                    let! body = ctx.Request.ReadFromJsonAsync<VocabSubgroupSuggest.SubgroupSuggestion[]>()
+                    do! VocabSubgroupSuggest.applySubgroups pgConnStr groupId body
+                    return Results.NoContent()
+            }))
+        .RequireAuthorization()
+    |> ignore
+
     app.MapGet("/api/photo-counts",
         Func<_>(PhotoCountCache.list cache))
         .RequireAuthorization()
@@ -253,6 +269,21 @@ let main args =
     | Some endpoint ->
         app.MapPost("/api/vocabulary/suggest",
             Func<_>(VocabSuggest.suggest pgConnStr endpoint))
+            .RequireAuthorization()
+        |> ignore
+
+        app.MapPost("/api/vocabulary/groups/{groupId}/suggest-subgroups",
+            Func<HttpContext, _>(fun ctx ->
+                let groupId =
+                    match ctx.Request.RouteValues.TryGetValue "groupId" with
+                    | true, v -> string v | _ -> ""
+                task {
+                    if System.String.IsNullOrWhiteSpace groupId then
+                        return Results.BadRequest {| error = "missing_group_id" |}
+                    else
+                        let! result = VocabSubgroupSuggest.suggest pgConnStr storage endpoint groupId
+                        return Results.Ok result
+                }))
             .RequireAuthorization()
         |> ignore
     | None -> ()

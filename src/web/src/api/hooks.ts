@@ -81,6 +81,18 @@ export const useMoveGroupToVocabulary = () => {
 export const useSuggestVocabulary = () =>
   useMutation({ mutationFn: () => photoApi.suggestVocabulary() })
 
+export const useSuggestSubgroups = () =>
+  useMutation({ mutationFn: (vocabGroupId: string) => photoApi.suggestSubgroups(vocabGroupId) })
+
+export const useApplySubgroups = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ vocabGroupId, suggestions }: { vocabGroupId: string; suggestions: import('./schemas').SubgroupSuggestion[] }) =>
+      photoApi.applySubgroups(vocabGroupId, suggestions),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: qk.vocabularyGroups }),
+  })
+}
+
 export const useRemoveFromVocabulary = () => {
   const qc = useQueryClient()
   return useMutation({
