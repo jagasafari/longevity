@@ -12,6 +12,20 @@
   escape-hatch for ad-hoc debugging — do not suggest them as the
   default flow.
 
+## CI verification workflow
+
+- After any code change, push the branch and verify all relevant
+  GitHub Actions workflows succeed before declaring the task done.
+- Check status with
+  `gh run list -R jagasafari/longevity --branch <branch> --limit 5`.
+  Filter by `headSha` to target the exact commit you just pushed.
+- On failure, fetch logs with `gh run view --log-failed <run-id>`,
+  fix the cause, push again, and wait for the system notification
+  that the run completed. Do not poll with bare `sleep`; use the
+  async terminal mode or a bounded polling loop only when necessary.
+- A task is "done" only when Backend CI, Frontend CI (if touched),
+  E2E, and Deploy are all green on the pushed commit.
+
 ## Voice input
 
 The user uses voice-to-text input. English is not their native language.
