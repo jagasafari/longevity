@@ -15,6 +15,11 @@ type SubgroupSuggestion = { Word: string; PhotoNames: string[] }
 [<CLIMutable>]
 type private SuggestionJson = { word: string; photoNames: string[] }
 
+[<CLIMutable>]
+type private ExampleRow = { word: string; photo_name: string }
+
+let private maxExamples = 3
+
 let private systemPrompt =
     "You analyze photos for a vocabulary learning app. \
      Each photo is either a Netflix screenshot with English subtitles/captions, \
@@ -40,6 +45,39 @@ let private parseResponse (json: string) : SubgroupSuggestion list =
         eprintfn "VocabSubgroupSuggest: failed to parse model response: %s | raw: %s" ex.Message preview
         []
 
+let private fetchExamples (conn: NpgsqlConnection) (excludeGroupId: string) : Task<SubgroupSuggestion list> = task {
+    let! rows =
+        conn.QueryAsync<ExampleRow>(
+            """SELECT LOWER(vg.name) AS word, vp.photo_name
+               FROM vocabulary.photos vp
+               JOIN vocabulary.groups vg ON vg.id = vp.group_id
+               WHERE vp.subgroup_id IS NOT NULL
+                 AND vp.subgroup_id <> ''
+                 AND vp.group_id <> @exclude
+               ORDER BY vp.subgroup_id, vp.photo_name
+               LIMIT 30""",
+            {| exclude = excludeGroupId |})
+    return
+        rows
+        |> Seq.toList
+        |> List.groupBy (fun r -> r.word)
+        |> List.truncate maxExamples
+        |> List.map (fun (word, items) ->
+            { Word = word
+              PhotoNames = items |> List.map (fun r -> r.photo_name) |> Array.ofList })
+}
+
+let private formatExamples (examples: SubgroupSuggestion list) =
+    if examples.IsEmpty then ""
+    else
+        let lines =
+            examples
+            |> List.map (fun e ->
+                let names = e.PhotoNames |> String.concat "\", \""
+                $"  {{\"word\": \"{e.Word}\", \"photoNames\": [\"{names}\"]}}")
+            |> String.concat ",\n"
+        $"Here are real examples from your collection showing the correct format:\n[\n{lines}\n]\n\n"
+
 let suggest
     (connStr: string)
     (storage: Storage.StorageConfig)
@@ -55,21 +93,25 @@ let suggest
     if names.IsEmpty then
         return [||]
     else
+        let! examples = fetchExamples conn vocabGroupId
         let! urlMap = Storage.getPhotoSasUrls storage names
         let indexed = names |> List.mapi (fun i n -> i + 1, n)
         let nameList =
             indexed
             |> List.map (fun (i, n) -> $"Image {i}: {n}")
             |> String.concat "\n"
+        let exampleSection = formatExamples examples
         let userText =
-            $"These {names.Length} photos are from one vocabulary group. \
+            $"{exampleSection}\
+              Now group these {names.Length} photos from one vocabulary group. \
               For each image, read the English vocabulary word shown \
               (from subtitle text, caption, or text written on the image). \
-              Group images that represent the same word together.\n\n\
+              Group images that share the same word together.\n\n\
               Filenames:\n{nameList}\n\n\
               Respond ONLY with JSON: \
-              [{{\"word\": \"<word>\", \"photoNames\": [\"<filename>\", ...]}}]. \
-              If a photo has no readable word, put it in a group with word \"unknown\"."
+              [{{\"word\": \"<word>\", \"photoNames\": [\"<exact filename>\", ...]}}]. \
+              Use lowercase for the word. \
+              If a photo has no readable word, use word \"unknown\"."
 
         let imageParts : ChatMessageContentPart[] =
             [|
