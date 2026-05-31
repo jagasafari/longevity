@@ -286,6 +286,21 @@ let main args =
                 }))
             .RequireAuthorization()
         |> ignore
+
+        app.MapPost("/api/vocabulary/suggest-all-subgroups",
+            Func<_>(VocabSubgroupSuggest.suggestAllSubgroups pgConnStr storage endpoint))
+            .RequireAuthorization()
+        |> ignore
+
+        app.MapPost("/api/vocabulary/apply-cross-group-subgroups",
+            Func<HttpContext, _>(fun ctx ->
+                task {
+                    let! body = ctx.Request.ReadFromJsonAsync<VocabSubgroupSuggest.CrossGroupSuggestion[]>()
+                    do! VocabSubgroupSuggest.applyCrossGroupSubgroups pgConnStr body
+                    return Results.NoContent()
+                }))
+            .RequireAuthorization()
+        |> ignore
     | None -> ()
 
     app.Run()

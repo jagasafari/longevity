@@ -8,10 +8,12 @@ import {
   useSuggestVocabulary,
   useSuggestSubgroups,
   useApplySubgroups,
+  useSuggestAllSubgroups,
+  useApplyCrossGroupSubgroups,
 } from '../api/hooks'
 import { usePhotosHub } from '../api/signalr'
 import { useUi } from '../store/ui'
-import type { PhotoInfo, SubgroupSuggestion, VocabSuggestion } from '../api/schemas'
+import type { CrossGroupSuggestion, PhotoInfo, SubgroupSuggestion, VocabSuggestion } from '../api/schemas'
 import { Lightbox } from '../components/Lightbox'
 
 export function Vocabulary() {
@@ -31,8 +33,11 @@ function VocabularyContent() {
   const suggest = useSuggestVocabulary()
   const suggestSub = useSuggestSubgroups()
   const applySub = useApplySubgroups()
+  const suggestAll = useSuggestAllSubgroups()
+  const applyCross = useApplyCrossGroupSubgroups()
 
   const [pending, setPending] = useState<{ groupId: string; suggestions: SubgroupSuggestion[] } | null>(null)
+  const [crossPending, setCrossPending] = useState<CrossGroupSuggestion[] | null>(null)
 
   usePhotosHub(useCallback(() => inv(), [inv]))
 
@@ -51,10 +56,63 @@ function VocabularyContent() {
         >
           {suggest.isPending ? 'Analysing…' : '✦ Suggest vocabulary'}
         </button>
-        {suggest.isError && (
+        <button
+          className="btn-secondary text-sm"
+          onClick={() =>
+            suggestAll.mutate(undefined, {
+              onSuccess: (data) => setCrossPending(data.filter((s) => s.photos.length > 0)),
+            })
+          }
+          disabled={suggestAll.isPending}
+        >
+          {suggestAll.isPending ? 'Analysing…' : '✦ Suggest all subgroups'}
+        </button>
+        {(suggest.isError || suggestAll.isError) && (
           <span className="text-sm text-red-500">Suggestion failed</span>
         )}
       </div>
+
+      {crossPending && crossPending.length > 0 && (
+        <div className="mb-6 p-4 rounded-xl border border-accent/30 bg-accent/5">
+          <p className="text-sm font-medium mb-3">
+            AI subgroup suggestions across groups — review and apply:
+          </p>
+          <ul className="flex flex-col gap-3 mb-3">
+            {crossPending.map((s) => {
+              const primaryName =
+                s.photos.find((p) => p.groupId === s.primaryGroupId)?.groupName ?? s.primaryGroupId
+              return (
+                <li key={s.word} className="text-sm">
+                  <span className="font-mono font-medium">{s.word}</span>
+                  <span className="text-muted ml-2 text-xs">
+                    {s.photos.map((p) => `${p.photoName} (${p.groupName})`).join(', ')}
+                  </span>
+                  <span className="ml-2 text-xs text-accent">→ {primaryName}</span>
+                </li>
+              )
+            })}
+          </ul>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              className="btn-primary text-xs px-3 py-1"
+              disabled={applyCross.isPending}
+              onClick={() =>
+                applyCross.mutate(crossPending, { onSuccess: () => setCrossPending(null) })
+              }
+            >
+              {applyCross.isPending ? 'Saving…' : 'Apply all'}
+            </button>
+            <button
+              type="button"
+              className="btn-secondary text-xs px-3 py-1"
+              onClick={() => setCrossPending(null)}
+            >
+              Discard
+            </button>
+          </div>
+        </div>
+      )}
 
       {suggestions.length > 0 && (
         <div className="mb-6 p-4 rounded-xl border border-accent/30 bg-accent/5">

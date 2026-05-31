@@ -93,6 +93,18 @@ export const useApplySubgroups = () => {
   })
 }
 
+export const useSuggestAllSubgroups = () =>
+  useMutation({ mutationFn: () => photoApi.suggestAllSubgroups() })
+
+export const useApplyCrossGroupSubgroups = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (suggestions: import('./schemas').CrossGroupSuggestion[]) =>
+      photoApi.applyCrossGroupSubgroups(suggestions),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: qk.vocabularyGroups }),
+  })
+}
+
 export const useRemoveFromVocabulary = () => {
   const qc = useQueryClient()
   return useMutation({

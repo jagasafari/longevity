@@ -7,9 +7,11 @@ import {
   PhotoCountSchema,
   PhotoPageSchema,
   SubgroupSuggestionSchema,
+  CrossGroupSuggestionSchema,
   VocabGroupSchema,
   VocabSuggestionSchema,
   type Category,
+  type CrossGroupSuggestion,
   type GroupCategories,
   type GroupTreeNode,
   type Me,
@@ -145,6 +147,15 @@ export const photoApi = {
       `/api/vocabulary/groups/${encodeURIComponent(vocabGroupId)}/subgroups`,
       { method: 'POST', body: JSON.stringify(suggestions) },
     ),
+
+  suggestAllSubgroups: (): Promise<CrossGroupSuggestion[]> =>
+    request('/api/vocabulary/suggest-all-subgroups', z.array(CrossGroupSuggestionSchema), { method: 'POST' }),
+
+  applyCrossGroupSubgroups: (suggestions: CrossGroupSuggestion[]): Promise<void> =>
+    send('/api/vocabulary/apply-cross-group-subgroups', {
+      method: 'POST',
+      body: JSON.stringify(suggestions),
+    }),
 }
 
 export { HttpError }

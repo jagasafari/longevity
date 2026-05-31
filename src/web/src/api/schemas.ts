@@ -66,3 +66,17 @@ export const SubgroupSuggestionSchema = z.object({
   photoNames: z.array(z.string()),
 })
 export type SubgroupSuggestion = z.infer<typeof SubgroupSuggestionSchema>
+
+export const CrossGroupPhotoSchema = z.object({
+  photoName: z.string(),
+  groupId: z.string(),
+  groupName: z.string(),
+})
+export type CrossGroupPhoto = z.infer<typeof CrossGroupPhotoSchema>
+
+export const CrossGroupSuggestionSchema = z.object({
+  word: z.string(),
+  primaryGroupId: z.string(),
+  photos: z.array(CrossGroupPhotoSchema),
+})
+export type CrossGroupSuggestion = z.infer<typeof CrossGroupSuggestionSchema>
