@@ -1,0 +1,756 @@
+{
+  "openapi": "3.1.1",
+  "info": {
+    "title": "photo-api | v1",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5001/"
+    }
+  ],
+  "paths": {
+    "/healthz": {
+      "get": {
+        "tags": [
+          "main@89-6"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/auth/login": {
+      "get": {
+        "tags": [
+          "main@92-7"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/auth/callback": {
+      "get": {
+        "tags": [
+          "main@96-8"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/auth/me": {
+      "get": {
+        "tags": [
+          "main@101-10"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "tags": [
+          "main@106-11"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/photos": {
+      "get": {
+        "tags": [
+          "main@110-12"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhotoPage"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/photo-groups": {
+      "get": {
+        "tags": [
+          "main@117-14"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/photo-groups/tree": {
+      "get": {
+        "tags": [
+          "main@122-15"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GroupTreeNode"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/photo-groups/group": {
+      "post": {
+        "tags": [
+          "main@127-16"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GroupPhotosRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/photo-groups/move-to-group": {
+      "post": {
+        "tags": [
+          "main@137-18"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MovePhotoToGroupRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/photo-groups/{name}": {
+      "delete": {
+        "tags": [
+          "main@147-20"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/photos/{name}": {
+      "delete": {
+        "tags": [
+          "main@165-22"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/categories": {
+      "get": {
+        "tags": [
+          "main@184-25"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Category"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/group-categories": {
+      "get": {
+        "tags": [
+          "main@189-26"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "array",
+                    "items": {
+                      "pattern": "^-?(?:0|[1-9]\\d*)$",
+                      "type": [
+                        "integer",
+                        "string"
+                      ],
+                      "format": "int32"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/group-categories/{groupId}": {
+      "post": {
+        "tags": [
+          "main@194-27"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/group-categories/{groupId}/{categoryId}": {
+      "delete": {
+        "tags": [
+          "main@202-29"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/vocabulary/groups": {
+      "get": {
+        "tags": [
+          "main@210-31"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/VocabGroupDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/vocabulary/groups/{groupId}": {
+      "post": {
+        "tags": [
+          "main@215-32"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VocabMoveResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "main@232-34"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/photo-counts": {
+      "get": {
+        "tags": [
+          "main@248-36"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PhotoCount"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/vocabulary/suggest": {
+      "post": {
+        "tags": [
+          "main@255-37"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Suggestion"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Category": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "name": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "FSharpOptionOfstring": {
+        "type": "string"
+      },
+      "GroupPhotosRequest": {
+        "type": "object",
+        "properties": {
+          "sourceName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "targetName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "GroupTreeNode": {
+        "type": "object",
+        "properties": {
+          "groupId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "parentGroupId": {
+            "$ref": "#/components/schemas/FSharpOptionOfstring"
+          },
+          "photos": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "MeResponse": {
+        "required": [
+          "email"
+        ],
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "MovePhotoToGroupRequest": {
+        "type": "object",
+        "properties": {
+          "photoName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "targetGroupId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "PhotoCount": {
+        "required": [
+          "date",
+          "count"
+        ],
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "count": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "PhotoInfo": {
+        "required": [
+          "name",
+          "url",
+          "thumbnailUrl",
+          "lastModified"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "url": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "thumbnailUrl": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "lastModified": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "PhotoPage": {
+        "required": [
+          "items",
+          "nextBefore"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/PhotoInfo"
+            }
+          },
+          "nextBefore": {
+            "$ref": "#/components/schemas/FSharpOptionOfstring"
+          }
+        }
+      },
+      "Suggestion": {
+        "required": [
+          "groupId",
+          "reason"
+        ],
+        "type": "object",
+        "properties": {
+          "groupId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "reason": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "VocabGroupDto": {
+        "required": [
+          "id",
+          "name",
+          "subgroups",
+          "ungroupedPhotos"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "name": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "subgroups": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/VocabSubgroupDto"
+            }
+          },
+          "ungroupedPhotos": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/VocabPhotoDto"
+            }
+          }
+        }
+      },
+      "VocabMoveResponse": {
+        "required": [
+          "vocabId"
+        ],
+        "type": "object",
+        "properties": {
+          "vocabId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "VocabPhotoDto": {
+        "required": [
+          "name",
+          "url",
+          "thumbnailUrl",
+          "lastModified"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "url": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "thumbnailUrl": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "lastModified": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "VocabSubgroupDto": {
+        "required": [
+          "id",
+          "photos"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "photos": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/VocabPhotoDto"
+            }
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "main@89-6"
+    },
+    {
+      "name": "main@92-7"
+    },
+    {
+      "name": "main@96-8"
+    },
+    {
+      "name": "main@101-10"
+    },
+    {
+      "name": "main@106-11"
+    },
+    {
+      "name": "main@110-12"
+    },
+    {
+      "name": "main@117-14"
+    },
+    {
+      "name": "main@122-15"
+    },
+    {
+      "name": "main@127-16"
+    },
+    {
+      "name": "main@137-18"
+    },
+    {
+      "name": "main@147-20"
+    },
+    {
+      "name": "main@165-22"
+    },
+    {
+      "name": "main@184-25"
+    },
+    {
+      "name": "main@189-26"
+    },
+    {
+      "name": "main@194-27"
+    },
+    {
+      "name": "main@202-29"
+    },
+    {
+      "name": "main@210-31"
+    },
+    {
+      "name": "main@215-32"
+    },
+    {
+      "name": "main@232-34"
+    },
+    {
+      "name": "main@248-36"
+    },
+    {
+      "name": "main@255-37"
+    }
+  ]
+}

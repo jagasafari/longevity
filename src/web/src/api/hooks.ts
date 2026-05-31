@@ -1,3 +1,4 @@
+import { useCallback } from 'react'
 import {
   useInfiniteQuery,
   useMutation,
@@ -22,7 +23,7 @@ export const useMe = () =>
     queryKey: qk.me,
     queryFn: () => photoApi.me(),
     retry: false,
-    staleTime: 60_000,
+    staleTime: 5 * 60 * 1000,
   })
 
 export const usePhotos = (date: Date | null) =>
@@ -51,40 +52,52 @@ export const useGroupCategories = () =>
   })
 
 export const usePhotoCounts = () =>
-  useQuery({ queryKey: qk.photoCounts, queryFn: () => photoApi.photoCounts() })
+  useQuery({
+    queryKey: qk.photoCounts,
+    queryFn: () => photoApi.photoCounts(),
+    staleTime: 5 * 60 * 1000,
+  })
 
-export const useVocabularyGroupIds = () =>
+export const useVocabularyGroups = () =>
   useQuery({
     queryKey: qk.vocabularyGroups,
-    queryFn: () => photoApi.vocabularyGroupIds(),
+    queryFn: () => photoApi.vocabularyGroups(),
   })
 
-export const useAddToVocabulary = () => {
+export const useMoveGroupToVocabulary = () => {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (groupId: string) => photoApi.addToVocabulary(groupId),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: qk.vocabularyGroups }),
+    mutationFn: (galleryGroupId: string) =>
+      photoApi.moveGalleryGroupToVocabulary(galleryGroupId),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: qk.vocabularyGroups })
+      void qc.invalidateQueries({ queryKey: qk.groupTree })
+      void qc.invalidateQueries({ queryKey: qk.groupCategories })
+      void qc.invalidateQueries({ queryKey: qk.categories })
+    },
   })
 }
+
+export const useSuggestVocabulary = () =>
+  useMutation({ mutationFn: () => photoApi.suggestVocabulary() })
 
 export const useRemoveFromVocabulary = () => {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (groupId: string) => photoApi.removeFromVocabulary(groupId),
+    mutationFn: (vocabGroupId: string) => photoApi.removeFromVocabulary(vocabGroupId),
     onSuccess: () => void qc.invalidateQueries({ queryKey: qk.vocabularyGroups }),
   })
 }
 
 export const useInvalidateAll = () => {
   const qc = useQueryClient()
-  return () => {
+  return useCallback(() => {
     void qc.invalidateQueries({ queryKey: ['photos'] })
     void qc.invalidateQueries({ queryKey: qk.groupTree })
     void qc.invalidateQueries({ queryKey: qk.groupCategories })
     void qc.invalidateQueries({ queryKey: qk.categories })
-    void qc.invalidateQueries({ queryKey: qk.photoCounts })
     void qc.invalidateQueries({ queryKey: qk.vocabularyGroups })
-  }
+  }, [qc])
 }
 
 export const useDeletePhoto = () => {

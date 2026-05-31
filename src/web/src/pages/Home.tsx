@@ -1,4 +1,4 @@
-import { useCallback, useMemo, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import {
   useAssignCategory,
   useCategories,
@@ -6,12 +6,9 @@ import {
   useGroupTree,
   useInvalidateAll,
   useMe,
-  usePhotoCounts,
   usePhotos,
   useRemoveCategory,
-  useVocabularyGroupIds,
-  useAddToVocabulary,
-  useRemoveFromVocabulary,
+  useMoveGroupToVocabulary,
 } from '../api/hooks'
 import { usePhotosHub } from '../api/signalr'
 import type { PhotoInfo } from '../api/schemas'
@@ -26,7 +23,6 @@ import {
   ungroupedPhotos,
 } from '../lib/groupTree'
 import { useGalleryHandlers } from '../lib/galleryHandlers'
-import { CalendarPopup, dayLabel } from '../components/CalendarPopup'
 import { GroupHeader } from '../components/GroupHeader'
 import { GroupSection } from '../components/GroupSection'
 import { Lightbox } from '../components/Lightbox'
@@ -47,8 +43,6 @@ function SignedInHome() {
   const groupTreeQuery = useGroupTree()
   const categoriesQuery = useCategories()
   const groupCategoriesQuery = useGroupCategories()
-  const photoCountsQuery = usePhotoCounts()
-  const vocabQuery = useVocabularyGroupIds()
 
   const allPhotos: PhotoInfo[] = useMemo(
     () => photosQuery.data?.pages.flatMap((p) => p.items) ?? [],
@@ -59,32 +53,16 @@ function SignedInHome() {
   const children = useMemo(() => childrenByParent(tree), [tree])
   const categories = categoriesQuery.data ?? []
   const groupCats = groupCategoriesQuery.data ?? {}
-  const counts = useMemo(
-    () =>
-      new Map(
-        (photoCountsQuery.data ?? []).map((c) => [
-          c.date,
-          c.count,
-        ]),
-      ),
-    [photoCountsQuery.data],
-  )
 
   const categoryById = useMemo(
     () => new Map(categories.map((c) => [c.id, c])),
     [categories],
   )
 
-  const vocabGroupIds = useMemo(
-    () => new Set(vocabQuery.data ?? []),
-    [vocabQuery.data],
-  )
-
   const isVisible = useCallback(
     (gid: string) =>
-      !vocabGroupIds.has(gid) &&
       isGroupVisible(gid, ui.selectedCategoryId, groupCats, children),
-    [ui.selectedCategoryId, groupCats, children, vocabGroupIds],
+    [ui.selectedCategoryId, groupCats, children],
   )
 
   const visibleRoots = useMemo(
@@ -98,89 +76,32 @@ function SignedInHome() {
 
   usePhotosHub(useCallback(() => inv(), [inv]))
 
+  const sentinelRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const el = sentinelRef.current
+    if (!el) return
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry?.isIntersecting && photosQuery.hasNextPage && !photosQuery.isFetchingNextPage) {
+          void photosQuery.fetchNextPage()
+        }
+      },
+      { rootMargin: '400px' },
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [photosQuery.hasNextPage, photosQuery.isFetchingNextPage, photosQuery.fetchNextPage])
+
   const handlers = useGalleryHandlers()
   const assignMut = useAssignCategory()
   const removeMut = useRemoveCategory()
-  const addToVocab = useAddToVocabulary()
-  const removeFromVocab = useRemoveFromVocabulary()
+  const moveToVocab = useMoveGroupToVocabulary()
 
   const groupCategoryList = (gid: string) =>
     categoriesForGroup(gid, groupCats, categoryById)
 
   return (
     <>
-      <div className="relative flex flex-wrap items-center gap-2 mb-6">
-        <FilterButton
-          active={ui.selectedDay === null && ui.selectedCategoryId === null}
-          onClick={() => ui.clearFilters()}
-        >
-          All
-        </FilterButton>
-        <FilterButton
-          active={false}
-          onClick={() => ui.toggleCalendar()}
-        >
-          {ui.selectedDay ? dayLabel(ui.selectedDay) : 'Calendar'}
-        </FilterButton>
-        <select
-          value={ui.selectedCategoryId ?? ''}
-          onChange={(e) =>
-            ui.selectCategoryId(
-              e.target.value === '' ? null : Number(e.target.value),
-            )
-          }
-          className="px-2 py-1 text-sm border border-rule rounded-sm bg-paper"
-        >
-          <option value="">All categories</option>
-          {categories.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
-        {photosQuery.hasNextPage && (
-          <FilterButton
-            active={false}
-            onClick={() => void photosQuery.fetchNextPage()}
-            disabled={photosQuery.isFetchingNextPage}
-          >
-            {photosQuery.isFetchingNextPage ? 'Loading…' : 'Load more'}
-          </FilterButton>
-        )}
-        {ui.calendarOpen && (
-          <>
-            <div
-              className="fixed inset-0 z-40"
-              onClick={() => ui.toggleCalendar()}
-            />
-            <CalendarPopup
-              month={ui.calendarMonth}
-              selected={ui.selectedDay}
-              counts={counts}
-              onPrev={() =>
-                ui.setCalendarMonth(
-                  new Date(
-                    ui.calendarMonth.getFullYear(),
-                    ui.calendarMonth.getMonth() - 1,
-                    1,
-                  ),
-                )
-              }
-              onNext={() =>
-                ui.setCalendarMonth(
-                  new Date(
-                    ui.calendarMonth.getFullYear(),
-                    ui.calendarMonth.getMonth() + 1,
-                    1,
-                  ),
-                )
-              }
-              onPick={(d) => ui.selectDay(d)}
-            />
-          </>
-        )}
-      </div>
-
       {photosQuery.isPending ? (
         <p className="text-muted">Loading photos…</p>
       ) : allPhotos.length === 0 ? (
@@ -221,11 +142,9 @@ function SignedInHome() {
                   onRemove={(categoryId) =>
                     removeMut.mutate({ groupId: node.groupId, categoryId })
                   }
-                  inVocabulary={vocabGroupIds.has(node.groupId)}
+                  inVocabulary={false}
                   onToggleVocabulary={() =>
-                    vocabGroupIds.has(node.groupId)
-                      ? removeFromVocab.mutate(node.groupId)
-                      : addToVocab.mutate(node.groupId)
+                    moveToVocab.mutate(node.groupId)
                   }
                 />
               }
@@ -252,14 +171,10 @@ function SignedInHome() {
           )}
 
           {photosQuery.hasNextPage && (
-            <div className="text-center mt-6">
-              <FilterButton
-                active={false}
-                onClick={() => void photosQuery.fetchNextPage()}
-                disabled={photosQuery.isFetchingNextPage}
-              >
-                {photosQuery.isFetchingNextPage ? 'Loading…' : 'Load more'}
-              </FilterButton>
+            <div ref={sentinelRef} className="text-center mt-6 h-8">
+              {photosQuery.isFetchingNextPage && (
+                <p className="text-muted text-sm">Loading more…</p>
+              )}
             </div>
           )}
         </>
@@ -267,34 +182,6 @@ function SignedInHome() {
 
       <Lightbox photo={ui.lightboxPhoto} onClose={() => ui.openLightbox(null)} />
     </>
-  )
-}
-
-function FilterButton({
-  children,
-  active,
-  onClick,
-  disabled,
-}: {
-  children: ReactNode
-  active: boolean
-  onClick: () => void
-  disabled?: boolean
-}) {
-  const base =
-    'px-3 py-1.5 text-sm rounded-sm border transition-colors cursor-pointer'
-  const cls = active
-    ? `${base} bg-accent text-paper border-accent`
-    : `${base} bg-paper text-ink border-rule hover:border-accent`
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className={cls}
-    >
-      {children}
-    </button>
   )
 }
 

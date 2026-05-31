@@ -15,8 +15,9 @@
     <Compile Include="DbMigrations.fs" />
     <Compile Include="PhotoGroups.fs" />
     <Compile Include="Categories.fs" />
-    <Compile Include="Vocabulary.fs" />
     <Compile Include="Storage.fs" />
+    <Compile Include="Vocabulary.fs" />
+    <Compile Include="VocabSuggest.fs" />
     <Compile Include="PhotoCountCache.fs" />
     <Compile Include="PhotoHub.fs" />
     <Compile Include="ThumbnailSubscriber.fs" />
@@ -30,6 +31,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Azure.AI.OpenAI" Version="2.1.0" />
     <PackageReference Include="Azure.Identity" Version="1.18.0" />
     <PackageReference Include="Azure.Storage.Blobs" Version="12.27.0" />
     <PackageReference Include="Microsoft.AspNetCore.DataProtection.StackExchangeRedis" Version="10.0.2" />

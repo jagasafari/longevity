@@ -33,6 +33,7 @@ let main args =
     let oauth    = Config.loadGoogleOAuth builder.Configuration
     let storage  = Config.loadStorage builder.Configuration
     let pgConnStr = Config.loadPostgres builder.Configuration
+    let aiEndpoint = Config.loadAiEndpoint builder.Configuration
 
     let redisConn =
         builder.Configuration["Redis:ConnectionString"]
@@ -51,7 +52,12 @@ let main args =
     builder.Services.AddSingleton<IConnectionMultiplexer>(redis) |> ignore
     builder.Services.AddHostedService<ThumbnailSubscriber.ThumbnailSubscriberService>() |> ignore
     builder.Services.AddSingleton<PhotoCountCache.Cache>() |> ignore
-    builder.Services.AddHostedService<PhotoCountCache.RefreshService>() |> ignore
+    builder.Services.AddHostedService(fun sp ->
+        PhotoCountCache.RefreshService(
+            sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<PhotoCountCache.RefreshService>>(),
+            sp.GetRequiredService<PhotoCountCache.Cache>(),
+            storage,
+            pgConnStr)) |> ignore
     builder.Services.Configure<HostOptions>(fun (opts: HostOptions) ->
         opts.BackgroundServiceExceptionBehavior <-
             BackgroundServiceExceptionBehavior.Ignore) |> ignore
@@ -61,8 +67,7 @@ let main args =
     let cache = app.Services.GetRequiredService<PhotoCountCache.Cache>()
     let requestLogger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Request")
 
-    if app.Environment.IsDevelopment() then
-        app.MapOpenApi() |> ignore
+    app.MapOpenApi() |> ignore
 
     app.UseHttpsRedirection() |> ignore
     app.Use(Func<HttpContext, RequestDelegate, Task>(fun ctx next -> task {
@@ -94,6 +99,7 @@ let main args =
 
     app.MapGet("/auth/me",
         Func<HttpContext, IResult>(Routes.authMe))
+        .Produces<Routes.MeResponse>()
     |> ignore
 
     app.MapPost("/auth/logout",
@@ -101,8 +107,10 @@ let main args =
     |> ignore
 
     app.MapGet("/api/photos",
-        Func<HttpContext, Task<IResult>>(fun ctx -> Routes.photos storage ctx))
+        Func<HttpContext, Task<IResult>>(fun ctx ->
+            Routes.photos storage (Vocabulary.listExcludedPhotoNames pgConnStr) ctx))
         .RequireAuthorization()
+        .Produces<Storage.PhotoPage>()
     |> ignore
 
     app.MapGet("/api/photo-groups",
@@ -199,7 +207,7 @@ let main args =
 
     // Vocabulary endpoints
     app.MapGet("/api/vocabulary/groups",
-        Func<_>(Vocabulary.listGroupIds pgConnStr))
+        Func<_>(Vocabulary.listGroups storage pgConnStr))
         .RequireAuthorization()
     |> ignore
 
@@ -212,11 +220,12 @@ let main args =
                 if System.String.IsNullOrWhiteSpace groupId then
                     return Results.BadRequest {| error = "missing_group_id" |}
                 else
-                    do! Vocabulary.addGroup pgConnStr groupId
+                    let! vocabId = Vocabulary.moveGalleryGroup pgConnStr groupId
                     do! hub.Clients.All.SendAsync("PhotosChanged")
-                    return Results.NoContent()
+                    return Results.Ok { Routes.VocabMoveResponse.vocabId = vocabId }
             }))
         .RequireAuthorization()
+        .Produces<Routes.VocabMoveResponse>()
     |> ignore
 
     app.MapDelete("/api/vocabulary/groups/{groupId}",
@@ -239,6 +248,14 @@ let main args =
         Func<_>(PhotoCountCache.list cache))
         .RequireAuthorization()
     |> ignore
+
+    match aiEndpoint with
+    | Some endpoint ->
+        app.MapPost("/api/vocabulary/suggest",
+            Func<_>(VocabSuggest.suggest pgConnStr endpoint))
+            .RequireAuthorization()
+        |> ignore
+    | None -> ()
 
     app.Run()
     0

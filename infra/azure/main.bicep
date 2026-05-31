@@ -21,6 +21,9 @@ param deployerPrincipalId string
 @description('Storage account name for photo uploads (must be globally unique, lowercase, 3-24 chars)')
 param storageAccountName string
 
+@description('Azure AI Services account name (globally unique, 3-64 chars).')
+param aiAccountName string = 'longevity-ai'
+
 @description('Display name for the Azure Monitor workbook to create.')
 param workbookDisplayName string = 'Longevity Workbook'
 
@@ -159,6 +162,15 @@ module workbook './modules/workbook.bicep' = {
   }
 }
 
+module aiFoundry './modules/ai-foundry.bicep' = {
+  scope: rg
+  params: {
+    accountName: aiAccountName
+    location: resourceLocation
+    backendPrincipalId: backendIdentity.outputs.principalId
+  }
+}
+
 output keyVaultName string = kv.outputs.keyVaultName
 output aksClusterName string = aksConfig.clusterName
 output acrLoginServer string = acr.outputs.acrLoginServer
@@ -169,3 +181,4 @@ output logAnalyticsWorkspaceId string = logAnalytics.outputs.workspaceId
 output appInsightsConnectionString string = appInsights.outputs.connectionString
 output workbookId string = workbook.outputs.workbookId
 output workbookUrl string = workbook.outputs.workbookPortalUrl
+output aiEndpoint string = aiFoundry.outputs.endpoint
