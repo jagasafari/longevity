@@ -103,11 +103,17 @@ jobs:
       - name: ACR login
         if: steps.gate.outputs.should_run == 'true'
         run: |
-          TOKEN=$(az acr login --name "$ACR_NAME" \
-            --expose-token --output tsv --query accessToken)
-          docker login "$ACR_NAME.azurecr.io" \
+          set -euo pipefail
+          AAD=$(az account get-access-token \
+            --query accessToken -o tsv)
+          REFRESH=$(curl -fsS -X POST \
+            -H "Content-Type: application/x-www-form-urlencoded" \
+            -d "grant_type=access_token&service=${ACR_NAME}.azurecr.io&access_token=${AAD}" \
+            "https://${ACR_NAME}.azurecr.io/oauth2/exchange" \
+            | jq -r .refresh_token)
+          docker login "${ACR_NAME}.azurecr.io" \
             -u 00000000-0000-0000-0000-000000000000 \
-            --password-stdin <<< "$TOKEN"
+            --password-stdin <<< "$REFRESH"
 
       - name: Set up Docker Buildx
         if: steps.gate.outputs.should_run == 'true'
