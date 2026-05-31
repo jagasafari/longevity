@@ -106,27 +106,53 @@ let deletePhoto (config: StorageConfig) (blobName: string) = task {
 
 let private thumbnailContainerName = "thumbnails"
 
-let private buildUrlFunctions (service: BlobServiceClient) (config: StorageConfig) = task {
+type private DelegationCacheEntry =
+    { Key: Azure.Storage.Blobs.Models.UserDelegationKey
+      Expiry: DateTimeOffset
+      ThumbnailNames: Set<string>
+      HourStart: DateTimeOffset }
+
+let private delegationCache =
+    System.Collections.Concurrent.ConcurrentDictionary<string, DelegationCacheEntry>()
+
+let private getOrCreateDelegation (service: BlobServiceClient) = task {
     let now = DateTimeOffset.UtcNow
     let hourStart =
         DateTimeOffset(
             now.Year, now.Month, now.Day, now.Hour, 0, 0, TimeSpan.Zero)
-    let expiry = hourStart.AddHours 2.0
-    let! dkResp =
-        service.GetUserDelegationKeyAsync(Nullable(hourStart), expiry)
-    let delegationKey = dkResp.Value
-    let thumbnailContainer = service.GetBlobContainerClient thumbnailContainerName
-    let! thumbnailNames =
-        task {
-            try
-                let! blobs = listBlobsAsync thumbnailContainer None (fun _ -> true)
-                return blobs |> Seq.map fst |> Set.ofSeq
-            with _ -> return Set.empty
-        }
-    let toUrl = buildSasUrl service delegationKey config.ContainerName expiry
+    match delegationCache.TryGetValue service.AccountName with
+    | true, e when e.HourStart = hourStart -> return e
+    | _ ->
+        let expiry = hourStart.AddHours 2.0
+        let! dkResp =
+            service.GetUserDelegationKeyAsync(Nullable(hourStart), expiry)
+        let thumbnailContainer =
+            service.GetBlobContainerClient thumbnailContainerName
+        let! thumbnailNames =
+            task {
+                try
+                    let! blobs =
+                        listBlobsAsync thumbnailContainer None (fun _ -> true)
+                    return blobs |> Seq.map fst |> Set.ofSeq
+                with _ -> return Set.empty
+            }
+        let entry =
+            { Key = dkResp.Value
+              Expiry = expiry
+              ThumbnailNames = thumbnailNames
+              HourStart = hourStart }
+        delegationCache.[service.AccountName] <- entry
+        return entry
+}
+
+let invalidateThumbnailCache () = delegationCache.Clear()
+
+let private buildUrlFunctions (service: BlobServiceClient) (config: StorageConfig) = task {
+    let! entry = getOrCreateDelegation service
+    let toUrl = buildSasUrl service entry.Key config.ContainerName entry.Expiry
     let toThumbnailUrl name =
-        if Set.contains name thumbnailNames then
-            buildSasUrl service delegationKey thumbnailContainerName expiry name
+        if Set.contains name entry.ThumbnailNames then
+            buildSasUrl service entry.Key thumbnailContainerName entry.Expiry name
         else toUrl name
     return toUrl, toThumbnailUrl
 }

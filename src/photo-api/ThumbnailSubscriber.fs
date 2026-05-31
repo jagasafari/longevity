@@ -21,6 +21,7 @@ type ThumbnailSubscriberService(hub: IHubContext<PhotoHub.PhotoHub>, redis: ICon
 
         do! subscriber.SubscribeAsync(channel, fun _ msg ->
             logger.LogInformation("Received thumbnail-ready: {Message}, sending SignalR PhotosChanged", msg.ToString())
+            Storage.invalidateThumbnailCache ()
             hub.Clients.All.SendAsync("PhotosChanged")
                 .ContinueWith(fun (t: Task) ->
                     if t.IsFaulted then
