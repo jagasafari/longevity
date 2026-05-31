@@ -59,7 +59,10 @@ let private parseResponse (json: string) : Suggestion list =
         JsonSerializer.Deserialize<SuggestionJson[]>(cleaned, opts)
         |> Array.toList
         |> List.map (fun s -> { GroupId = s.groupId; Reason = s.reason })
-    with _ -> []
+    with ex ->
+        let preview = if cleaned.Length > 500 then cleaned[..499] else cleaned
+        eprintfn "VocabSuggest: failed to parse model response: %s | raw: %s" ex.Message preview
+        []
 
 let suggest
     (connStr: string)

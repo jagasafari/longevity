@@ -23,7 +23,7 @@ export const useMe = () =>
     queryKey: qk.me,
     queryFn: () => photoApi.me(),
     retry: false,
-    staleTime: Infinity,
+    staleTime: 5 * 60 * 1000,
   })
 
 export const usePhotos = (date: Date | null) =>

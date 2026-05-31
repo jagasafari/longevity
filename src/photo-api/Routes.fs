@@ -111,12 +111,12 @@ let private normalizeStr =
     >> Option.map (fun (s: string) -> s.Trim())
     >> Option.defaultValue ""
 
-let private mapStorageError (ex: Azure.RequestFailedException) =
+let private (|StorageError|_|) (ex: Azure.RequestFailedException) =
     match ex.Status with
-    | 403 -> Results.StatusCode 403
-    | 404 -> Results.NotFound()
-    | 409 -> Results.StatusCode 409
-    | _   -> Results.StatusCode 500
+    | 403 -> Some (Results.StatusCode 403)
+    | 404 -> Some (Results.NotFound())
+    | 409 -> Some (Results.StatusCode 409)
+    | _   -> None
 
 let private validName = function
     | null -> None
@@ -146,8 +146,8 @@ let deletePhoto
                 do! removeFromGroups blobName
             do! notifyOnDelete hub deleted
             return toDeleteResult (Some deleted)
-        with :? RequestFailedException as ex ->
-            return mapStorageError ex
+        with :? RequestFailedException as ex when ex.Status = 403 || ex.Status = 404 || ex.Status = 409 ->
+            return (|StorageError|_|) ex |> Option.defaultWith (fun () -> raise ex)
 }
 
 let groupPhotos
@@ -171,7 +171,10 @@ let groupPhotos
                 do! hub.Clients.All.SendAsync("PhotosChanged")
                 return Results.NoContent()
             with
-            | :? RequestFailedException as ex -> return mapStorageError ex
+            | :? RequestFailedException as ex ->
+                match ex with
+                | StorageError r -> return r
+                | _              -> return raise ex
             | :? PostgresException as ex when ex.SqlState = "23505" ->
                 return Results.Conflict {| error = "group_conflict" |}
             | :? PostgresException ->

@@ -20,11 +20,11 @@ from datetime import datetime
 import psycopg2
 
 DB = dict(
-    host="localhost",
-    port=5434,
-    dbname="longevity",
-    user="longevity",
-    password="p7XRi7Wk9vcIk6tOXjixHJlbJYcV0Y4l",
+    host=os.environ.get("PGHOST", "localhost"),
+    port=int(os.environ.get("PGPORT", "5434")),
+    dbname=os.environ.get("PGDATABASE", "longevity"),
+    user=os.environ.get("PGUSER", "longevity"),
+    password=os.environ["PGPASSWORD"],
 )
 PAIR_WINDOW_SECS = 120
 DRY_RUN = "--dry-run" in sys.argv

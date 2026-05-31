@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import {
   useAssignCategory,
   useCategories,
@@ -76,10 +76,20 @@ function SignedInHome() {
 
   usePhotosHub(useCallback(() => inv(), [inv]))
 
+  const sentinelRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
-    if (photosQuery.hasNextPage && !photosQuery.isFetchingNextPage) {
-      void photosQuery.fetchNextPage()
-    }
+    const el = sentinelRef.current
+    if (!el) return
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && photosQuery.hasNextPage && !photosQuery.isFetchingNextPage) {
+          void photosQuery.fetchNextPage()
+        }
+      },
+      { rootMargin: '400px' },
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
   }, [photosQuery.hasNextPage, photosQuery.isFetchingNextPage, photosQuery.fetchNextPage])
 
   const handlers = useGalleryHandlers()
@@ -161,14 +171,10 @@ function SignedInHome() {
           )}
 
           {photosQuery.hasNextPage && (
-            <div className="text-center mt-6">
-              <FilterButton
-                active={false}
-                onClick={() => void photosQuery.fetchNextPage()}
-                disabled={photosQuery.isFetchingNextPage}
-              >
-                {photosQuery.isFetchingNextPage ? 'Loading…' : 'Load more'}
-              </FilterButton>
+            <div ref={sentinelRef} className="text-center mt-6 h-8">
+              {photosQuery.isFetchingNextPage && (
+                <p className="text-muted text-sm">Loading more…</p>
+              )}
             </div>
           )}
         </>
@@ -176,34 +182,6 @@ function SignedInHome() {
 
       <Lightbox photo={ui.lightboxPhoto} onClose={() => ui.openLightbox(null)} />
     </>
-  )
-}
-
-function FilterButton({
-  children,
-  active,
-  onClick,
-  disabled,
-}: {
-  children: ReactNode
-  active: boolean
-  onClick: () => void
-  disabled?: boolean
-}) {
-  const base =
-    'px-3 py-1.5 text-sm rounded-sm border transition-colors cursor-pointer'
-  const cls = active
-    ? `${base} bg-accent text-paper border-accent`
-    : `${base} bg-paper text-ink border-rule hover:border-accent`
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className={cls}
-    >
-      {children}
-    </button>
   )
 }
 
