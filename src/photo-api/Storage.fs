@@ -31,7 +31,7 @@ let private buildSasUrl (service: BlobServiceClient) delegationKey containerName
     let client = service.GetBlobContainerClient(containerName).GetBlobClient(blobName)
     let uriBuilder = BlobUriBuilder(client.Uri)
     uriBuilder.Sas <- builder.ToSasQueryParameters(delegationKey, service.AccountName)
-    string (uriBuilder.ToUri())
+    uriBuilder.ToUri().AbsoluteUri
 
 let selectRecent (toUrl: string -> string) (toThumbnailUrl: string -> string) (blobs: seq<string * DateTimeOffset>) (count: int) =
     let insert top item =
