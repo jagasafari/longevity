@@ -82,7 +82,7 @@ function SignedInHome() {
     if (!el) return
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting && photosQuery.hasNextPage && !photosQuery.isFetchingNextPage) {
+        if (entry?.isIntersecting && photosQuery.hasNextPage && !photosQuery.isFetchingNextPage) {
           void photosQuery.fetchNextPage()
         }
       },

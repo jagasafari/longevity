@@ -1,5 +1,4 @@
 import { z } from 'zod'
-import type { components } from './types.gen'
 
 export const PhotoInfoSchema = z.object({
   name: z.string(),
@@ -26,24 +25,24 @@ export const CategorySchema = z.object({
   id: z.number(),
   name: z.string(),
 })
-export type Category = components['schemas']['Category']
+export type Category = z.infer<typeof CategorySchema>
 
 export const PhotoCountSchema = z.object({
   date: z.string(),
   count: z.number(),
 })
-export type PhotoCount = components['schemas']['PhotoCount']
+export type PhotoCount = z.infer<typeof PhotoCountSchema>
 
 export const MeSchema = z.object({
   email: z.string().nullable().optional(),
 })
-export type Me = components['schemas']['MeResponse']
+export type Me = z.infer<typeof MeSchema>
 
 export const VocabSuggestionSchema = z.object({
   groupId: z.string(),
   reason: z.string(),
 })
-export type VocabSuggestion = components['schemas']['Suggestion']
+export type VocabSuggestion = z.infer<typeof VocabSuggestionSchema>
 
 export const GroupCategoriesSchema = z.record(z.string(), z.array(z.number()))
 export type GroupCategories = z.infer<typeof GroupCategoriesSchema>
