@@ -5,6 +5,8 @@ metadata:
   namespace: {{ .Values.namespace }}
 spec:
   replicas: {{ .Values.worker.replicaCount }}
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: thumbnail-worker

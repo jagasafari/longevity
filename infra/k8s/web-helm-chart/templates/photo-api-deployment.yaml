@@ -5,6 +5,8 @@ metadata:
   namespace: {{ .Values.namespace }}
 spec:
   replicas: {{ .Values.photoApi.replicaCount }}
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: photo-api

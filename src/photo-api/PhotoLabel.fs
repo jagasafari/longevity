@@ -36,18 +36,18 @@ type private UnlabeledRow = { photo_name: string }
 type private LabeledRow = { photo_name: string; word: string }
 
 let private labelSystemPrompt =
-    "You read English text printed in photos for a vocabulary learning app. \
-     The photo is either: a Netflix screenshot with subtitle text at the bottom, \
-     an AI-generated illustration with a single vocabulary word written large \
-     on the image, or another type of photo. \
-     Your job: extract the single most prominent English word the photo teaches. \
-     READ the visible text carefully. If the image clearly contains a large \
-     written word, ALWAYS return it even if you are unsure of the lesson context. \
+    "You label photos for an English vocabulary learning app. \
+     Return ONE lowercase English word that best teaches what the photo shows. \
+     Priority order: \
+     1) if subtitles or large written English text are visible, return that \
+        word; \
+     2) otherwise return the most prominent object, action, or concept \
+        depicted in the photo. \
      Respond ONLY with raw JSON (no markdown, no code fences): \
      {\"word\": \"<lowercase word>\", \
-      \"source\": \"netflix_caption\" | \"ai_image_with_word\" | \"other\", \
+      \"source\": \"netflix_caption\" | \"ai_image_with_word\" | \"object\", \
       \"confidence\": 0.0..1.0}. \
-     Use empty word only when the image truly has no readable English text."
+     Use empty word only when the image is unreadable or blank."
 
 let private fuzzySystemPrompt =
     "You group near-duplicate English words. \
@@ -143,7 +143,7 @@ let private labelOnePhoto
     let data = BinaryData.FromBytes(bytes)
     let parts : ChatMessageContentPart array =
         [| ChatMessageContentPart.CreateTextPart(
-               $"Read the English text written on this image (filename: {photoName}) and respond with JSON only.")
+               $"Label this image (filename: {photoName}). Respond with JSON only.")
            ChatMessageContentPart.CreateImagePart(
                data, mediaTypeFor photoName, ChatImageDetailLevel.High) |]
     let messages : ChatMessage array =
@@ -153,7 +153,7 @@ let private labelOnePhoto
     eprintfn "labelOnePhoto %s -> %s" photoName (raw.Replace("\n", " "))
     return
         parseLabel raw
-        |> Option.defaultValue { word = ""; source = "other"; confidence = 0.0 }
+        |> Option.defaultValue { word = ""; source = "object"; confidence = 0.0 }
 }
 
 let private persistLabel
