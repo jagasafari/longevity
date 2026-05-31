@@ -22,15 +22,16 @@ let private lastModified (b: Azure.Storage.Blobs.Models.BlobItem) =
     |> Option.defaultValue DateTimeOffset.MinValue
 
 let private buildSasUrl (service: BlobServiceClient) delegationKey containerName expiry blobName =
-    let sasBuilder =
+    let builder =
         BlobSasBuilder(
             BlobSasPermissions.Read,
             expiry,
             BlobContainerName = containerName,
             BlobName = blobName)
-    let sasParams = sasBuilder.ToSasQueryParameters(delegationKey, service.AccountName)
-    let encodedName = Uri.EscapeDataString(blobName)
-    $"https://{service.AccountName}.blob.core.windows.net/{containerName}/{encodedName}?{sasParams}"
+    let client = service.GetBlobContainerClient(containerName).GetBlobClient(blobName)
+    let uriBuilder = BlobUriBuilder(client.Uri)
+    uriBuilder.Sas <- builder.ToSasQueryParameters(delegationKey, service.AccountName)
+    string (uriBuilder.ToUri())
 
 let selectRecent (toUrl: string -> string) (toThumbnailUrl: string -> string) (blobs: seq<string * DateTimeOffset>) (count: int) =
     let insert top item =

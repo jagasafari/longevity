@@ -1,6 +1,7 @@
 module VocabSubgroupSuggest
 
 open System
+open System.Net.Http
 open System.Text.Json
 open System.Threading.Tasks
 open Azure.AI.OpenAI
@@ -29,6 +30,19 @@ type private PhotoGroupRow = { photo_name: string; group_id: string; group_name:
 
 let private maxExamples = 3
 let private maxPhotosPerCall = 20
+
+let private mimeFromName (name: string) =
+    let n = name.ToLowerInvariant()
+    if n.EndsWith ".png" then "image/png"
+    elif n.EndsWith ".webp" then "image/webp"
+    else "image/jpeg"
+
+let private fetchImagePart (http: HttpClient) (url: string) (name: string) : Task<ChatMessageContentPart option> = task {
+    try
+        let! bytes = http.GetByteArrayAsync(url)
+        return Some (ChatMessageContentPart.CreateImagePart(BinaryData.FromBytes bytes, mimeFromName name, Nullable()))
+    with _ -> return None
+}
 
 let private systemPrompt =
     "You analyze photos for a vocabulary learning app. \
@@ -133,13 +147,22 @@ let suggest
               [{{\"word\": \"<word>\", \"photoNames\": [\"<exact filename>\", ...]}}]. \
               Use lowercase for the word. \
               If a photo has no readable word, use word \"unknown\"."
+        use http = new HttpClient()
+        let! downloadedParts =
+            indexed
+            |> List.map (fun (_, n) ->
+                let url, _ = urlMap |> Map.tryFind n |> Option.defaultValue ("", "")
+                if url = "" then Task.FromResult None
+                else fetchImagePart http url n)
+            |> List.toArray
+            |> Task.WhenAll
         let imageParts : ChatMessageContentPart[] =
             [|
                 yield ChatMessageContentPart.CreateTextPart(userText)
-                for _, n in indexed do
-                    let url, _ = urlMap |> Map.tryFind n |> Option.defaultValue ("", "")
-                    if url <> "" then
-                        yield ChatMessageContentPart.CreateImagePart(Uri url)
+                for p in downloadedParts do
+                    match p with
+                    | Some part -> yield part
+                    | None -> ()
             |]
         let messages : ChatMessage[] =
             [| SystemChatMessage systemPrompt; UserChatMessage(imageParts) |]
@@ -213,13 +236,22 @@ let suggestAllSubgroups
               [{{\"word\": \"<word>\", \"photoNames\": [\"<exact filename>\", ...]}}]. \
               Use lowercase for the word. \
               If a photo has no readable word, use word \"unknown\"."
+        use http = new HttpClient()
+        let! downloadedParts =
+            indexed
+            |> List.map (fun (_, r) ->
+                let url, _ = urlMap |> Map.tryFind r.photo_name |> Option.defaultValue ("", "")
+                if url = "" then Task.FromResult None
+                else fetchImagePart http url r.photo_name)
+            |> List.toArray
+            |> Task.WhenAll
         let imageParts : ChatMessageContentPart[] =
             [|
                 yield ChatMessageContentPart.CreateTextPart(userText)
-                for _, r in indexed do
-                    let url, _ = urlMap |> Map.tryFind r.photo_name |> Option.defaultValue ("", "")
-                    if url <> "" then
-                        yield ChatMessageContentPart.CreateImagePart(Uri url)
+                for p in downloadedParts do
+                    match p with
+                    | Some part -> yield part
+                    | None -> ()
             |]
         let messages : ChatMessage[] =
             [| SystemChatMessage systemPrompt; UserChatMessage(imageParts) |]
