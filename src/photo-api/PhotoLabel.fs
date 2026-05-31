@@ -58,16 +58,19 @@ let private fuzzySystemPrompt =
      Only include groups with 2+ members. Skip words that have no near-variants."
 
 let private stripFences (s: string) =
-    s.Trim().TrimStart('`').TrimEnd('`')
+    s.Trim()
         .Replace("```json", "")
         .Replace("```", "")
         .Trim()
 
 let private parseLabel (json: string) : LabelJson option =
+    let stripped = stripFences json
     try
         let opts = JsonSerializerOptions(PropertyNameCaseInsensitive = true)
-        Some (JsonSerializer.Deserialize<LabelJson>(stripFences json, opts))
-    with _ -> None
+        Some (JsonSerializer.Deserialize<LabelJson>(stripped, opts))
+    with ex ->
+        eprintfn "parseLabel failed on %A: %s" stripped ex.Message
+        None
 
 let private parseFuzzy (json: string) : FuzzyJson array =
     try
@@ -121,31 +124,14 @@ let private callChat
     return result
 }
 
-let private httpClient = new System.Net.Http.HttpClient()
-
-let private mediaTypeFor (name: string) =
-    let lower = name.ToLowerInvariant()
-    if lower.EndsWith ".png" then "image/png"
-    elif lower.EndsWith ".gif" then "image/gif"
-    elif lower.EndsWith ".webp" then "image/webp"
-    else "image/jpeg"
-
-let private downloadImage (url: string) : Task<byte array> = task {
-    let! resp = httpClient.GetAsync(url)
-    resp.EnsureSuccessStatusCode() |> ignore
-    return! resp.Content.ReadAsByteArrayAsync()
-}
-
 let private labelOnePhoto
     (endpoint: string) (photoName: string) (imageUrl: string)
     : Task<LabelJson> = task {
-    let! bytes = downloadImage imageUrl
-    let data = BinaryData.FromBytes(bytes)
     let parts : ChatMessageContentPart array =
         [| ChatMessageContentPart.CreateTextPart(
                $"Label this image (filename: {photoName}). Respond with JSON only.")
            ChatMessageContentPart.CreateImagePart(
-               data, mediaTypeFor photoName, ChatImageDetailLevel.High) |]
+               Uri(imageUrl), ChatImageDetailLevel.High) |]
     let messages : ChatMessage array =
         [| SystemChatMessage labelSystemPrompt
            UserChatMessage(parts) |]
