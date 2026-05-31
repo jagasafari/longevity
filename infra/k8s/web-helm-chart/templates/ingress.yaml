@@ -7,6 +7,8 @@ metadata:
   namespace: {{ .Values.namespace }}
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
 {{- if $rateLimit.enabled }}
     # Rate limiting tuned for Blazor startup asset bursts
     nginx.ingress.kubernetes.io/limit-rps: "{{ $rateLimit.rps }}"

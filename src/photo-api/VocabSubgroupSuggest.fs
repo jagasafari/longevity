@@ -7,6 +7,7 @@ open System.Threading.Tasks
 open Azure.AI.OpenAI
 open Azure.Identity
 open OpenAI.Chat
+open SkiaSharp
 open Dapper
 open Npgsql
 
@@ -31,16 +32,20 @@ type private PhotoGroupRow = { photo_name: string; group_id: string; group_name:
 let private maxExamples = 3
 let private maxPhotosPerCall = 20
 
-let private mimeFromName (name: string) =
-    let n = name.ToLowerInvariant()
-    if n.EndsWith ".png" then "image/png"
-    elif n.EndsWith ".webp" then "image/webp"
-    else "image/jpeg"
-
 let private fetchImagePart (http: HttpClient) (url: string) (name: string) : Task<ChatMessageContentPart option> = task {
     try
         let! bytes = http.GetByteArrayAsync(url)
-        return Some (ChatMessageContentPart.CreateImagePart(BinaryData.FromBytes bytes, mimeFromName name, Nullable()))
+        use bmp = SKBitmap.Decode(bytes)
+        let resized =
+            if bmp = null || bmp.Width <= 800 then bytes
+            else
+                let scale = 800.0f / float32 bmp.Width
+                let newH = int (float32 bmp.Height * scale)
+                use scaled = bmp.Resize(SKImageInfo(800, newH), SKSamplingOptions(SKFilterMode.Linear))
+                use img = SKImage.FromBitmap(scaled)
+                use data = img.Encode(SKEncodedImageFormat.Jpeg, 80)
+                data.ToArray()
+        return Some (ChatMessageContentPart.CreateImagePart(BinaryData.FromBytes resized, "image/jpeg", Nullable ChatImageDetailLevel.Low))
     with _ -> return None
 }
 
