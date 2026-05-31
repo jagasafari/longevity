@@ -80,7 +80,12 @@ let private resizeAndUpload (source: BlobContainerClient) (target: BlobContainer
     output.Position <- 0L
 
     let targetBlob = target.GetBlobClient blobName
-    let options = BlobUploadOptions(HttpHeaders = BlobHttpHeaders(ContentType = "image/jpeg"))
+    let options =
+        BlobUploadOptions(
+            HttpHeaders =
+                BlobHttpHeaders(
+                    ContentType = "image/jpeg",
+                    CacheControl = "public, max-age=31536000, immutable"))
     let! _ = targetBlob.UploadAsync(output, options)
     ()
 }

@@ -107,8 +107,13 @@ let deletePhoto (config: StorageConfig) (blobName: string) = task {
 let private thumbnailContainerName = "thumbnails"
 
 let private buildUrlFunctions (service: BlobServiceClient) (config: StorageConfig) = task {
-    let expiry = DateTimeOffset.UtcNow.AddHours 1.0
-    let! dkResp = service.GetUserDelegationKeyAsync(Nullable(), expiry)
+    let now = DateTimeOffset.UtcNow
+    let hourStart =
+        DateTimeOffset(
+            now.Year, now.Month, now.Day, now.Hour, 0, 0, TimeSpan.Zero)
+    let expiry = hourStart.AddHours 2.0
+    let! dkResp =
+        service.GetUserDelegationKeyAsync(Nullable(hourStart), expiry)
     let delegationKey = dkResp.Value
     let thumbnailContainer = service.GetBlobContainerClient thumbnailContainerName
     let! thumbnailNames =
