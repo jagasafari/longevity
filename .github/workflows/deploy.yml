@@ -108,11 +108,20 @@ jobs:
           set -euo pipefail
           AAD=$(az account get-access-token \
             --query accessToken -o tsv)
-          REFRESH=$(curl -fsS -X POST \
+          RESP=$(mktemp)
+          HTTP=$(curl -sS -o "$RESP" -w '%{http_code}' -X POST \
             -H "Content-Type: application/x-www-form-urlencoded" \
-            -d "grant_type=access_token&service=${ACR_NAME}.azurecr.io&tenant=${AZURE_TENANT_ID}&access_token=${AAD}" \
-            "https://${ACR_NAME}.azurecr.io/oauth2/exchange" \
-            | jq -r .refresh_token)
+            --data-urlencode "grant_type=access_token" \
+            --data-urlencode "service=${ACR_NAME}.azurecr.io" \
+            --data-urlencode "tenant=${AZURE_TENANT_ID}" \
+            --data-urlencode "access_token=${AAD}" \
+            "https://${ACR_NAME}.azurecr.io/oauth2/exchange")
+          if [ "$HTTP" != "200" ]; then
+            echo "ACR oauth2/exchange failed: HTTP $HTTP"
+            cat "$RESP"
+            exit 1
+          fi
+          REFRESH=$(jq -r .refresh_token < "$RESP")
           docker login "${ACR_NAME}.azurecr.io" \
             -u 00000000-0000-0000-0000-000000000000 \
             --password-stdin <<< "$REFRESH"
