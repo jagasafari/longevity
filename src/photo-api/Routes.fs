@@ -11,6 +11,9 @@ open Microsoft.AspNetCore.Http
 open Microsoft.AspNetCore.SignalR
 open Npgsql
 
+type MeResponse = { email: string }
+type VocabMoveResponse = { vocabId: string }
+
 [<CLIMutable>]
 type GroupPhotosRequest = {
     SourceName: string
@@ -86,21 +89,34 @@ let private qs (ctx: HttpContext) key =
     | true, v -> Some (v.ToString())
     | _ -> None
 
-let photos config (ctx: HttpContext) = task {
+let photos config (getExcluded: unit -> System.Threading.Tasks.Task<Set<string>>) (ctx: HttpContext) = task {
     let q = qs ctx
     let limit =
         q "limit"
         |> Option.bind tryParseInt
-        |> Option.filter (fun n -> n > 0 && n <= 200)
-        |> Option.defaultValue 50
+        |> Option.filter (fun n -> n > 0 && n <= 1000)
+        |> Option.defaultValue 500
     let dateFilter = q "date"   |> Option.bind tryParseDateOnly
     let before     = q "before" |> Option.bind tryParseDate
-    let! page = Storage.listPhotoPage config limit dateFilter before
+    let! excluded = getExcluded()
+    let! page = Storage.listPhotoPage config limit dateFilter before excluded
     return Results.Ok {|
         items = page.Items
         nextBefore = page.NextBefore |> Option.toObj
     |}
 }
+
+let private normalizeStr =
+    Option.ofObj
+    >> Option.map (fun (s: string) -> s.Trim())
+    >> Option.defaultValue ""
+
+let private mapStorageError (ex: Azure.RequestFailedException) =
+    match ex.Status with
+    | 403 -> Results.StatusCode 403
+    | 404 -> Results.NotFound()
+    | 409 -> Results.StatusCode 409
+    | _   -> Results.StatusCode 500
 
 let private validName = function
     | null -> None
@@ -128,52 +144,34 @@ let deletePhoto
             let! deleted = delete blobName
             if deleted then
                 do! removeFromGroups blobName
-
             do! notifyOnDelete hub deleted
             return toDeleteResult (Some deleted)
-        with
-        | :? RequestFailedException as ex when ex.Status = 403 ->
-            return Results.StatusCode 403
-        | :? RequestFailedException as ex when ex.Status = 404 ->
-            return Results.NotFound()
-        | :? RequestFailedException as ex when ex.Status = 409 ->
-            return Results.StatusCode 409
+        with :? RequestFailedException as ex ->
+            return mapStorageError ex
 }
 
 let groupPhotos
     (group: string -> string -> Task<unit>)
     (hub: IHubContext<PhotoHub.PhotoHub>)
     (request: GroupPhotosRequest) =
-    let validate req =
-        let normalize =
-            Option.ofObj
-            >> Option.map (fun (s: string) -> s.Trim())
-            >> Option.defaultValue ""
-        let source = normalize req.SourceName
-        let target = normalize req.TargetName
-
-        match source, target with
-        | s, t when String.IsNullOrWhiteSpace s || String.IsNullOrWhiteSpace t ->
+    let source = normalizeStr request.SourceName
+    let target = normalizeStr request.TargetName
+    let validation =
+        if String.IsNullOrWhiteSpace source || String.IsNullOrWhiteSpace target then
             Error "missing_photo_name"
-        | s, t when s = t -> Error "source_and_target_must_differ"
-        | s, t -> Ok (s, t)
-
+        elif source = target then
+            Error "source_and_target_must_differ"
+        else Ok (source, target)
     task {
-        match validate request with
-        | Error code ->
-            return Results.BadRequest {| error = code |}
-        | Ok (source, target) ->
+        match validation with
+        | Error code -> return Results.BadRequest {| error = code |}
+        | Ok (s, t) ->
             try
-                do! group source target
+                do! group s t
                 do! hub.Clients.All.SendAsync("PhotosChanged")
                 return Results.NoContent()
             with
-            | :? RequestFailedException as ex when ex.Status = 403 ->
-                return Results.StatusCode 403
-            | :? RequestFailedException as ex when ex.Status = 404 ->
-                return Results.NotFound()
-            | :? RequestFailedException as ex when ex.Status = 409 ->
-                return Results.StatusCode 409
+            | :? RequestFailedException as ex -> return mapStorageError ex
             | :? PostgresException as ex when ex.SqlState = "23505" ->
                 return Results.Conflict {| error = "group_conflict" |}
             | :? PostgresException ->
@@ -184,26 +182,14 @@ let movePhotoToGroup
     (movePhoto: string -> string -> Task<unit>)
     (hub: IHubContext<PhotoHub.PhotoHub>)
     (request: MovePhotoToGroupRequest) =
-    let validate req =
-        let normalize =
-            Option.ofObj
-            >> Option.map (fun (s: string) -> s.Trim())
-            >> Option.defaultValue ""
-        let photo = normalize req.PhotoName
-        let groupId = normalize req.TargetGroupId
-
-        match photo, groupId with
-        | p, g when String.IsNullOrWhiteSpace p || String.IsNullOrWhiteSpace g ->
-            Error "missing_fields"
-        | p, g -> Ok (p, g)
-
+    let photo   = normalizeStr request.PhotoName
+    let groupId = normalizeStr request.TargetGroupId
     task {
-        match validate request with
-        | Error code ->
-            return Results.BadRequest {| error = code |}
-        | Ok (photoName, groupId) ->
+        if String.IsNullOrWhiteSpace photo || String.IsNullOrWhiteSpace groupId then
+            return Results.BadRequest {| error = "missing_fields" |}
+        else
             try
-                do! movePhoto photoName groupId
+                do! movePhoto photo groupId
                 do! hub.Clients.All.SendAsync("PhotosChanged")
                 return Results.NoContent()
             with

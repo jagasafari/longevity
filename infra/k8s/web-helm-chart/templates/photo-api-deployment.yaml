@@ -25,6 +25,8 @@ spec:
           value: http://+:{{ .Values.photoApi.service.targetPort }}
         - name: Redis__ConnectionString
           value: {{ .Values.redis.connectionString }}
+        - name: AzureAI__Endpoint
+          value: {{ .Values.photoApi.aiEndpoint }}
         - name: Postgres__ConnectionString
           valueFrom:
             secretKeyRef:

@@ -29,3 +29,8 @@ let loadPostgres (cfg: IConfiguration) : string =
     |> Option.ofObj
     |> Option.filter (fun s -> s.Length > 0)
     |> Option.defaultWith (fun () -> failwith "Missing config: Postgres:ConnectionString")
+
+let loadAiEndpoint (cfg: IConfiguration) : string option =
+    cfg["AzureAI:Endpoint"]
+    |> Option.ofObj
+    |> Option.filter (fun s -> s.Length > 0)

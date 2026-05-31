@@ -2,12 +2,12 @@ import type { ReactNode } from 'react'
 import { useMe } from '../api/hooks'
 import { useUi } from '../store/ui'
 
-export function Layout({ children }: { children: ReactNode }) {
+export function Layout({ children, controls }: { children: ReactNode; controls?: ReactNode }) {
   const { view, setView } = useUi()
   return (
     <div className="min-h-full px-6 py-4">
       <header className="flex items-center justify-between mb-6 pb-3 border-b border-rule">
-        <div className="flex items-baseline gap-6">
+        <div className="flex items-center gap-6">
           <nav className="flex gap-0.5">
             <NavTab active={view === 'gallery'} onClick={() => setView('gallery')}>
               Gallery
@@ -16,6 +16,7 @@ export function Layout({ children }: { children: ReactNode }) {
               Vocabulary
             </NavTab>
           </nav>
+          {controls}
         </div>
         <LoginDisplay />
       </header>

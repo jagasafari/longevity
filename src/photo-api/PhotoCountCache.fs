@@ -7,6 +7,8 @@ open Azure.Identity
 open Azure.Storage.Blobs
 open Microsoft.Extensions.Hosting
 open Microsoft.Extensions.Logging
+open Dapper
+open Npgsql
 
 type PhotoCount = { date: DateOnly; count: int }
 
@@ -15,21 +17,26 @@ type Cache() =
     member _.Get() = Volatile.Read(&data)
     member _.Set v = Volatile.Write(&data, v)
 
-let private computeCounts (container: BlobContainerClient) =
+let private vocabularyPhotoNames (connStr: string) = task {
+    use conn = new NpgsqlConnection(connStr)
+    let! names = conn.QueryAsync<string>("SELECT photo_name FROM vocabulary.photos")
+    return names |> Set.ofSeq
+}
+
+let private computeCounts (container: BlobContainerClient) (excluded: Set<string>) =
     Task.Run(fun () ->
-        let counts = System.Collections.Generic.Dictionary<DateOnly, int>()
-        for blob in container.GetBlobs() do
-            match blob.Properties.LastModified |> Option.ofNullable with
-            | None -> ()
-            | Some modified ->
-                let date = DateOnly.FromDateTime(modified.Date)
-                counts[date] <- (match counts.TryGetValue date with | true, v -> v | _ -> 0) + 1
-        counts
-        |> Seq.map (fun kv -> { date = kv.Key; count = kv.Value })
+        container.GetBlobs()
+        |> Seq.filter (fun b -> not (excluded.Contains b.Name))
+        |> Seq.choose (fun b ->
+            b.Properties.LastModified
+            |> Option.ofNullable
+            |> Option.map (fun dt -> DateOnly.FromDateTime(dt.Date)))
+        |> Seq.countBy id
+        |> Seq.map (fun (date, count) -> { date = date; count = count })
         |> Seq.sortBy (fun c -> c.date)
         |> Seq.toArray)
 
-type RefreshService(logger: ILogger<RefreshService>, cache: Cache, config: Storage.StorageConfig) =
+type RefreshService(logger: ILogger<RefreshService>, cache: Cache, config: Storage.StorageConfig, connStr: string) =
     inherit BackgroundService()
 
     let container =
@@ -38,14 +45,19 @@ type RefreshService(logger: ILogger<RefreshService>, cache: Cache, config: Stora
             .GetBlobContainerClient(config.ContainerName)
 
     override _.ExecuteAsync(ct) = task {
-        while not ct.IsCancellationRequested do
+        let refresh () = task {
             try
-                let! counts = computeCounts container
+                let! excluded = vocabularyPhotoNames connStr
+                let! counts = computeCounts container excluded
                 cache.Set counts
                 logger.LogInformation("Photo counts refreshed: {Count} dates", counts.Length)
             with ex ->
                 logger.LogError(ex, "Failed to refresh photo counts")
-            do! Task.Delay(TimeSpan.FromMinutes 5.0, ct)
+        }
+        do! refresh ()
+        while not ct.IsCancellationRequested do
+            do! Task.Delay(TimeSpan.FromHours 1.0, ct)
+            do! refresh ()
     }
 
 let list (cache: Cache) () = cache.Get()

@@ -12,6 +12,7 @@ web:
 photoApi:
   replicaCount: 1
   workloadIdentityClientId: "c92417c9-c2ca-4cb5-98ca-dc97de835997"
+  aiEndpoint: "https://longevity-ai.cognitiveservices.azure.com/"
   image:
     repository: longevityacr.azurecr.io/photo-api
     tag: ""

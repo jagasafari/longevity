@@ -71,6 +71,26 @@ export const rootGroups = (
     })
     .map((x) => x.n)
 
+export const vocabRoots = (
+  tree: GroupTreeNode[],
+  by: Map<string, PhotoInfo>,
+  _children: Map<string, GroupTreeNode[]>,
+  isVisible: (id: string) => boolean,
+): GroupTreeNode[] =>
+  tree
+    .filter(
+      (n) =>
+        (!n.parentGroupId || n.parentGroupId.trim() === '') &&
+        isVisible(n.groupId),
+    )
+    .map((n) => ({ n, photos: lookupPhotos(n.photos, by) }))
+    .sort((a, b) => {
+      const at = a.photos[0]?.lastModified ?? ''
+      const bt = b.photos[0]?.lastModified ?? ''
+      return bt.localeCompare(at)
+    })
+    .map((x) => x.n)
+
 export const ungroupedPhotos = (
   photos: PhotoInfo[],
   tree: GroupTreeNode[],

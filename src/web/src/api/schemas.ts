@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import type { components } from './types.gen'
 
 export const PhotoInfoSchema = z.object({
   name: z.string(),
@@ -25,18 +26,38 @@ export const CategorySchema = z.object({
   id: z.number(),
   name: z.string(),
 })
-export type Category = z.infer<typeof CategorySchema>
+export type Category = components['schemas']['Category']
 
 export const PhotoCountSchema = z.object({
   date: z.string(),
   count: z.number(),
 })
-export type PhotoCount = z.infer<typeof PhotoCountSchema>
+export type PhotoCount = components['schemas']['PhotoCount']
 
 export const MeSchema = z.object({
   email: z.string().nullable().optional(),
 })
-export type Me = z.infer<typeof MeSchema>
+export type Me = components['schemas']['MeResponse']
+
+export const VocabSuggestionSchema = z.object({
+  groupId: z.string(),
+  reason: z.string(),
+})
+export type VocabSuggestion = components['schemas']['Suggestion']
 
 export const GroupCategoriesSchema = z.record(z.string(), z.array(z.number()))
 export type GroupCategories = z.infer<typeof GroupCategoriesSchema>
+
+export const VocabSubgroupSchema = z.object({
+  id: z.string(),
+  photos: z.array(PhotoInfoSchema),
+})
+export type VocabSubgroup = components['schemas']['VocabSubgroupDto']
+
+export const VocabGroupSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  subgroups: z.array(VocabSubgroupSchema),
+  ungroupedPhotos: z.array(PhotoInfoSchema),
+})
+export type VocabGroup = components['schemas']['VocabGroupDto']

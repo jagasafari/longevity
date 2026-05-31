@@ -6,12 +6,16 @@ import {
   MeSchema,
   PhotoCountSchema,
   PhotoPageSchema,
+  VocabGroupSchema,
+  VocabSuggestionSchema,
   type Category,
   type GroupCategories,
   type GroupTreeNode,
   type Me,
   type PhotoCount,
   type PhotoPage,
+  type VocabGroup,
+  type VocabSuggestion,
 } from './schemas'
 
 class HttpError extends Error {
@@ -66,7 +70,7 @@ export const photoApi = {
   photos: (opts: { date?: Date; before?: string; limit?: number } = {}): Promise<PhotoPage> =>
     request(
       `/api/photos${qs({
-        limit: opts.limit ?? 50,
+        limit: opts.limit ?? 500,
         date: opts.date ? dateToApi(opts.date) : undefined,
         before: opts.before,
       })}`,
@@ -115,14 +119,17 @@ export const photoApi = {
       { method: 'DELETE' },
     ),
 
-  vocabularyGroupIds: (): Promise<string[]> =>
-    request('/api/vocabulary/groups', z.array(z.string())),
+  vocabularyGroups: (): Promise<VocabGroup[]> =>
+    request('/api/vocabulary/groups', z.array(VocabGroupSchema)),
 
-  addToVocabulary: (groupId: string): Promise<void> =>
-    send(`/api/vocabulary/groups/${encodeURIComponent(groupId)}`, { method: 'POST' }),
+  moveGalleryGroupToVocabulary: (galleryGroupId: string): Promise<void> =>
+    send(`/api/vocabulary/groups/${encodeURIComponent(galleryGroupId)}`, { method: 'POST' }),
 
-  removeFromVocabulary: (groupId: string): Promise<void> =>
-    send(`/api/vocabulary/groups/${encodeURIComponent(groupId)}`, { method: 'DELETE' }),
+  removeFromVocabulary: (vocabGroupId: string): Promise<void> =>
+    send(`/api/vocabulary/groups/${encodeURIComponent(vocabGroupId)}`, { method: 'DELETE' }),
+
+  suggestVocabulary: (): Promise<VocabSuggestion[]> =>
+    request('/api/vocabulary/suggest', z.array(VocabSuggestionSchema), { method: 'POST' }),
 }
 
 export { HttpError }

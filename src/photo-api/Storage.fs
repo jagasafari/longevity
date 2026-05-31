@@ -106,34 +106,39 @@ let deletePhoto (config: StorageConfig) (blobName: string) = task {
 
 let private thumbnailContainerName = "thumbnails"
 
-let listPhotoPage (config: StorageConfig) (limit: int) (dateFilter: DateOnly option) (before: DateTimeOffset option) = task {
-    let service, container = getClients config
-    let thumbnailContainer = service.GetBlobContainerClient thumbnailContainerName
+let private buildUrlFunctions (service: BlobServiceClient) (config: StorageConfig) = task {
     let expiry = DateTimeOffset.UtcNow.AddHours 1.0
-    let! delegationKeyResponse = service.GetUserDelegationKeyAsync(Nullable(), expiry)
-    let delegationKey = delegationKeyResponse.Value
-
-    let predicate (_, dt: DateTimeOffset) =
-        dateFilter |> Option.forall (fun d -> DateOnly.FromDateTime(dt.Date) = d)
-        && before  |> Option.forall (fun b -> dt < b)
-
-    let! blobs = listBlobsAsync container None predicate
-
+    let! dkResp = service.GetUserDelegationKeyAsync(Nullable(), expiry)
+    let delegationKey = dkResp.Value
+    let thumbnailContainer = service.GetBlobContainerClient thumbnailContainerName
     let! thumbnailNames =
         task {
             try
-                let! thumbBlobs = listBlobsAsync thumbnailContainer None (fun _ -> true)
-                return thumbBlobs |> Seq.map fst |> Set.ofSeq
+                let! blobs = listBlobsAsync thumbnailContainer None (fun _ -> true)
+                return blobs |> Seq.map fst |> Set.ofSeq
             with _ -> return Set.empty
         }
-
     let toUrl = buildSasUrl service delegationKey config.ContainerName expiry
-
     let toThumbnailUrl name =
         if Set.contains name thumbnailNames then
             buildSasUrl service delegationKey thumbnailContainerName expiry name
-        else
-            toUrl name
+        else toUrl name
+    return toUrl, toThumbnailUrl
+}
 
+let listPhotoPage (config: StorageConfig) (limit: int) (dateFilter: DateOnly option) (before: DateTimeOffset option) (excludeNames: Set<string>) = task {
+    let service, container = getClients config
+    let! toUrl, toThumbnailUrl = buildUrlFunctions service config
+    let predicate (name, dt: DateTimeOffset) =
+        not (Set.contains name excludeNames)
+        && dateFilter |> Option.forall (fun d -> DateOnly.FromDateTime(dt.Date) = d)
+        && before  |> Option.forall (fun b -> dt < b)
+    let! blobs = listBlobsAsync container None predicate
     return selectPhotoPage toUrl toThumbnailUrl blobs limit
+}
+
+let getPhotoSasUrls (config: StorageConfig) (names: string list) : System.Threading.Tasks.Task<Map<string, string * string>> = task {
+    let service, _ = getClients config
+    let! toUrl, toThumbnailUrl = buildUrlFunctions service config
+    return names |> List.map (fun n -> n, (toUrl n, toThumbnailUrl n)) |> Map.ofList
 }
