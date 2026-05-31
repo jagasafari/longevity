@@ -24,6 +24,7 @@ type LabelResult =
 type SubgroupProposal = { Word: string; PhotoNames: string array }
 
 [<CLIMutable>]
+[<CLIMutable>]
 type private LabelJson = { word: string; source: string; confidence: float }
 
 [<CLIMutable>]
