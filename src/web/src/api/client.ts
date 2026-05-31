@@ -3,23 +3,25 @@ import {
   CategorySchema,
   GroupCategoriesSchema,
   GroupTreeNodeSchema,
+  LabelGroupSummarySchema,
+  LabelResultSchema,
   MeSchema,
   PhotoCountSchema,
+  PhotoInfoSchema,
   PhotoPageSchema,
-  SubgroupSuggestionSchema,
-  CrossGroupSuggestionSchema,
+  SubgroupProposalSchema,
   VocabGroupSchema,
-  VocabSuggestionSchema,
   type Category,
-  type CrossGroupSuggestion,
   type GroupCategories,
   type GroupTreeNode,
+  type LabelGroupSummary,
+  type LabelResult,
   type Me,
   type PhotoCount,
+  type PhotoInfo,
   type PhotoPage,
-  type SubgroupSuggestion,
+  type SubgroupProposal,
   type VocabGroup,
-  type VocabSuggestion,
 } from './schemas'
 
 class HttpError extends Error {
@@ -126,35 +128,64 @@ export const photoApi = {
   vocabularyGroups: (): Promise<VocabGroup[]> =>
     request('/api/vocabulary/groups', z.array(VocabGroupSchema)),
 
+  unassignedVocabPhotos: (): Promise<PhotoInfo[]> =>
+    request('/api/vocabulary/unassigned', z.array(PhotoInfoSchema)),
+
+  renameVocabGroup: (vocabGroupId: string, name: string): Promise<void> =>
+    send(`/api/vocabulary/groups/${encodeURIComponent(vocabGroupId)}/name`, {
+      method: 'PATCH',
+      body: JSON.stringify({ name }),
+    }),
+
+  removePhotoFromVocabGroup: (vocabGroupId: string, photoName: string): Promise<void> =>
+    send(`/api/vocabulary/groups/${encodeURIComponent(vocabGroupId)}/photos`, {
+      method: 'DELETE',
+      body: JSON.stringify({ photoName }),
+    }),
+
+  addPhotoToVocabGroup: (vocabGroupId: string, photoName: string): Promise<void> =>
+    send(`/api/vocabulary/groups/${encodeURIComponent(vocabGroupId)}/photos`, {
+      method: 'POST',
+      body: JSON.stringify({ photoName }),
+    }),
+
   moveGalleryGroupToVocabulary: (galleryGroupId: string): Promise<void> =>
     send(`/api/vocabulary/groups/${encodeURIComponent(galleryGroupId)}`, { method: 'POST' }),
 
   removeFromVocabulary: (vocabGroupId: string): Promise<void> =>
     send(`/api/vocabulary/groups/${encodeURIComponent(vocabGroupId)}`, { method: 'DELETE' }),
 
-  suggestVocabulary: (): Promise<VocabSuggestion[]> =>
-    request('/api/vocabulary/suggest', z.array(VocabSuggestionSchema), { method: 'POST' }),
-
-  suggestSubgroups: (vocabGroupId: string): Promise<SubgroupSuggestion[]> =>
+  labelPhoto: (photoName: string): Promise<LabelResult> =>
     request(
-      `/api/vocabulary/groups/${encodeURIComponent(vocabGroupId)}/suggest-subgroups`,
-      z.array(SubgroupSuggestionSchema),
+      `/api/vocabulary/photos/${encodeURIComponent(photoName)}/label`,
+      LabelResultSchema,
       { method: 'POST' },
     ),
 
-  applySubgroups: (vocabGroupId: string, suggestions: SubgroupSuggestion[]): Promise<void> =>
-    send(
-      `/api/vocabulary/groups/${encodeURIComponent(vocabGroupId)}/subgroups`,
-      { method: 'POST', body: JSON.stringify(suggestions) },
+  labelAllInGroup: (groupId: string): Promise<LabelGroupSummary> =>
+    request(
+      `/api/vocabulary/groups/${encodeURIComponent(groupId)}/label-all`,
+      LabelGroupSummarySchema,
+      { method: 'POST' },
     ),
 
-  suggestAllSubgroups: (): Promise<CrossGroupSuggestion[]> =>
-    request('/api/vocabulary/suggest-all-subgroups', z.array(CrossGroupSuggestionSchema), { method: 'POST' }),
+  matchSubgroups: (groupId: string): Promise<SubgroupProposal[]> =>
+    request(
+      `/api/vocabulary/groups/${encodeURIComponent(groupId)}/match-subgroups`,
+      z.array(SubgroupProposalSchema),
+      { method: 'POST' },
+    ),
 
-  applyCrossGroupSubgroups: (suggestions: CrossGroupSuggestion[]): Promise<void> =>
-    send('/api/vocabulary/apply-cross-group-subgroups', {
+  applySubgroups: (groupId: string, proposals: SubgroupProposal[]): Promise<void> =>
+    send(`/api/vocabulary/groups/${encodeURIComponent(groupId)}/apply-subgroups`, {
       method: 'POST',
-      body: JSON.stringify(suggestions),
+      body: JSON.stringify(proposals),
+    }),
+
+  setPhotoWord: (photoName: string, word: string): Promise<void> =>
+    send(`/api/vocabulary/photos/${encodeURIComponent(photoName)}/word`, {
+      method: 'PATCH',
+      body: JSON.stringify({ word }),
     }),
 }
 

@@ -81,13 +81,13 @@ and `Storage Blob Delegator` on `longevityphotos`.
 
 ```bash
 cd src/web
-npm install
-npm run dev
+dotnet run
 ```
 
-The Vite dev server is served on `http://localhost:5173` by default.
-It proxies `/api`, `/auth`, and `/hubs` to the backend on
-`http://localhost:5001` (see [src/web/vite.config.ts](../src/web/vite.config.ts)).
+The Blazor WASM app is served on `http://localhost:5000` (or as configured in
+[Properties/launchSettings.json](../src/web/Properties)).
+
+In development, the frontend calls the backend directly on `http://localhost:5001`.
 
 ---
 

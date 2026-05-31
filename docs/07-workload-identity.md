@@ -83,7 +83,7 @@ sequenceDiagram
     Note over Pod,Blob: 6 — Browser loads images directly
 
     Pod-->>Kubelet: JSON [ { name, url, lastModified } ]
-    Note over Kubelet: (response goes to React SPA via ingress)
+    Note over Kubelet: (response goes to Blazor SPA via ingress)
 
     Note over Blob: Browser fetches each URL with SAS query string No pod involved — direct blob download
 ```

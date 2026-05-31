@@ -13,11 +13,11 @@
 
 ```mermaid
 sequenceDiagram
-    participant SPA as React SPA (Browser)
+    participant SPA as Blazor SPA (Browser)
     participant App as Backend (F# API)
     participant Google as Google OAuth
 
-    Note over SPA: React + TypeScript single-page app running client-side
+    Note over SPA: Blazor WebAssembly single-page app running client-side
 
     Note over SPA,Google: 1 - Login and Consent
 

@@ -211,6 +211,68 @@ let main args =
         .RequireAuthorization()
     |> ignore
 
+    app.MapGet("/api/vocabulary/unassigned",
+        Func<_>(Vocabulary.listUnassigned storage pgConnStr))
+        .RequireAuthorization()
+    |> ignore
+
+    app.MapPatch("/api/vocabulary/groups/{groupId}/name",
+        Func<HttpContext, _>(fun ctx ->
+            let groupId =
+                match ctx.Request.RouteValues.TryGetValue "groupId" with
+                | true, v -> string v | _ -> ""
+            task {
+                if System.String.IsNullOrWhiteSpace groupId then
+                    return Results.BadRequest {| error = "missing_group_id" |}
+                else
+                    let! body = ctx.Request.ReadFromJsonAsync<{| name: string |}>()
+                    if box body = null || System.String.IsNullOrWhiteSpace body.name then
+                        return Results.BadRequest {| error = "missing_name" |}
+                    else
+                        do! Vocabulary.renameGroup pgConnStr groupId body.name
+                        return Results.NoContent()
+            }))
+        .RequireAuthorization()
+    |> ignore
+
+    app.MapDelete("/api/vocabulary/groups/{groupId}/photos",
+        Func<HttpContext, _>(fun ctx ->
+            let groupId =
+                match ctx.Request.RouteValues.TryGetValue "groupId" with
+                | true, v -> string v | _ -> ""
+            task {
+                if System.String.IsNullOrWhiteSpace groupId then
+                    return Results.BadRequest {| error = "missing_group_id" |}
+                else
+                    let! body = ctx.Request.ReadFromJsonAsync<{| photoName: string |}>()
+                    if box body = null || System.String.IsNullOrWhiteSpace body.photoName then
+                        return Results.BadRequest {| error = "missing_photo_name" |}
+                    else
+                        do! Vocabulary.removePhoto pgConnStr groupId body.photoName
+                        return Results.NoContent()
+            }))
+        .RequireAuthorization()
+    |> ignore
+
+    app.MapPost("/api/vocabulary/groups/{groupId}/photos",
+        Func<HttpContext, _>(fun ctx ->
+            let groupId =
+                match ctx.Request.RouteValues.TryGetValue "groupId" with
+                | true, v -> string v | _ -> ""
+            task {
+                if System.String.IsNullOrWhiteSpace groupId then
+                    return Results.BadRequest {| error = "missing_group_id" |}
+                else
+                    let! body = ctx.Request.ReadFromJsonAsync<{| photoName: string |}>()
+                    if box body = null || System.String.IsNullOrWhiteSpace body.photoName then
+                        return Results.BadRequest {| error = "missing_photo_name" |}
+                    else
+                        do! Vocabulary.addPhoto storage pgConnStr groupId body.photoName
+                        return Results.NoContent()
+            }))
+        .RequireAuthorization()
+    |> ignore
+
     app.MapPost("/api/vocabulary/groups/{groupId}",
         Func<HttpContext, IHubContext<PhotoHub.PhotoHub>, _>(fun ctx hub ->
             let groupId =
@@ -244,64 +306,112 @@ let main args =
         .RequireAuthorization()
     |> ignore
 
-    app.MapPost("/api/vocabulary/groups/{groupId}/subgroups",
-        Func<HttpContext, _>(fun ctx ->
-            let groupId =
-                match ctx.Request.RouteValues.TryGetValue "groupId" with
-                | true, v -> string v | _ -> ""
-            task {
-                if System.String.IsNullOrWhiteSpace groupId then
-                    return Results.BadRequest {| error = "missing_group_id" |}
-                else
-                    let! body = ctx.Request.ReadFromJsonAsync<VocabSubgroupSuggest.SubgroupSuggestion[]>()
-                    do! VocabSubgroupSuggest.applySubgroups pgConnStr groupId body
-                    return Results.NoContent()
-            }))
-        .RequireAuthorization()
-    |> ignore
+    // AI labeling endpoints (only registered when AzureAI:Endpoint is configured)
+    match aiEndpoint with
+    | None ->
+        app.Logger.LogWarning("AzureAI:Endpoint not configured; AI label endpoints disabled")
+    | Some endpoint ->
+        let routeParam (ctx: HttpContext) key =
+            match ctx.Request.RouteValues.TryGetValue (key: string) with
+            | true, v -> string v | _ -> ""
+
+        app.MapPost("/api/vocabulary/photos/{photoName}/label",
+            Func<HttpContext, IHubContext<PhotoHub.PhotoHub>, _>(fun ctx hub ->
+                let photoName = routeParam ctx "photoName"
+                task {
+                    if System.String.IsNullOrWhiteSpace photoName then
+                        return Results.BadRequest {| error = "missing_photo_name" |}
+                    else
+                        try
+                            let! result =
+                                PhotoLabel.labelPhoto storage pgConnStr endpoint photoName
+                            do! hub.Clients.All.SendAsync("PhotoLabeled", result)
+                            return Results.Ok result
+                        with ex ->
+                            do! hub.Clients.All.SendAsync(
+                                    "PhotoLabelFailed",
+                                    {| photoName = photoName; error = ex.Message |})
+                            return Results.Json(
+                                {| photoName = photoName; error = ex.Message |},
+                                statusCode = 502)
+                }))
+            .RequireAuthorization()
+        |> ignore
+
+        app.MapPost("/api/vocabulary/groups/{groupId}/label-all",
+            Func<HttpContext, IHubContext<PhotoHub.PhotoHub>, _>(fun ctx hub ->
+                let groupId = routeParam ctx "groupId"
+                task {
+                    if System.String.IsNullOrWhiteSpace groupId then
+                        return Results.BadRequest {| error = "missing_group_id" |}
+                    else
+                        let onLabeled (r: PhotoLabel.LabelResult) =
+                            hub.Clients.All.SendAsync("PhotoLabeled", r) :> Task
+                        let onFailed (name: string) (err: string) =
+                            hub.Clients.All.SendAsync(
+                                "PhotoLabelFailed",
+                                {| photoName = name; error = err |}) :> Task
+                        let! summary =
+                            PhotoLabel.labelGroup storage pgConnStr endpoint groupId
+                                onLabeled onFailed
+                        do! hub.Clients.All.SendAsync("PhotosChanged")
+                        return Results.Ok summary
+                }))
+            .RequireAuthorization()
+        |> ignore
+
+        app.MapPost("/api/vocabulary/groups/{groupId}/match-subgroups",
+            Func<HttpContext, _>(fun ctx ->
+                let groupId = routeParam ctx "groupId"
+                task {
+                    if System.String.IsNullOrWhiteSpace groupId then
+                        return Results.BadRequest {| error = "missing_group_id" |}
+                    else
+                        let! proposals = PhotoLabel.matchSubgroups pgConnStr endpoint groupId
+                        return Results.Ok proposals
+                }))
+            .RequireAuthorization()
+        |> ignore
+
+        app.MapPost("/api/vocabulary/groups/{groupId}/apply-subgroups",
+            Func<HttpContext, IHubContext<PhotoHub.PhotoHub>, _>(fun ctx hub ->
+                let groupId = routeParam ctx "groupId"
+                task {
+                    if System.String.IsNullOrWhiteSpace groupId then
+                        return Results.BadRequest {| error = "missing_group_id" |}
+                    else
+                        let! proposals =
+                            ctx.Request.ReadFromJsonAsync<PhotoLabel.SubgroupProposal array>()
+                        do! PhotoLabel.applySubgroups pgConnStr groupId proposals
+                        do! hub.Clients.All.SendAsync("PhotosChanged")
+                        return Results.NoContent()
+                }))
+            .RequireAuthorization()
+        |> ignore
+
+        app.MapPatch("/api/vocabulary/photos/{photoName}/word",
+            Func<HttpContext, IHubContext<PhotoHub.PhotoHub>, _>(fun ctx hub ->
+                let photoName = routeParam ctx "photoName"
+                task {
+                    if System.String.IsNullOrWhiteSpace photoName then
+                        return Results.BadRequest {| error = "missing_photo_name" |}
+                    else
+                        let! body =
+                            ctx.Request.ReadFromJsonAsync<{| word: string |}>()
+                        let word =
+                            if System.String.IsNullOrWhiteSpace body.word
+                            then None else Some (body.word.Trim())
+                        do! PhotoLabel.setWord pgConnStr photoName word
+                        do! hub.Clients.All.SendAsync("PhotosChanged")
+                        return Results.NoContent()
+                }))
+            .RequireAuthorization()
+        |> ignore
 
     app.MapGet("/api/photo-counts",
         Func<_>(PhotoCountCache.list cache))
         .RequireAuthorization()
     |> ignore
-
-    match aiEndpoint with
-    | Some endpoint ->
-        app.MapPost("/api/vocabulary/suggest",
-            Func<_>(VocabSuggest.suggest pgConnStr endpoint))
-            .RequireAuthorization()
-        |> ignore
-
-        app.MapPost("/api/vocabulary/groups/{groupId}/suggest-subgroups",
-            Func<HttpContext, _>(fun ctx ->
-                let groupId =
-                    match ctx.Request.RouteValues.TryGetValue "groupId" with
-                    | true, v -> string v | _ -> ""
-                task {
-                    if System.String.IsNullOrWhiteSpace groupId then
-                        return Results.BadRequest {| error = "missing_group_id" |}
-                    else
-                        let! result = VocabSubgroupSuggest.suggest pgConnStr storage endpoint groupId
-                        return Results.Ok result
-                }))
-            .RequireAuthorization()
-        |> ignore
-
-        app.MapPost("/api/vocabulary/suggest-all-subgroups",
-            Func<_>(VocabSubgroupSuggest.suggestAllSubgroups pgConnStr storage endpoint))
-            .RequireAuthorization()
-        |> ignore
-
-        app.MapPost("/api/vocabulary/apply-cross-group-subgroups",
-            Func<HttpContext, _>(fun ctx ->
-                task {
-                    let! body = ctx.Request.ReadFromJsonAsync<VocabSubgroupSuggest.CrossGroupSuggestion[]>()
-                    do! VocabSubgroupSuggest.applyCrossGroupSubgroups pgConnStr body
-                    return Results.NoContent()
-                }))
-            .RequireAuthorization()
-        |> ignore
-    | None -> ()
 
     app.Run()
     0

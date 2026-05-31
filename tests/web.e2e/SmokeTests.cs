@@ -27,8 +27,8 @@ public class SmokeTests : PageTest
 
         await Expect(Page).ToHaveTitleAsync(new Regex("longevity", RegexOptions.IgnoreCase));
 
-        // React SPA fetches /auth/me on mount; if no session, Layout renders the sign-in link.
-        // Waiting for this implicitly waits for the JS bundle to load and the auth check to complete.
+        // Blazor WASM replaces #app contents once the runtime boots.
+        // Waiting for the login button implicitly waits for the full boot cycle.
         await Expect(Page.GetByText("Sign in with Google")).ToBeVisibleAsync();
     }
 }

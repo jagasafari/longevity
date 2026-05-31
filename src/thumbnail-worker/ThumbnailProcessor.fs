@@ -44,6 +44,27 @@ let private isImage (name: string) =
     let ext = Path.GetExtension(name).ToLowerInvariant()
     ext = ".jpg" || ext = ".jpeg" || ext = ".png" || ext = ".gif" || ext = ".webp" || ext = ".bmp"
 
+// Copy bad-name blob to sanitized name, then delete original.
+// Returns true if a rename happened (caller should skip further work
+// and wait for the new BlobCreated event from the sanitized copy).
+let renameIfNeeded (container: BlobContainerClient) (blobName: string) = task {
+    if not (BlobName.needsSanitizing blobName) then
+        return false
+    else
+        let target = BlobName.sanitize blobName
+        let targetBlob = container.GetBlobClient target
+        let! exists = targetBlob.ExistsAsync()
+        if exists.Value then
+            let sourceBlob = container.GetBlobClient blobName
+            let! _ = sourceBlob.DeleteIfExistsAsync(DeleteSnapshotsOption.IncludeSnapshots)
+            return true
+        else
+            let sourceBlob = container.GetBlobClient blobName
+            let! _ = targetBlob.SyncCopyFromUriAsync sourceBlob.Uri
+            let! _ = sourceBlob.DeleteIfExistsAsync(DeleteSnapshotsOption.IncludeSnapshots)
+            return true
+}
+
 let private resizeAndUpload (source: BlobContainerClient) (target: BlobContainerClient) maxWidth blobName = task {
     let sourceBlob = source.GetBlobClient blobName
     use! downloadStream = sourceBlob.OpenReadAsync()
@@ -92,28 +113,37 @@ let catchUpThumbnails (blobService: BlobServiceClient) (config: ProcessorConfig)
     let! sourceNames = listBlobNames source
     let! thumbNames = listBlobNames target
 
-    let missing =
-        sourceNames - thumbNames
+    let candidates =
+        sourceNames
         |> Set.filter (fun n -> n <> "photo-groups.json" && isImage n)
 
     let mutable count = 0
-    for name in missing do
+    for name in candidates do
         try
-            do! resizeAndUpload source target config.MaxWidth name
-            count <- count + 1
+            let! renamed = renameIfNeeded source name
+            if not renamed && not (Set.contains name thumbNames) then
+                do! resizeAndUpload source target config.MaxWidth name
+                count <- count + 1
         with _ -> ()
 
     return count
 }
 
-// Process a single blob triggered by a queue event
+// Process a single blob triggered by a queue event.
+// If the blob name contains spaces or other URL-troublesome chars,
+// rename it first; the rename produces a new BlobCreated event
+// which the next invocation handles.
 let processBlobThumbnail (blobService: BlobServiceClient) (config: ProcessorConfig) blobName = task {
     if isImage blobName && blobName <> "photo-groups.json" then
         let source = blobService.GetBlobContainerClient config.SourceContainer
-        let target = blobService.GetBlobContainerClient config.ThumbnailContainer
-        let! _ = target.CreateIfNotExistsAsync()
-        do! resizeAndUpload source target config.MaxWidth blobName
-        return true
+        let! renamed = renameIfNeeded source blobName
+        if renamed then
+            return false
+        else
+            let target = blobService.GetBlobContainerClient config.ThumbnailContainer
+            let! _ = target.CreateIfNotExistsAsync()
+            do! resizeAndUpload source target config.MaxWidth blobName
+            return true
     else
         return false
 }

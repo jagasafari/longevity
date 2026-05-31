@@ -12,8 +12,6 @@ jobs:
   smoke:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
       - uses: actions/checkout@v4
@@ -52,3 +50,22 @@ jobs:
           LA_WORKSPACE_ID: ${{ secrets.LA_WORKSPACE_ID }}
           LA_WORKSPACE_KEY: ${{ secrets.LA_WORKSPACE_KEY }}
         run: python tests/web.e2e/report-results.py
+
+  blob-rename:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Run blob rename e2e
+        shell: pwsh
+        run: pwsh infra/scripts/azure/test-blob-rename.ps1

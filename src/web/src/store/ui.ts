@@ -26,12 +26,8 @@ type UiState = {
 
 const firstOfMonth = (d: Date): Date => new Date(d.getFullYear(), d.getMonth(), 1)
 
-const storedView = localStorage.getItem('ui.view')
-const initialView: 'gallery' | 'vocabulary' =
-  storedView === 'vocabulary' ? 'vocabulary' : 'gallery'
-
 export const useUi = create<UiState>((set) => ({
-  view: initialView,
+  view: 'gallery',
   selectedDay: null,
   selectedCategoryId: null,
   draggedPhotoName: null,
@@ -55,8 +51,5 @@ export const useUi = create<UiState>((set) => ({
   startAssigning: (groupId) => set({ assigningGroupId: groupId, categoryInput: '' }),
   setCategoryInput: (v) => set({ categoryInput: v }),
   clearFilters: () => set({ selectedDay: null, selectedCategoryId: null }),
-  setView: (v) => {
-    localStorage.setItem('ui.view', v)
-    set({ view: v, selectedDay: null, selectedCategoryId: null })
-  },
+  setView: (v) => set({ view: v, selectedDay: null, selectedCategoryId: null }),
 }))

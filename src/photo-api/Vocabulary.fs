@@ -8,13 +8,23 @@ open Npgsql
 type private GroupRow = { id: string; name: string }
 
 [<CLIMutable>]
-type private PhotoRow = { photo_name: string; group_id: string; subgroup_id: string; added_at: DateTimeOffset }
+type private PhotoRow =
+    { photo_name: string
+      group_id: string
+      subgroup_id: string
+      added_at: DateTimeOffset
+      word: string
+      source: string
+      confidence: System.Nullable<float> }
 
 type VocabPhotoDto =
     { Name: string
       Url: string
       ThumbnailUrl: string
-      LastModified: string }
+      LastModified: string
+      Word: string
+      Source: string
+      Confidence: System.Nullable<float> }
 
 type VocabSubgroupDto = { Id: string; Photos: VocabPhotoDto array }
 
@@ -43,13 +53,19 @@ let listGroups (storage: Storage.StorageConfig) (connStr: string) () = task {
             "SELECT id, name FROM vocabulary.groups ORDER BY created_at")
     let! photoRows =
         conn.QueryAsync<PhotoRow>(
-            "SELECT photo_name, group_id, COALESCE(subgroup_id, '') AS subgroup_id, added_at FROM vocabulary.photos")
+            "SELECT photo_name, group_id, COALESCE(subgroup_id, '') AS subgroup_id, added_at, COALESCE(word, '') AS word, COALESCE(source, '') AS source, confidence FROM vocabulary.photos WHERE removed_at IS NULL")
     let photoList = photoRows |> Seq.toList
     let! urlMap = Storage.getPhotoSasUrls storage (photoList |> List.map (fun r -> r.photo_name))
     let photosByGroup = photoList |> List.groupBy (fun r -> r.group_id) |> Map.ofList
     let toDto (p: PhotoRow) =
         let url, thumbnailUrl = urlMap |> Map.tryFind p.photo_name |> Option.defaultValue ("", "")
-        { Name = p.photo_name; Url = url; ThumbnailUrl = thumbnailUrl; LastModified = p.added_at.ToString("O") }
+        { Name = p.photo_name
+          Url = url
+          ThumbnailUrl = thumbnailUrl
+          LastModified = p.added_at.ToString("O")
+          Word = p.word
+          Source = p.source
+          Confidence = p.confidence }
     return
         groups
         |> Seq.map (fun g ->
@@ -156,7 +172,7 @@ let moveGalleryGroup (connStr: string) (galleryGroupId: string) = task {
 
 let listExcludedPhotoNames (connStr: string) () : System.Threading.Tasks.Task<Set<string>> = task {
     use conn = new NpgsqlConnection(connStr)
-    let! names = conn.QueryAsync<string>("SELECT photo_name FROM vocabulary.photos")
+    let! names = conn.QueryAsync<string>("SELECT photo_name FROM vocabulary.photos WHERE removed_at IS NULL")
     return names |> Set.ofSeq
 }
 
@@ -170,5 +186,58 @@ let removeGroup (connStr: string) (vocabGroupId: string) = task {
         conn.ExecuteAsync(
             "DELETE FROM vocabulary.groups WHERE id = @g",
             {| g = vocabGroupId |})
+    ()
+}
+
+[<CLIMutable>]
+type private UnassignedRow = { photo_name: string; group_id: string }
+
+let listUnassigned (storage: Storage.StorageConfig) (connStr: string) () = task {
+    use conn = new NpgsqlConnection(connStr)
+    let! rows = conn.QueryAsync<UnassignedRow>(
+        "SELECT photo_name, group_id FROM vocabulary.photos WHERE removed_at IS NOT NULL")
+    let rowList = rows |> Seq.toList
+    if rowList.IsEmpty then
+        return [||]
+    else
+        let! urlMap = Storage.getPhotoSasUrls storage (rowList |> List.map (fun r -> r.photo_name))
+        return
+            rowList
+            |> List.map (fun r ->
+                let url, thumbnailUrl = urlMap |> Map.tryFind r.photo_name |> Option.defaultValue ("", "")
+                { Name = r.photo_name
+                  Url = url
+                  ThumbnailUrl = thumbnailUrl
+                  LastModified = ""
+                  Word = ""
+                  Source = ""
+                  Confidence = System.Nullable() })
+            |> Array.ofList
+}
+
+let renameGroup (connStr: string) (groupId: string) (name: string) = task {
+    use conn = new NpgsqlConnection(connStr)
+    let! _ = conn.ExecuteAsync(
+        "UPDATE vocabulary.groups SET name = @name WHERE id = @id",
+        {| id = groupId; name = name |})
+    ()
+}
+
+let removePhoto (connStr: string) (groupId: string) (photoName: string) = task {
+    use conn = new NpgsqlConnection(connStr)
+    let! _ = conn.ExecuteAsync(
+        "UPDATE vocabulary.photos SET removed_at = NOW() WHERE group_id = @g AND photo_name = @p",
+        {| g = groupId; p = photoName |})
+    ()
+}
+
+let addPhoto (storage: Storage.StorageConfig) (connStr: string) (groupId: string) (photoName: string) = task {
+    use conn = new NpgsqlConnection(connStr)
+    let! _ = conn.ExecuteAsync(
+        """INSERT INTO vocabulary.photos (photo_name, group_id)
+           VALUES (@photo_name, @group_id)
+           ON CONFLICT (photo_name)
+           DO UPDATE SET group_id = @group_id, removed_at = NULL, subgroup_id = NULL, subgroup_word = NULL""",
+        {| photo_name = photoName; group_id = groupId |})
     ()
 }
