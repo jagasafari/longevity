@@ -270,7 +270,6 @@ function VocabularyContent() {
             if (!proposals) return null
             return (
               <ProposalsPanel
-                groupId={group.id}
                 proposals={proposals}
                 applying={applySubgroups.isPending}
                 onApply={(toApply) =>
@@ -495,13 +494,11 @@ function GroupAiControls({
 }
 
 function ProposalsPanel({
-  groupId: _groupId,
   proposals,
   applying,
   onApply,
   onDismiss,
 }: {
-  groupId: string
   proposals: SubgroupProposal[]
   applying: boolean
   onApply: (proposals: SubgroupProposal[]) => void
