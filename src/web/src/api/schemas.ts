@@ -52,7 +52,7 @@ export const VocabSubgroupSchema = z.object({
   id: z.string(),
   photos: z.array(PhotoInfoSchema),
 })
-export type VocabSubgroup = components['schemas']['VocabSubgroupDto']
+export type VocabSubgroup = z.infer<typeof VocabSubgroupSchema>
 
 export const VocabGroupSchema = z.object({
   id: z.string(),
@@ -60,4 +60,4 @@ export const VocabGroupSchema = z.object({
   subgroups: z.array(VocabSubgroupSchema),
   ungroupedPhotos: z.array(PhotoInfoSchema),
 })
-export type VocabGroup = components['schemas']['VocabGroupDto']
+export type VocabGroup = z.infer<typeof VocabGroupSchema>
