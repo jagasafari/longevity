@@ -185,8 +185,9 @@ function VocabularyContent() {
               <VocabPhoto
                 key={photo.name}
                 photo={photo}
+                scope={unassigned}
                 groups={groups}
-                onOpen={(p) => ui.openLightbox(p)}
+                onOpen={(p, s) => ui.openLightbox(s, s.indexOf(p))}
                 onMove={(targetGroupId) =>
                   addPhoto.mutate({ vocabGroupId: targetGroupId, photoName: photo.name })
                 }
@@ -302,8 +303,9 @@ function VocabularyContent() {
                 <div key={photo.name} className="flex-1 min-w-0">
                   <VocabPhoto
                     photo={photo}
+                    scope={sub.photos}
                     groups={groups}
-                    onOpen={(p) => ui.openLightbox(p)}
+                    onOpen={(p, s) => ui.openLightbox(s, s.indexOf(p))}
                     onMove={(targetGroupId) =>
                       addPhoto.mutate({ vocabGroupId: targetGroupId, photoName: photo.name })
                     }
@@ -324,8 +326,9 @@ function VocabularyContent() {
                 <VocabPhoto
                   key={photo.name}
                   photo={photo}
+                  scope={group.ungroupedPhotos}
                   groups={groups}
-                  onOpen={(p) => ui.openLightbox(p)}
+                  onOpen={(p, s) => ui.openLightbox(s, s.indexOf(p))}
                   onMove={(targetGroupId) =>
                     addPhoto.mutate({ vocabGroupId: targetGroupId, photoName: photo.name })
                   }
@@ -342,13 +345,14 @@ function VocabularyContent() {
         </section>
       ))}
 
-      <Lightbox photo={ui.lightboxPhoto} onClose={() => ui.openLightbox(null)} />
+      <Lightbox />
     </>
   )
 }
 
 function VocabPhoto({
   photo,
+  scope,
   groups,
   onOpen,
   onMove,
@@ -358,8 +362,9 @@ function VocabPhoto({
   labelPending,
 }: {
   photo: PhotoInfo
+  scope: PhotoInfo[]
   groups: VocabGroup[]
-  onOpen: (p: PhotoInfo) => void
+  onOpen: (p: PhotoInfo, scope: PhotoInfo[]) => void
   onMove?: (targetGroupId: string) => void
   onRemove?: () => void
   onLabel?: () => void
@@ -375,7 +380,7 @@ function VocabPhoto({
         src={photo.thumbnailUrl ?? photo.url}
         alt={photo.name}
         loading="lazy"
-        onClick={() => onOpen(photo)}
+        onClick={() => onOpen(photo, scope)}
         className="w-full h-auto rounded-sm cursor-pointer block"
       />
       {photo.word && !editingWord && (

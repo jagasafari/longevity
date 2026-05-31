@@ -159,6 +159,7 @@ function SignedInHome() {
                   <PhotoCard
                     key={p.name}
                     photo={p}
+                    scope={ungrouped}
                     onOpenLightbox={handlers.onOpenLightbox}
                     onStartDrag={handlers.onStartDrag}
                     onEndDrag={handlers.onEndDrag}
@@ -180,7 +181,7 @@ function SignedInHome() {
         </>
       )}
 
-      <Lightbox photo={ui.lightboxPhoto} onClose={() => ui.openLightbox(null)} />
+      <Lightbox />
     </>
   )
 }

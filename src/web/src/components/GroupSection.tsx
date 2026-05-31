@@ -7,7 +7,7 @@ export type GroupSectionHandlers = {
   onEndDrag: () => void
   onDropOnPhoto: (targetName: string) => void
   onDropIntoGroup: (groupId: string) => void
-  onOpenLightbox: (p: PhotoInfo) => void
+  onOpenLightbox: (p: PhotoInfo, scope: PhotoInfo[]) => void
   onDelete: (p: PhotoInfo) => void
   onUngroup: (p: PhotoInfo) => void
 }
@@ -64,6 +64,7 @@ export function GroupSection({
             <PhotoCard
               key={p.name}
               photo={p}
+              scope={photos}
               onOpenLightbox={handlers.onOpenLightbox}
               onStartDrag={handlers.onStartDrag}
               onEndDrag={handlers.onEndDrag}

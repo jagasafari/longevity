@@ -43,9 +43,10 @@ export function useGalleryHandlers(): GroupSectionHandlers {
       if (!source) return
       moveMut.mutate({ photoName: source, targetGroupId: groupId })
     },
-    onOpenLightbox: (p) => {
+    onOpenLightbox: (p, scope) => {
       if (ui.draggedPhotoName) return
-      ui.openLightbox(p)
+      const idx = Math.max(0, scope.findIndex((x) => x.name === p.name))
+      ui.openLightbox(scope, idx)
     },
     onDelete: (p) => deleteMut.mutate(p.name),
     onUngroup: (p) => ungroupMut.mutate(p.name),

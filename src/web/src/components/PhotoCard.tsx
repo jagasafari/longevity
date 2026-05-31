@@ -2,7 +2,8 @@ import type { PhotoInfo } from '../api/schemas'
 
 type Props = {
   photo: PhotoInfo
-  onOpenLightbox: (p: PhotoInfo) => void
+  scope: PhotoInfo[]
+  onOpenLightbox: (p: PhotoInfo, scope: PhotoInfo[]) => void
   onStartDrag: (name: string) => void
   onEndDrag: () => void
   onDropOnPhoto: (targetName: string) => void
@@ -12,6 +13,7 @@ type Props = {
 
 export function PhotoCard({
   photo,
+  scope,
   onOpenLightbox,
   onStartDrag,
   onEndDrag,
@@ -35,7 +37,7 @@ export function PhotoCard({
         loading="lazy"
         onClick={(e) => {
           e.stopPropagation()
-          onOpenLightbox(photo)
+          onOpenLightbox(photo, scope)
         }}
         className="w-full h-auto rounded-sm cursor-pointer block"
       />

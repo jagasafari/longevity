@@ -1,12 +1,14 @@
 import { create } from 'zustand'
 import type { PhotoInfo } from '../api/schemas'
 
+type LightboxState = { photos: PhotoInfo[]; index: number }
+
 type UiState = {
   view: 'gallery' | 'vocabulary'
   selectedDay: Date | null
   selectedCategoryId: number | null
   draggedPhotoName: string | null
-  lightboxPhoto: PhotoInfo | null
+  lightbox: LightboxState | null
   calendarOpen: boolean
   calendarMonth: Date
   assigningGroupId: string | null
@@ -15,7 +17,10 @@ type UiState = {
   selectDay: (d: Date | null) => void
   selectCategoryId: (id: number | null) => void
   startDrag: (name: string | null) => void
-  openLightbox: (p: PhotoInfo | null) => void
+  openLightbox: (photos: PhotoInfo[], index: number) => void
+  closeLightbox: () => void
+  nextLightbox: () => void
+  prevLightbox: () => void
   toggleCalendar: () => void
   setCalendarMonth: (d: Date) => void
   startAssigning: (groupId: string | null) => void
@@ -26,12 +31,18 @@ type UiState = {
 
 const firstOfMonth = (d: Date): Date => new Date(d.getFullYear(), d.getMonth(), 1)
 
+const shift = (lb: LightboxState | null, delta: number): LightboxState | null => {
+  if (!lb || lb.photos.length === 0) return lb
+  const n = lb.photos.length
+  return { photos: lb.photos, index: (lb.index + delta + n) % n }
+}
+
 export const useUi = create<UiState>((set) => ({
   view: 'gallery',
   selectedDay: null,
   selectedCategoryId: null,
   draggedPhotoName: null,
-  lightboxPhoto: null,
+  lightbox: null,
   calendarOpen: false,
   calendarMonth: firstOfMonth(new Date()),
   assigningGroupId: null,
@@ -45,7 +56,11 @@ export const useUi = create<UiState>((set) => ({
     })),
   selectCategoryId: (id) => set({ selectedCategoryId: id }),
   startDrag: (name) => set({ draggedPhotoName: name }),
-  openLightbox: (p) => set({ lightboxPhoto: p }),
+  openLightbox: (photos, index) =>
+    set({ lightbox: photos.length > 0 ? { photos, index } : null }),
+  closeLightbox: () => set({ lightbox: null }),
+  nextLightbox: () => set((s) => ({ lightbox: shift(s.lightbox, 1) })),
+  prevLightbox: () => set((s) => ({ lightbox: shift(s.lightbox, -1) })),
   toggleCalendar: () => set((s) => ({ calendarOpen: !s.calendarOpen })),
   setCalendarMonth: (d) => set({ calendarMonth: firstOfMonth(d) }),
   startAssigning: (groupId) => set({ assigningGroupId: groupId, categoryInput: '' }),
