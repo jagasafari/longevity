@@ -4,7 +4,6 @@ import {
   useMe,
   useVocabularyGroups,
   useMoveGroupToVocabulary,
-  useRemoveFromVocabulary,
   useSuggestVocabulary,
   useSuggestSubgroups,
   useApplySubgroups,
@@ -29,7 +28,6 @@ function VocabularyContent() {
 
   const vocabQuery = useVocabularyGroups()
   const moveToVocab = useMoveGroupToVocabulary()
-  const removeGroup = useRemoveFromVocabulary()
   const suggest = useSuggestVocabulary()
   const suggestSub = useSuggestSubgroups()
   const applySub = useApplySubgroups()
@@ -168,14 +166,6 @@ function VocabularyContent() {
                   : '✦ Suggest subgroups'}
               </button>
             )}
-            <button
-              type="button"
-              onClick={() => removeGroup.mutate(group.id)}
-              disabled={removeGroup.isPending}
-              className="px-2 py-0.5 text-xs rounded-sm border border-rule text-muted hover:text-danger hover:border-danger"
-            >
-              − Remove
-            </button>
           </header>
 
           {pending?.groupId === group.id && (
