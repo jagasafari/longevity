@@ -6,7 +6,7 @@ import {
   useQueryClient,
 } from '@tanstack/react-query'
 import { photoApi } from './client'
-import type { PhotoPage } from './schemas'
+import type { PhotoPage, SubgroupProposal } from './schemas'
 
 export const qk = {
   me: ['me'] as const,
@@ -16,6 +16,7 @@ export const qk = {
   groupCategories: ['group-categories'] as const,
   photoCounts: ['photo-counts'] as const,
   vocabularyGroups: ['vocabulary-groups'] as const,
+  unassignedVocabPhotos: ['unassigned-vocab-photos'] as const,
 }
 
 export const useMe = () =>
@@ -78,38 +79,50 @@ export const useMoveGroupToVocabulary = () => {
   })
 }
 
-export const useSuggestVocabulary = () =>
-  useMutation({ mutationFn: () => photoApi.suggestVocabulary() })
-
-export const useSuggestSubgroups = () =>
-  useMutation({ mutationFn: (vocabGroupId: string) => photoApi.suggestSubgroups(vocabGroupId) })
-
-export const useApplySubgroups = () => {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: ({ vocabGroupId, suggestions }: { vocabGroupId: string; suggestions: import('./schemas').SubgroupSuggestion[] }) =>
-      photoApi.applySubgroups(vocabGroupId, suggestions),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: qk.vocabularyGroups }),
-  })
-}
-
-export const useSuggestAllSubgroups = () =>
-  useMutation({ mutationFn: () => photoApi.suggestAllSubgroups() })
-
-export const useApplyCrossGroupSubgroups = () => {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: (suggestions: import('./schemas').CrossGroupSuggestion[]) =>
-      photoApi.applyCrossGroupSubgroups(suggestions),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: qk.vocabularyGroups }),
-  })
-}
-
 export const useRemoveFromVocabulary = () => {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (vocabGroupId: string) => photoApi.removeFromVocabulary(vocabGroupId),
     onSuccess: () => void qc.invalidateQueries({ queryKey: qk.vocabularyGroups }),
+  })
+}
+
+export const useUnassignedVocabPhotos = () =>
+  useQuery({
+    queryKey: qk.unassignedVocabPhotos,
+    queryFn: () => photoApi.unassignedVocabPhotos(),
+  })
+
+export const useRenameVocabGroup = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (args: { vocabGroupId: string; name: string }) =>
+      photoApi.renameVocabGroup(args.vocabGroupId, args.name),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: qk.vocabularyGroups }),
+  })
+}
+
+export const useRemovePhotoFromVocabGroup = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (args: { vocabGroupId: string; photoName: string }) =>
+      photoApi.removePhotoFromVocabGroup(args.vocabGroupId, args.photoName),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: qk.vocabularyGroups })
+      void qc.invalidateQueries({ queryKey: qk.unassignedVocabPhotos })
+    },
+  })
+}
+
+export const useAddPhotoToVocabGroup = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (args: { vocabGroupId: string; photoName: string }) =>
+      photoApi.addPhotoToVocabGroup(args.vocabGroupId, args.photoName),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: qk.vocabularyGroups })
+      void qc.invalidateQueries({ queryKey: qk.unassignedVocabPhotos })
+    },
   })
 }
 
@@ -173,5 +186,44 @@ export const useRemoveCategory = () => {
     mutationFn: (args: { groupId: string; categoryId: number }) =>
       photoApi.removeCategory(args.groupId, args.categoryId),
     onSuccess: inv,
+  })
+}
+
+export const useLabelPhoto = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (photoName: string) => photoApi.labelPhoto(photoName),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: qk.vocabularyGroups }),
+  })
+}
+
+export const useLabelAllInGroup = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (groupId: string) => photoApi.labelAllInGroup(groupId),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: qk.vocabularyGroups }),
+  })
+}
+
+export const useMatchSubgroups = () =>
+  useMutation({
+    mutationFn: (groupId: string) => photoApi.matchSubgroups(groupId),
+  })
+
+export const useApplySubgroups = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (args: { groupId: string; proposals: SubgroupProposal[] }) =>
+      photoApi.applySubgroups(args.groupId, args.proposals),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: qk.vocabularyGroups }),
+  })
+}
+
+export const useSetPhotoWord = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (args: { photoName: string; word: string }) =>
+      photoApi.setPhotoWord(args.photoName, args.word),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: qk.vocabularyGroups }),
   })
 }

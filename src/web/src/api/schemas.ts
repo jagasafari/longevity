@@ -5,6 +5,9 @@ export const PhotoInfoSchema = z.object({
   url: z.string(),
   thumbnailUrl: z.string().nullable().optional(),
   lastModified: z.string(),
+  word: z.string().nullable().optional(),
+  source: z.string().nullable().optional(),
+  confidence: z.number().nullable().optional(),
 })
 export type PhotoInfo = z.infer<typeof PhotoInfoSchema>
 
@@ -38,12 +41,6 @@ export const MeSchema = z.object({
 })
 export type Me = z.infer<typeof MeSchema>
 
-export const VocabSuggestionSchema = z.object({
-  groupId: z.string(),
-  reason: z.string(),
-})
-export type VocabSuggestion = z.infer<typeof VocabSuggestionSchema>
-
 export const GroupCategoriesSchema = z.record(z.string(), z.array(z.number()))
 export type GroupCategories = z.infer<typeof GroupCategoriesSchema>
 
@@ -61,22 +58,23 @@ export const VocabGroupSchema = z.object({
 })
 export type VocabGroup = z.infer<typeof VocabGroupSchema>
 
-export const SubgroupSuggestionSchema = z.object({
+export const LabelResultSchema = z.object({
+  photoName: z.string(),
+  word: z.string(),
+  source: z.string(),
+  confidence: z.number(),
+  labeledBy: z.string(),
+})
+export type LabelResult = z.infer<typeof LabelResultSchema>
+
+export const LabelGroupSummarySchema = z.object({
+  labeled: z.number(),
+  failed: z.number(),
+})
+export type LabelGroupSummary = z.infer<typeof LabelGroupSummarySchema>
+
+export const SubgroupProposalSchema = z.object({
   word: z.string(),
   photoNames: z.array(z.string()),
 })
-export type SubgroupSuggestion = z.infer<typeof SubgroupSuggestionSchema>
-
-export const CrossGroupPhotoSchema = z.object({
-  photoName: z.string(),
-  groupId: z.string(),
-  groupName: z.string(),
-})
-export type CrossGroupPhoto = z.infer<typeof CrossGroupPhotoSchema>
-
-export const CrossGroupSuggestionSchema = z.object({
-  word: z.string(),
-  primaryGroupId: z.string(),
-  photos: z.array(CrossGroupPhotoSchema),
-})
-export type CrossGroupSuggestion = z.infer<typeof CrossGroupSuggestionSchema>
+export type SubgroupProposal = z.infer<typeof SubgroupProposalSchema>

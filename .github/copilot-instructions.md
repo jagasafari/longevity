@@ -1,5 +1,19 @@
 # Copilot Instructions
 
+## Deployment
+
+- Deploys run automatically via `.github/workflows/deploy.yml` on push
+  to any branch when files under `src/{photo-api,web,thumbnail-worker}`
+  or the Helm chart change. The workflow builds + pushes images to ACR
+  and `helm upgrade`s the shared `web-app` release in namespace
+  `longevity` on the single AKS cluster, then runs Playwright + the
+  blob-rename e2e against the deployed env.
+- Local scripts under `infra/scripts/app/deploy-*.ps1` are an
+  escape-hatch for ad-hoc debugging — do not suggest them as the
+  default flow.
+
+## Voice input
+
 The user uses voice-to-text input. English is not their native language.
 
 When responding:

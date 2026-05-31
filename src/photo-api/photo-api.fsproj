@@ -17,8 +17,7 @@
     <Compile Include="Categories.fs" />
     <Compile Include="Storage.fs" />
     <Compile Include="Vocabulary.fs" />
-    <Compile Include="VocabSuggest.fs" />
-    <Compile Include="VocabSubgroupSuggest.fs" />
+    <Compile Include="PhotoLabel.fs" />
     <Compile Include="PhotoCountCache.fs" />
     <Compile Include="PhotoHub.fs" />
     <Compile Include="ThumbnailSubscriber.fs" />

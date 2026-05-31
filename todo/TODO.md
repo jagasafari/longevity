@@ -1,5 +1,27 @@
 # TODO
 
+## 0. Switch AI labeling to gpt-4o-mini (cost saving)
+
+Currently `PhotoLabel.fs` uses `gpt-4o` because no `gpt-4o-mini` deployment
+existed in the Azure AI Foundry resource at time of shipping.
+
+- [x] Create the deployment:
+  ```bash
+  az cognitiveservices account deployment create \
+    --name longevity-ai \
+    --resource-group <rg> \
+    --deployment-name gpt-4o-mini \
+    --model-name gpt-4o-mini --model-version 2024-07-18 \
+    --model-format OpenAI \
+    --sku-name GlobalStandard --sku-capacity 10
+  ```
+- [x] In `src/photo-api/PhotoLabel.fs` change:
+  ```fsharp
+  let private visionModel = "gpt-4o-mini"
+  let private textModel   = "gpt-4o-mini"
+  ```
+- [x] Deploy backend
+
 ## 1. Automated post-deploy validation
 
 Goal: protect every change with a lightweight safety net that runs

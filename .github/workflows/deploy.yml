@@ -1,0 +1,230 @@
+name: Deploy
+
+on:
+  push:
+    branches: ["**"]
+    paths:
+      - "src/photo-api/**"
+      - "src/web/**"
+      - "src/thumbnail-worker/**"
+      - "infra/k8s/web-helm-chart/**"
+      - ".github/workflows/deploy.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  ACR_NAME: longevityacr
+  AKS_NAME: cluster
+  AKS_RG: kubernetes-resources
+  NAMESPACE: longevity
+  HELM_RELEASE: web-app
+  CHART_PATH: infra/k8s/web-helm-chart
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      photo-api: ${{ steps.filter.outputs.photo-api }}
+      web: ${{ steps.filter.outputs.web }}
+      worker: ${{ steps.filter.outputs.worker }}
+      any: ${{ steps.filter.outputs.any }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            photo-api:
+              - 'src/photo-api/**'
+              - 'infra/k8s/web-helm-chart/**'
+              - '.github/workflows/deploy.yml'
+            web:
+              - 'src/web/**'
+              - 'infra/k8s/web-helm-chart/**'
+              - '.github/workflows/deploy.yml'
+            worker:
+              - 'src/thumbnail-worker/**'
+              - 'infra/k8s/web-helm-chart/**'
+              - '.github/workflows/deploy.yml'
+            any:
+              - 'src/**'
+              - 'infra/k8s/web-helm-chart/**'
+              - '.github/workflows/deploy.yml'
+
+  build:
+    needs: changes
+    if: needs.changes.outputs.any == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: photo-api
+            image: photo-api
+            src: src/photo-api
+            changed_key: photo-api
+          - service: web
+            image: web
+            src: src/web
+            changed_key: web
+          - service: worker
+            image: thumbnail-worker
+            src: src/thumbnail-worker
+            changed_key: worker
+    steps:
+      - name: Gate
+        id: gate
+        run: |
+          changed='${{ toJson(needs.changes.outputs) }}'
+          key='${{ matrix.changed_key }}'
+          val=$(echo "$changed" | jq -r --arg k "$key" '.[$k]')
+          echo "should_run=$val" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+        if: steps.gate.outputs.should_run == 'true'
+
+      - uses: azure/login@v2
+        if: steps.gate.outputs.should_run == 'true'
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: ACR login
+        if: steps.gate.outputs.should_run == 'true'
+        env:
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+        run: |
+          set -euo pipefail
+          AAD=$(az account get-access-token \
+            --query accessToken -o tsv)
+          RESP=$(mktemp)
+          HTTP=$(curl -sS -o "$RESP" -w '%{http_code}' -X POST \
+            -H "Content-Type: application/x-www-form-urlencoded" \
+            --data-urlencode "grant_type=access_token" \
+            --data-urlencode "service=${ACR_NAME}.azurecr.io" \
+            --data-urlencode "tenant=${AZURE_TENANT_ID}" \
+            --data-urlencode "access_token=${AAD}" \
+            "https://${ACR_NAME}.azurecr.io/oauth2/exchange")
+          if [ "$HTTP" != "200" ]; then
+            echo "ACR oauth2/exchange failed: HTTP $HTTP"
+            cat "$RESP"
+            exit 1
+          fi
+          REFRESH=$(jq -r .refresh_token < "$RESP")
+          docker login "${ACR_NAME}.azurecr.io" \
+            -u 00000000-0000-0000-0000-000000000000 \
+            --password-stdin <<< "$REFRESH"
+
+      - name: Set up Docker Buildx
+        if: steps.gate.outputs.should_run == 'true'
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push image
+        if: steps.gate.outputs.should_run == 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.src }}
+          platforms: linux/amd64
+          push: true
+          tags: ${{ env.ACR_NAME }}.azurecr.io/${{ matrix.image }}:${{ github.sha }}
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+
+  deploy:
+    needs: [changes, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Get AKS credentials
+        run: |
+          az aks get-credentials \
+            --resource-group "$AKS_RG" \
+            --name "$AKS_NAME" \
+            --overwrite-existing
+
+      - name: Helm upgrade
+        env:
+          CHANGED_PHOTO_API: ${{ needs.changes.outputs.photo-api }}
+          CHANGED_WEB: ${{ needs.changes.outputs.web }}
+          CHANGED_WORKER: ${{ needs.changes.outputs.worker }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          SETS=()
+          [ "$CHANGED_PHOTO_API" = "true" ] && \
+            SETS+=(--set "photoApi.image.tag=$SHA")
+          [ "$CHANGED_WEB" = "true" ] && \
+            SETS+=(--set "web.image.tag=$SHA")
+          [ "$CHANGED_WORKER" = "true" ] && \
+            SETS+=(--set "worker.image.tag=$SHA")
+          echo "Helm sets: ${SETS[*]}"
+          helm upgrade --install "$HELM_RELEASE" "$CHART_PATH" \
+            --namespace "$NAMESPACE" \
+            --create-namespace \
+            --reset-then-reuse-values \
+            "${SETS[@]}" \
+            --wait --timeout 10m
+
+  e2e:
+    needs: deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Build e2e tests
+        run: dotnet build tests/web.e2e/web.e2e.csproj
+
+      - name: Install Playwright browsers
+        run: >
+          pwsh tests/web.e2e/bin/Debug/net10.0/playwright.ps1
+          install --with-deps chromium
+
+      - name: Run smoke tests
+        env:
+          E2E_BASE_URL: ${{ secrets.E2E_BASE_URL }}
+        run: >
+          dotnet test tests/web.e2e/web.e2e.csproj
+          --no-build
+          --logger "trx;LogFileName=e2e-results.trx"
+
+      - name: Run blob rename e2e
+        shell: pwsh
+        run: pwsh infra/scripts/azure/test-blob-rename.ps1
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deploy-e2e-results-${{ github.sha }}
+          path: tests/web.e2e/**/*.trx
