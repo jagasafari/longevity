@@ -59,3 +59,7 @@ infra/azure/modules/workbook.json
 infra/scripts/env.json
 
 .local
+
+# Local working files
+/500
+/downloads/
