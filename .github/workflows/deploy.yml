@@ -102,13 +102,15 @@ jobs:
 
       - name: ACR login
         if: steps.gate.outputs.should_run == 'true'
+        env:
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
         run: |
           set -euo pipefail
           AAD=$(az account get-access-token \
             --query accessToken -o tsv)
           REFRESH=$(curl -fsS -X POST \
             -H "Content-Type: application/x-www-form-urlencoded" \
-            -d "grant_type=access_token&service=${ACR_NAME}.azurecr.io&access_token=${AAD}" \
+            -d "grant_type=access_token&service=${ACR_NAME}.azurecr.io&tenant=${AZURE_TENANT_ID}&access_token=${AAD}" \
             "https://${ACR_NAME}.azurecr.io/oauth2/exchange" \
             | jq -r .refresh_token)
           docker login "${ACR_NAME}.azurecr.io" \
