@@ -24,10 +24,10 @@ type LabelResult =
 type SubgroupProposal = { Word: string; PhotoNames: string array }
 
 [<CLIMutable>]
-type private LabelJson = { word: string; source: string; confidence: float }
+type LabelJson = { word: string; source: string; confidence: float }
 
 [<CLIMutable>]
-type private FuzzyJson = { canonical: string; members: string array }
+type FuzzyJson = { canonical: string; members: string array }
 
 [<CLIMutable>]
 type private UnlabeledRow = { photo_name: string }
