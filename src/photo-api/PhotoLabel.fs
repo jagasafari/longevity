@@ -124,14 +124,27 @@ let private callChat
     return result
 }
 
+let private httpClient = new System.Net.Http.HttpClient()
+
+let private mediaTypeFor (name: string) =
+    let lower = name.ToLowerInvariant()
+    if lower.EndsWith ".png" then "image/png"
+    elif lower.EndsWith ".gif" then "image/gif"
+    elif lower.EndsWith ".webp" then "image/webp"
+    else "image/jpeg"
+
 let private labelOnePhoto
     (endpoint: string) (photoName: string) (imageUrl: string)
     : Task<LabelJson> = task {
+    let! resp = httpClient.GetAsync(imageUrl)
+    resp.EnsureSuccessStatusCode() |> ignore
+    let! bytes = resp.Content.ReadAsByteArrayAsync()
+    let data = BinaryData.FromBytes(bytes)
     let parts : ChatMessageContentPart array =
         [| ChatMessageContentPart.CreateTextPart(
                $"Label this image (filename: {photoName}). Respond with JSON only.")
            ChatMessageContentPart.CreateImagePart(
-               Uri(imageUrl), ChatImageDetailLevel.High) |]
+               data, mediaTypeFor photoName, ChatImageDetailLevel.High) |]
     let messages : ChatMessage array =
         [| SystemChatMessage labelSystemPrompt
            UserChatMessage(parts) |]
