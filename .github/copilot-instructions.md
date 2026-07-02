@@ -1,5 +1,50 @@
 # Copilot Instructions
 
+## Self-maintenance
+
+After solving a non-trivial task, check whether any discovered commands,
+scripts, resource names, or conventions should be recorded here to avoid
+re-discovering them next session. If yes, add them immediately before
+finishing the response. Keep additions short and specific — one bullet
+per fact. Remove bullets that become stale.
+
+## Infrastructure
+
+| Resource | Value |
+|---|---|
+| Subscription | Visual Studio Enterprise (`91b69f0b-43fb-41ca-aa83-f71f2db5ea20`) |
+| Resource group | `kubernetes-resources` (location `westeurope`) |
+| AKS cluster | `cluster` (node VM: `Standard_B2s`) |
+| K8s namespace | `longevity` |
+| ACR | `longevityacr.azurecr.io` |
+| Key Vault | `longevity-kv-001` |
+| Storage account | `longevityphotos` |
+
+## Database backup
+
+- Script: `infra/scripts/app/backup-postgres.sh` — dumps postgres to
+  `backups/postgres/longevity_backup_<timestamp>.sql`
+- Run before stopping pods or destructive infra changes.
+- Backups are committed to the repo under `backups/postgres/`.
+
+## Stopping / starting AKS app resources
+
+Scale all app pods to zero (keep cluster node running):
+```
+kubectl -n longevity scale deployment \
+  photo-api-deployment web-deployment thumbnail-worker-deployment \
+  postgres-deployment redis-deployment otel-collector --replicas=0
+```
+Restore by re-running the deploy workflow or `helm upgrade`.
+
+## GitHub Actions workflows
+
+- `backend-ci.yml` — triggers on push/PR to `src/photo-api/**`
+- `frontend-ci.yml` — triggers on push/PR to `src/web/**`
+- `e2e.yml` — triggers on push to `main` + manual
+- `deploy.yml` — triggers on push to any branch when app/chart files change
+- No scheduled triggers — all workflows run only on push.
+
 ## Deployment
 
 - Deploys run automatically via `.github/workflows/deploy.yml` on push
