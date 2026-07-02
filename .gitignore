@@ -63,3 +63,6 @@ infra/scripts/env.json
 # Local working files
 /500
 /downloads/
+
+# Postgres backups contain personal data — keep local only
+backups/postgres/*.sql
