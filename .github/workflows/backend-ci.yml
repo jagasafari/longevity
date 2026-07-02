@@ -10,8 +10,6 @@ on:
     paths:
       - "src/photo-api/**"
       - "tests/photo-api.tests/**"
-  schedule:
-    - cron: "0 0 * * *"
 
 jobs:
   build-and-test:

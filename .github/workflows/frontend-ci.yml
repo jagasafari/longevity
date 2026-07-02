@@ -8,8 +8,6 @@ on:
   pull_request:
     paths:
       - "src/web/**"
-  schedule:
-    - cron: "0 0 * * *"
 
 jobs:
   build:
